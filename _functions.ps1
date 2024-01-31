@@ -21,6 +21,11 @@ function Test-PSVersion {
     }
 }
 
+function Get-Separator {
+    if ( $PSVersionTable.OS.ToLower().contains('windows')) { $separator = '\' } else { $separator = '/' }
+    return $separator
+}
+
 function Test-Version ( $name ) {
     try {
         $separator = Get-Separator
@@ -36,4 +41,17 @@ function Test-Version ( $name ) {
         Remove-Item $new_file_path
     }
     catch {}
+}
+
+function Test-Module ( $module, $description ) {
+    Write-Log "Проверяем наличие модуля $module $description"
+    if ( -not ( [bool](Get-InstalledModule -Name $module -ErrorAction SilentlyContinue) ) ) {
+        Write-Output 'Не установлен модуль PSIni для чтения настроек Web-TLO, ставим...'
+        Install-Module -Name PsIni -Scope CurrentUser -Force
+        Import-Module $module
+    }
+    else {
+        Write-Log "Модуль $module обнаружен"
+        Import-Module $module
+    }
 }
