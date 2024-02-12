@@ -3,3 +3,6 @@ README.md
 test.ps1
 _client_ssd.ps1
 starts.db
+in_progress.lck
+report_needed.flg
+starts.db

@@ -32,12 +32,17 @@ $get_lows = Test-Setting 'get_lows'
 $get_mids = Test-Setting 'get_mids'
 $get_highs = Test-Setting 'get_highs'
 $control = Test-Setting 'control'
-$report_stalled = Test-Setting 'report_stalled'
-if ( $control -eq 'Y') {
-    $send_reports = Test-Setting 'send_reports'
+if ( $tg_token -ne '') {
+    $report_obsolete = Test-Setting 'report_obsolete'
 }
-if ( $send_reports -eq 'Y') {
-    Write-Log 'Для отправки отчётов нужен интерпретатор php на этом же компе.'
+$report_stalled = Test-Setting 'report_stalled'
+$update_stats = Test-Setting 'update_stats'
+
+if ( $update_stats -eq 'Y') {
+}
+if ( $update_stats -eq 'Y') {
+    $send_reports = Test-Setting 'send_reports'
+    Write-Log 'Для обновления БД TLO и отправки отчётов нужен интерпретатор php на этом же компе.'
     while ( $true ) {
         $php_path = Test-Setting 'php_path' -required
         If ( Test-Path $php_path ) { break }
@@ -65,7 +70,7 @@ if ( $forced_sections ) {
     $forced_sections.split(',') | ForEach-Object { $forced_sections_array += $_ }
 }
 
-Test-ForumWorkingHours
+Test-ForumWorkingHours -verbose
 
 Write-Log 'Достаём из TLO данные о разделах'
 $section_details = @{}

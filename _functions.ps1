@@ -62,24 +62,26 @@ function Test-Module ( $module, $description ) {
 
 function Test-Setting ( $setting, [switch]$required, $default ) {
     $settings = @{
-        'tg_token'       = @{ prompt = 'Токен бота Telegram, если нужна отправка событий в Telegram. Если не нужно, оставить пустым'; default = ''; type = 'string' }
-        'tg_chat'        = @{ prompt = 'Номер чата для отправки сообщений Telegram'; default = ''; type = 'string' }
-        'alert_oldies'   = @{ prompt = 'Уведомлять о новых версиях скриптов в Telegram?'; default = 'Y'; type = 'YN' }
-        'use_timestamp'  = @{ prompt = 'Выводить дату-время в окне лога Adder?'; default = 'N'; type = 'YN' }
-        'tlo_path'       = @{ prompt = 'Путь к папке Web-TLO'; default = 'C:\OpenServer\domains\webtlo.local'; type = 'string' }
-        'get_blacklist'  = @{ prompt = 'Скачивать раздачи из чёрного списка Web-TLO?'; default = 'N'; type = 'YN' }
-        'max_seeds'      = @{ prompt = 'Максимальное кол-во сидов для скачивания раздачи'; default = '-1'; type = 'number' }
-        'min_days'       = @{ prompt = 'Минимальное количество дней с релиза (только для новых раздач)'; default = '-1'; type = 'number' }
-        'get_hidden'     = @{ prompt = 'Скачивать раздачи со скрытых из общего списка разделов Web-TLO? (Y/N)'; default = 'N'; type = 'YN' }
-        'get_shown'      = @{ prompt = 'Скачивать раздачи с НЕскрытых из общего списка разделов Web-TLO? (Y/N)'; default = 'Y'; type = 'YN' }
-        'get_lows'       = @{ prompt = 'Скачивать раздачи c низким приоритетом? (Y/N)'; default = 'N'; type = 'YN' }
-        'get_mids'       = @{ prompt = 'Скачивать раздачи cо средним приоритетом? (Y/N)'; default = 'Y'; type = 'YN' }
-        'get_highs'      = @{ prompt = 'Скачивать раздачи c высоким приоритетом? (Y/N)'; default = 'Y'; type = 'YN' }
-        'get_news'       = @{ prompt = 'Скачивать новые раздачи? (Y/N)'; default = 'Y'; type = 'YN' }
-        'control'        = @{ prompt = 'Запускать встроенную регулировку по завершению? (Y/N)'; default = 'Y'; type = 'YN' }
-        'send_reports'   = @{ prompt = 'Вызывать отправку отчётов если что-то изменилось? (Y/N)'; default = 'Y'; type = 'YN' }
-        'php_path'       = @{ prompt = 'Путь к интерпретатору PHP'; default = ''; type = 'string' }
-        'report_stalled' = @{ prompt = 'Отправлять боту призыв о помощи по некачашкам более месяца? (Y/N)'; default = 'N'; type = 'YN' }
+        'tg_token'        = @{ prompt = 'Токен бота Telegram, если нужна отправка событий в Telegram. Если не нужно, оставить пустым'; default = ''; type = 'string' }
+        'tg_chat'         = @{ prompt = 'Номер чата для отправки сообщений Telegram'; default = ''; type = 'string' }
+        'alert_oldies'    = @{ prompt = 'Уведомлять о новых версиях скриптов в Telegram?'; default = 'Y'; type = 'YN' }
+        'use_timestamp'   = @{ prompt = 'Выводить дату-время в окне лога Adder?'; default = 'N'; type = 'YN' }
+        'tlo_path'        = @{ prompt = 'Путь к папке Web-TLO'; default = 'C:\OpenServer\domains\webtlo.local'; type = 'string' }
+        'get_blacklist'   = @{ prompt = 'Скачивать раздачи из чёрного списка Web-TLO?'; default = 'N'; type = 'YN' }
+        'max_seeds'       = @{ prompt = 'Максимальное кол-во сидов для скачивания раздачи'; default = '-1'; type = 'number' }
+        'min_days'        = @{ prompt = 'Минимальное количество дней с релиза (только для новых раздач)'; default = '-1'; type = 'number' }
+        'get_hidden'      = @{ prompt = 'Скачивать раздачи со скрытых из общего списка разделов Web-TLO? (Y/N)'; default = 'N'; type = 'YN' }
+        'get_shown'       = @{ prompt = 'Скачивать раздачи с НЕскрытых из общего списка разделов Web-TLO? (Y/N)'; default = 'Y'; type = 'YN' }
+        'get_lows'        = @{ prompt = 'Скачивать раздачи c низким приоритетом? (Y/N)'; default = 'N'; type = 'YN' }
+        'get_mids'        = @{ prompt = 'Скачивать раздачи cо средним приоритетом? (Y/N)'; default = 'Y'; type = 'YN' }
+        'get_highs'       = @{ prompt = 'Скачивать раздачи c высоким приоритетом? (Y/N)'; default = 'Y'; type = 'YN' }
+        'get_news'        = @{ prompt = 'Скачивать новые раздачи? (Y/N)'; default = 'Y'; type = 'YN' }
+        'control'         = @{ prompt = 'Запускать встроенную регулировку по завершению? (Y/N)'; default = 'Y'; type = 'YN' }
+        'update_stats'    = @{ prompt = 'Запускать обновление БД TLO по завершению? (Y/N)'; default = 'Y'; type = 'YN' }
+        'send_reports'    = @{ prompt = 'Вызывать отправку отчётов если что-то изменилось? (Y/N)'; default = 'Y'; type = 'YN' }
+        'php_path'        = @{ prompt = 'Путь к интерпретатору PHP'; default = ''; type = 'string' }
+        'report_stalled'  = @{ prompt = 'Отправлять боту призыв о помощи по некачашкам более месяца? (Y/N)'; default = 'N'; type = 'YN' }
+        'report_obsolete' = @{ prompt = 'Сообщать в Telegram о неактуальных раздачах? (Y/N)'; default = 'Y'; type = 'YN' }
     }
     $changed = $false
     $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
@@ -117,12 +119,13 @@ function Send-TGMessage ( $message, $token, $chat_id ) {
     Invoke-WebRequest -Uri ("https://api.telegram.org/bot{0}/sendMessage" -f $token) -Method Post -ContentType "application/json;charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
 }
 
-function Test-ForumWorkingHours {
-    Write-Log 'Ищем московское время'
+function Test-ForumWorkingHours ( [switch]$verbose ) {
     $MoscowTZ = [System.TimeZoneInfo]::FindSystemTimeZoneById("Russian Standard Time")
     $MoscowTime = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $MoscowTZ)
-    Write-Log ( 'Московское время ' + ( Get-Date($MoscowTime) -UFormat %H ) + ' ч ' + ( Get-Date($MoscowTime) -UFormat %M ) + ' мин' )
-    Write-Log 'Проверяем, что в Москве не 4 часа ночи (профилактика)'
+    if ($verbose) {
+        Write-Log ( 'Московское время ' + ( Get-Date($MoscowTime) -UFormat %H ) + ' ч ' + ( Get-Date($MoscowTime) -UFormat %M ) + ' мин' )
+        Write-Log 'Проверяем, что в Москве не 4 часа ночи (профилактика)'
+    }
     if ( ( Get-Date($MoscowTime) -UFormat %H ) -eq '04' ) {
         Write-Log 'Профилактические работы на сервере' -ForegroundColor -Red
         exit
@@ -602,7 +605,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $token, $chat_id ) {
                 if ( !$first ) { $message += "`n" }
                 $first = $false
                 $message += "Лишние в клиенте $client :`n"
-                $obsolete[$client] | ForEach-Object { $message += "$_`n" }
+                $obsolete[$client] | ForEach-Object { $message += "https://rutracker.org/forum/viewtopic.php?t=$_`n" }
             }
         }
         else {
@@ -655,7 +658,7 @@ function Stop-Torrents( $hashes, $client) {
     Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
 }
 
-function Set-StartStop ( $keys ){
+function Set-StartStop ( $keys ) {
     $now_epoch = ( Get-Date -UFormat %s ).ToInt32($null)
     $new_keys = $keys | Where-Object { $states[$_].start_date -eq 0 }
     $existing_keys = $keys | Where-Object { $states[$_].start_date -ne 0 }
