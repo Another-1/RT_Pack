@@ -12,6 +12,27 @@ function  Stop-batch {
     Set-StartStop $stop_keys
 }
 
+. "$PSScriptRoot\_functions.ps1"
+
+$separator = $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
+
+Write-Log 'Подгружаем настройки'
+. ( $PSScriptRoot + $separator + '_settings.ps1' )
+
+if ( !$ini_data ) {
+    Test-Module 'PsIni' 'для чтения настроек TLO'
+    Test-Module 'PSSQLite' 'для работы с базой TLO'
+    
+    while ( $true ) {
+        $tlo_path = Test-Setting 'tlo_path' -required
+        $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
+        If ( Test-Path $ini_path ) { break }
+        Write-Log 'Не нахожу такого файла, проверьте ввод' -ForegroundColor -Red
+    }
+    Write-Log 'Читаем настройки Web-TLO'
+    $ini_data = Get-IniContent $ini_path
+}
+
 $global_seeds = $ini_data['topics_control'].peers
 $section_seeds = @{}
 # if ( $nul -ne $single_seed_time ) {
@@ -29,7 +50,6 @@ $section_seeds = @{}
 # }
 
 $db_data = @{}
-$separator = Get-Separator
 $database_path = $PSScriptRoot + $separator + 'starts.db'
 Write-Log 'Подключаемся к БД запусков'
 $conn = Open-Database $database_path
@@ -40,6 +60,7 @@ Invoke-SqliteQuery -Query 'SELECT * FROM start_dates' -SQLiteConnection $conn | 
 
 Write-Log 'Строим таблицы'
 $sections = $ini_data.sections.subsections.split( ',' )
+$section_details = Get-IniSectionDetails
 $sections | ForEach-Object {
     $section_seeds[$_] = ( $section_details[$_].control_peers -ne '' ? $section_details[$_].control_peers : $global_seeds )
     #     if (
@@ -55,6 +76,11 @@ $sections | ForEach-Object {
     
 $states = @{}
 $paused_sort = [System.Collections.ArrayList]::new()
+
+if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
+    $clients = Get-Clients
+    $clients_torrents = Get-ClientsTorrents $clients
+}
 
 # $i = 0
 $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
@@ -126,9 +152,10 @@ if ( $paused_sort ) {
         Start-batch
     }
 }
-Write-Log 'Очищаем БД от неактуальных раздач'
-$db_data.keys | Where-Object { !$id_to_info[$_] } | ForEach-Object {
-    Invoke-SqliteQuery -Query "DELETE FROM start_dates WHERE id = @id" -SqlParameters @{ id = $_ } -SQLiteConnection $conn | ForEach-Object { $db_data[$_.id] = $_.start_date }
+if ( $id_to_info ) {
+    Write-Log 'Очищаем БД от неактуальных раздач'
+    $db_data.keys | Where-Object { !$id_to_info[$_] } | ForEach-Object {
+        Invoke-SqliteQuery -Query "DELETE FROM start_dates WHERE id = @id" -SqlParameters @{ id = $_ } -SQLiteConnection $conn | ForEach-Object { $db_data[$_.id] = $_.start_date }
+    }
 }
-
 $conn.Close()

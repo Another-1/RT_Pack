@@ -1,12 +1,21 @@
-. "$PSScriptRoot\_functions.ps1"
+Write-Output 'Подгружаем настройки'
 
-$separator = Get-Separator
-Write-Log 'Подгружаем настройки'
+$separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
 . ( $PSScriptRoot + $separator + '_settings.ps1' )
 
-try { . ( $PSScriptRoot + $separator + '_client_ssd.ps1' ) }
-catch { }
+$str = 'Подгружаем функции'
+if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
+. "$PSScriptRoot\_functions.ps1"
 
+Test-PSVersion
+Test-Module 'PsIni' 'для чтения настроек TLO'
+Test-Module 'PSSQLite' 'для работы с базой TLO'
+Write-Log 'Проверяем актуальность скриптов' 
+Test-Version ( $PSCommandPath | Split-Path -Leaf ) $alert_oldies
+Test-Version ( '_functions.ps1' ) -alert $alert_oldies
+
+
+try { . ( $PSScriptRoot + $separator + '_client_ssd.ps1' ) } catch { }
 Write-Log 'Проверяем наличие всех нужных настроек'
 $tg_token = Test-Setting 'tg_token'
 if ( $tg_token -ne '') {
@@ -21,6 +30,8 @@ while ( $true ) {
     If ( Test-Path $ini_path ) { break }
     Write-Log 'Не нахожу такого файла, проверьте ввод' -ForegroundColor -Red
 }
+Write-Log 'Читаем настройки Web-TLO'
+$ini_data = Get-IniContent $ini_path
 $get_news = Test-Setting 'get_news'
 $min_days = Test-Setting 'min_days' -default $ini_data.sections.rule_date_release
 if (!$min_days ) { $min_days = 0 }
@@ -41,50 +52,20 @@ $update_stats = Test-Setting 'update_stats'
 if ( $update_stats -eq 'Y') {
 }
 if ( $update_stats -eq 'Y') {
+    if ( !$send_reports ) { Write-Log 'Для обновления БД TLO и отправки отчётов нужен интерпретатор php на этом же компе.' }
     $send_reports = Test-Setting 'send_reports'
-    Write-Log 'Для обновления БД TLO и отправки отчётов нужен интерпретатор php на этом же компе.'
     while ( $true ) {
         $php_path = Test-Setting 'php_path' -required
         If ( Test-Path $php_path ) { break }
         Write-Log 'Не нахожу такого файла, проверьте ввод' -ForegroundColor -Red
     }
 }
-Write-Log 'Настроек достаточно'
-Write-Log 'Проверяем актуальность скриптов' 
-Test-Version ( $PSCommandPath | Split-Path -Leaf ) $alert_oldies
-Test-Version ( '_functions.ps1' ) -alert $alert_oldies
-Test-PSVersion
 
-Test-Module 'PsIni' 'для чтения настроек TLO'
-Test-Module 'PSSQLite' 'для работы с базой TLO'
-
-Write-Log 'Читаем настройки Web-TLO'
-
-$ini_data = Get-IniContent $ini_path
-
-$sections = $ini_data.sections.subsections.split( ',' )
-if ( $forced_sections ) {
-    Write-Log 'Анализируем forced_sections'
-    $forced_sections = $forced_sections.Replace(' ', '')
-    $forced_sections_array = @()
-    $forced_sections.split(',') | ForEach-Object { $forced_sections_array += $_ }
-}
-
+$sections = Get-IniSections -useForced
 Test-ForumWorkingHours -verbose
 
 Write-Log 'Достаём из TLO данные о разделах'
-$section_details = @{}
-$sections | ForEach-Object {
-    $section_details[$_] = [PSCustomObject]@{
-        client         = $ini_data[ $_ ].client
-        data_folder    = $ini_data[ $_ ].'data-folder'
-        data_subfolder = $ini_data[ $_ ].'data-sub-folder'
-        hide_topics    = $ini_data[ $_ ].'hide-topics'
-        label          = $ini_data[ $_ ].'label'
-        control_peers  = $ini_data[$_].'control-peers'
-    }
-}
-
+$section_details = Get-IniSectionDetails
 $forum = Set-ForumDetails
 
 if ( $get_blacklist -eq 'N' ) {

@@ -62,26 +62,35 @@ function Test-Module ( $module, $description ) {
 
 function Test-Setting ( $setting, [switch]$required, $default ) {
     $settings = @{
-        'tg_token'        = @{ prompt = 'Токен бота Telegram, если нужна отправка событий в Telegram. Если не нужно, оставить пустым'; default = ''; type = 'string' }
-        'tg_chat'         = @{ prompt = 'Номер чата для отправки сообщений Telegram'; default = ''; type = 'string' }
-        'alert_oldies'    = @{ prompt = 'Уведомлять о новых версиях скриптов в Telegram?'; default = 'Y'; type = 'YN' }
-        'use_timestamp'   = @{ prompt = 'Выводить дату-время в окне лога Adder?'; default = 'N'; type = 'YN' }
-        'tlo_path'        = @{ prompt = 'Путь к папке Web-TLO'; default = 'C:\OpenServer\domains\webtlo.local'; type = 'string' }
-        'get_blacklist'   = @{ prompt = 'Скачивать раздачи из чёрного списка Web-TLO?'; default = 'N'; type = 'YN' }
-        'max_seeds'       = @{ prompt = 'Максимальное кол-во сидов для скачивания раздачи'; default = '-1'; type = 'number' }
-        'min_days'        = @{ prompt = 'Минимальное количество дней с релиза (только для новых раздач)'; default = '-1'; type = 'number' }
-        'get_hidden'      = @{ prompt = 'Скачивать раздачи со скрытых из общего списка разделов Web-TLO? (Y/N)'; default = 'N'; type = 'YN' }
-        'get_shown'       = @{ prompt = 'Скачивать раздачи с НЕскрытых из общего списка разделов Web-TLO? (Y/N)'; default = 'Y'; type = 'YN' }
-        'get_lows'        = @{ prompt = 'Скачивать раздачи c низким приоритетом? (Y/N)'; default = 'N'; type = 'YN' }
-        'get_mids'        = @{ prompt = 'Скачивать раздачи cо средним приоритетом? (Y/N)'; default = 'Y'; type = 'YN' }
-        'get_highs'       = @{ prompt = 'Скачивать раздачи c высоким приоритетом? (Y/N)'; default = 'Y'; type = 'YN' }
-        'get_news'        = @{ prompt = 'Скачивать новые раздачи? (Y/N)'; default = 'Y'; type = 'YN' }
-        'control'         = @{ prompt = 'Запускать встроенную регулировку по завершению? (Y/N)'; default = 'Y'; type = 'YN' }
-        'update_stats'    = @{ prompt = 'Запускать обновление БД TLO по завершению? (Y/N)'; default = 'Y'; type = 'YN' }
-        'send_reports'    = @{ prompt = 'Вызывать отправку отчётов если что-то изменилось? (Y/N)'; default = 'Y'; type = 'YN' }
-        'php_path'        = @{ prompt = 'Путь к интерпретатору PHP'; default = ''; type = 'string' }
-        'report_stalled'  = @{ prompt = 'Отправлять боту призыв о помощи по некачашкам более месяца? (Y/N)'; default = 'N'; type = 'YN' }
-        'report_obsolete' = @{ prompt = 'Сообщать в Telegram о неактуальных раздачах? (Y/N)'; default = 'Y'; type = 'YN' }
+        'tg_token'              = @{ prompt = 'Токен бота Telegram, если нужна отправка событий в Telegram. Если не нужно, оставить пустым'; default = ''; type = 'string' }
+        'tg_chat'               = @{ prompt = 'Номер чата для отправки сообщений Telegram'; default = ''; type = 'string' }
+        'alert_oldies'          = @{ prompt = 'Уведомлять о новых версиях скриптов в Telegram?'; default = 'Y'; type = 'YN' }
+        'use_timestamp'         = @{ prompt = 'Выводить дату-время в окне лога Adder?'; default = 'N'; type = 'YN' }
+        'tlo_path'              = @{ prompt = 'Путь к папке Web-TLO'; default = 'C:\OpenServer\domains\webtlo.local'; type = 'string' }
+        'get_blacklist'         = @{ prompt = 'Скачивать раздачи из чёрного списка Web-TLO?'; default = 'N'; type = 'YN' }
+        'max_seeds'             = @{ prompt = 'Максимальное кол-во сидов для скачивания раздачи'; default = -1; type = 'number' }
+        'min_days'              = @{ prompt = 'Минимальное количество дней с релиза (только для новых раздач)'; default = -1; type = 'number' }
+        'get_hidden'            = @{ prompt = 'Скачивать раздачи со скрытых из общего списка разделов Web-TLO? (Y/N)'; default = 'N'; type = 'YN' }
+        'get_shown'             = @{ prompt = 'Скачивать раздачи с НЕскрытых из общего списка разделов Web-TLO? (Y/N)'; default = 'Y'; type = 'YN' }
+        'get_lows'              = @{ prompt = 'Скачивать раздачи c низким приоритетом? (Y/N)'; default = 'N'; type = 'YN' }
+        'get_mids'              = @{ prompt = 'Скачивать раздачи cо средним приоритетом? (Y/N)'; default = 'Y'; type = 'YN' }
+        'get_highs'             = @{ prompt = 'Скачивать раздачи c высоким приоритетом? (Y/N)'; default = 'Y'; type = 'YN' }
+        'get_news'              = @{ prompt = 'Скачивать новые раздачи? (Y/N)'; default = 'Y'; type = 'YN' }
+        'control'               = @{ prompt = 'Запускать встроенную регулировку по завершению? (Y/N)'; default = 'Y'; type = 'YN' }
+        'update_stats'          = @{ prompt = 'Запускать обновление БД TLO по завершению? (Y/N)'; default = 'Y'; type = 'YN' }
+        'send_reports'          = @{ prompt = 'Вызывать отправку отчётов если что-то изменилось? (Y/N)'; default = 'Y'; type = 'YN' }
+        'php_path'              = @{ prompt = 'Путь к интерпретатору PHP'; default = ''; type = 'string' }
+        'report_stalled'        = @{ prompt = 'Отправлять боту призыв о помощи по некачашкам более месяца? (Y/N)'; default = 'N'; type = 'YN' }
+        'report_obsolete'       = @{ prompt = 'Сообщать в Telegram о неактуальных раздачах? (Y/N)'; default = 'Y'; type = 'YN' }
+        'max_rehash_qty'        = @{ prompt = 'Максимальное количество отправляемых в рехэш раздач за один прогон?'; default = 10; type = 'number' }
+        'max_rehash_size_bytes' = @{ prompt = 'максимальный объём отправляемых в рехэш раздач за один прогон в байтах?'; default = 10 * 1024 * 1024 * 1024; type = 'number' }
+        'frequency'             = @{ prompt = 'Минимальное время между рехэшами одной раздачи в днях?'; default = 365; type = 'number' }
+        'rehash_freshes'        = @{ prompt = 'Игнорировать время завершения скачивания раздачи?'; default = 'Y'; type = 'YN' }
+        'wait_finish'           = @{ prompt = 'Ожидать ли окончания рехэша раздач с отчётом в телеграм и в журнал о найденных битых и с простановкой им тега "Битая"?'; default = 'Y'; type = 'YN' }
+        'mix_clients'           = @{ prompt = 'Перемешивать раздачи перед отправкой в рехэш для равномерной загрузки клиентов?'; default = 'N'; type = 'YN' }
+        'check_state_delay'     = @{ prompt = 'Задержка в секундах перед опросом состояния после отправки в рехэш. Должнать быть больше или равна интервалу обновления интерфейса кубита.'; default = 5; type = 'number' }
+        'start_errored'         = @{ prompt = 'Запускать на докачку раздачи с ошибкой рехэша?'; default = 'Y'; type = 'YN' }
+
     }
     $changed = $false
     $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
@@ -89,7 +98,6 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
     if (!$current) {
         if ( $default ) { $settings[$setting].default = $default }
         do {
-            $changed = $true
             $current = Read-Host -Prompt ( $settings[$setting].prompt + $( $settings[$setting].default -ne '' ? ' [' + $settings[$setting].default + ']' : '' ) )
             if ( $settings[$setting].type -eq 'YN' ) {
                 if ( $current -ne '' ) { $current = $current.ToUpper() }
@@ -97,6 +105,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
             if ( $current -eq '' -and $nul -ne $settings[$setting].default ) {
                 $current = $settings[$setting].default
             }
+            $changed = $true
         } while ( ( $current -eq '' -and $required ) -or ( $settings[$setting].type -eq 'YN' -and $current -notmatch '[YN]' ) )
 
         if ( $changed ) {
@@ -104,7 +113,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
                 Set-Variable -Name $setting -Value $current
             }
             else {
-                Set-Variable -Name $setting -Value $current.ToInt16( $null )
+                Set-Variable -Name $setting -Value $current.ToInt64( $null )
             }
             $separator = Get-Separator
             Add-Content -Path ( $PSScriptRoot + $separator + '_settings.ps1' ) `
@@ -287,7 +296,7 @@ function Initialize-Client ($client, [switch]$verbose, [switch]$force ) {
     }
 }
 
-function  Get-ClientTorrents ( $client, $disk = '', [switch]$completed, $hash = $null, $client_key, [switch]$verbose ) {
+function  Get-ClientTorrents ( $client, $disk = '', [switch]$completed, $hash, $client_key, [switch]$verbose ) {
     $Params = @{}
     if ( $completed ) {
         $Params.filter = 'completed'
@@ -297,7 +306,7 @@ function  Get-ClientTorrents ( $client, $disk = '', [switch]$completed, $hash = 
         if ( $verbose -eq $true ) { Write-Log ( 'Получаем инфо о раздаче из клиента ' + $client.Name ) }
     }
     elseif ( $verbose -eq $true ) { Write-Log ( 'Получаем список раздач от клиента ' + $client.Name ) }
-    if ( $disk -ne '') { $dsk = $disk + ':\\' } else { $dsk = '' }
+    if ( $null -ne $disk -and $disk -ne '') { $dsk = $disk + ':\\' } else { $dsk = '' }
     $i = 0
     while ( $true ) {
         try {
@@ -319,13 +328,13 @@ function  Get-ClientTorrents ( $client, $disk = '', [switch]$completed, $hash = 
     return $torrents_list
 }
 
-function Get-ClientsTorrents ($clients, [switch]$completed) {
+function Get-ClientsTorrents ($clients, [switch]$completed, [switch]$noIDs) {
     $clients_torrents = @()
     foreach ($clientkey in $clients.Keys ) {
         $client = $clients[ $clientkey ]
         Initialize-Client( $client ) -verbose
         $client_torrents = Get-ClientTorrents -client $client -client_key $clientkey -verbose -completed:$completed
-        Get-TopicIDs $client $client_torrents
+        if ( $noIDs.IsPresent -eq $false ) { Get-TopicIDs $client $client_torrents }
         $clients_torrents += $client_torrents
     }
     return $clients_torrents
@@ -486,29 +495,33 @@ function Get-ForumTorrentInfo ( $id ) {
 
 function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
     Test-ForumWorkingHours
+    $MoscowTZ = [System.TimeZoneInfo]::FindSystemTimeZoneById("Russian Standard Time")
+    $MoscowTime = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $MoscowTZ)
     $lock_file = "$PSScriptRoot\in_progress.lck"
     $in_progress = Test-Path -Path $lock_file
-    if ( !$in_progress ) {
-        if ( $wait ) {
-            Write-Log 'Подождём 5 минут, вдруг быстро скачается.'
-            Start-Sleep -Seconds 300
-        }
-        New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
-        try {
-            Write-Log 'Обновляем БД'
-            . $php_path "$tlo_path\cron\update.php"
-            Write-Log 'Обновляем списки других хранителей'
-            . $php_path "$tlo_path\cron\keepers.php"
-            if ( $true -eq $send_report ) {
-                Send-Report
+    If ( ( ( Get-Date($MoscowTime) -UFormat %H ).ToInt16( $nul ) + 2 ) % 2 -eq 0 -or ( $check -eq $false ) ) {
+        if ( !$in_progress ) {
+            if ( $wait ) {
+                Write-Log 'Подождём 5 минут, вдруг быстро скачается.'
+                Start-Sleep -Seconds 300
+            }
+            New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
+            try {
+                Write-Log 'Обновляем БД TLO'
+                . $php_path "$tlo_path\cron\update.php"
+                Write-Log 'Обновляем списки других хранителей'
+                . $php_path "$tlo_path\cron\keepers.php"
+                if ( $send_report ) {
+                    Send-Report
+                }
+            }
+            finally {
+                Remove-Item $lock_file -ErrorAction SilentlyContinue
             }
         }
-        finally {
-            Remove-Item $lock_file -ErrorAction SilentlyContinue
+        else {
+            Write-Host "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -ForegroundColor Red
         }
-    }
-    else {
-        Write-Host "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -ForegroundColor Red
     }
 }
 
@@ -676,4 +689,38 @@ function Set-StartStop ( $keys ) {
         }
         catch { Pause }
     }
+}
+
+function Get-IniSections ( [switch]$useForced ) {
+    $result = @()
+    if ( $forced_sections -and $useForced ) {
+        Write-Log 'Анализируем forced_sections'
+        $forced_sections = $forced_sections.Replace(' ', '')
+        $result = $forced_sections.split(',')
+    }
+    else {
+        $result = $ini_data.sections.subsections.split( ',' )
+    }
+    return $result
+}
+
+function Get-IniSectionDetails {
+    $section_details = @{}
+    $sections | ForEach-Object {
+        $section_details[$_] = [PSCustomObject]@{
+            client         = $ini_data[ $_ ].client
+            data_folder    = $ini_data[ $_ ].'data-folder'
+            data_subfolder = $ini_data[ $_ ].'data-sub-folder'
+            hide_topics    = $ini_data[ $_ ].'hide-topics'
+            label          = $ini_data[ $_ ].'label'
+            control_peers  = $ini_data[ $_ ].'control-peers'
+        }
+    }
+    return $section_details    
+}
+
+function Start-Rehash ( $client, $hash ) {
+    $Params = @{ hashes = $hash }
+    $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/recheck'
+    Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
 }
