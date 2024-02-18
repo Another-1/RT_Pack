@@ -25,7 +25,7 @@ if ( $tg_token -ne '') {
 $alert_oldies = Test-Setting 'alert_oldies'
 $use_timestamp = Test-Setting 'use_timestamp'
 while ( $true ) {
-    $tlo_path = Test-Setting 'tlo_path' -required
+     $tlo_path = Test-Setting 'tlo_path' -required
     $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
     If ( Test-Path $ini_path ) { break }
     Write-Log 'Не нахожу такого файла, проверьте ввод' -ForegroundColor -Red
@@ -268,8 +268,8 @@ if ( $new_torrents_keys ) {
             elseif ( $subfolder_kind -eq '2' ) {
                 $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_torrent_key  # добавляем hash к имени папки для сохранения
             }
-            $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$section_details[$new_tracker_data.section][0]] )
-            if ( $ssd -and $ssd[$section_details[$new_tracker_data.section][0]] ) {
+            $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$section_details[$new_tracker_data.section].client] )
+            if ( $ssd -and $ssd[$section_details[$new_tracker_data.section].client] ) {
                 if ( $on_ssd -eq $false ) {
                     Set-ClientSetting $client 'temp_path' ( $ssd[$section_details[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':\Incomplete' : '/Incomplete' ) )
                     Set-ClientSetting $client 'temp_path_enabled' $true

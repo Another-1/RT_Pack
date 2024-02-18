@@ -255,11 +255,10 @@ function Get-TrackerTorrents ( $max_seeds ) {
     return $tracker_torrents
 }
 
-function Get-Clients {
+function Get-Clients ( [switch]$LocalOnly ) {
     $clients = @{}
     Write-Log 'Получаем из TLO данные о клиентах'
     $client_count = $ini_data['other'].qt.ToInt16($null)
-    Write-Log "Актуальных клиентов к обработке: $client_count"
     $i = 1
     $ini_data.keys | Where-Object { $_ -match '^torrent-client' -and $ini_data[$_].client -eq 'qbittorrent' } | ForEach-Object {
         if ( ( $_ | Select-String ( '\d+$' ) ).matches.value.ToInt16($null) -le $client_count ) {
@@ -267,6 +266,16 @@ function Get-Clients {
             $i++
         }
     } 
+    Write-Log 'Получаем IP локального компа чтобы не пытаться архивировать то, чего на нём нет'
+    if ( $LocalOnly ) {
+        $localIPs = ( Get-NetIPAddress ).IPAddress
+        $local_clients = @{}
+        $clients.keys | ForEach-Object {
+            if ( $clients[$_].IP -in $localIPs ) { $local_clients[$_] = $clients[$_] }
+        }
+        $clients = $local_clients
+    }
+    Write-Log ( 'Актуальных клиентов к обработке: ' + $clients.count )
     return $clients
 }
 
@@ -580,7 +589,7 @@ function Send-TGMessage ( $message, $token, $chat_id ) {
         "text"                     = $message
     }
     
-    Invoke-WebRequest -Uri ("https://api.telegram.org/bot{0}/sendMessage" -f $token) -Method Post -ContentType "application/json;charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
+    Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
 }
 
 function Send-TGReport ( $refreshed, $added, $obsolete, $token, $chat_id ) {
@@ -679,7 +688,7 @@ function Set-StartStop ( $keys ) {
     if ( $new_keys -and $new_keys.count -gt 0 ) {
         $sql_values = '(' + ( $hash_to_id[ $new_keys ] -join ", $now_epoch ), (") + ", $now_epoch )"
         try {
-            Invoke-SqliteQuery -Query "INSERT INTO start_dates (id, start_date) VALUES $sql_values" -SQLiteConnection $conn
+            Invoke-SqliteQuery -Query "INSERT INTO start_dates (id,start_date) VALUES $sql_values" -SQLiteConnection $conn
         }
         catch { Pause }
     }
@@ -723,4 +732,33 @@ function Start-Rehash ( $client, $hash ) {
     $Params = @{ hashes = $hash }
     $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/recheck'
     Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
+}
+
+Function DeGZip-File {
+    Param(
+        $infile,
+        $outfile = ($infile -replace '\.gz$', '')
+    )
+
+    $input = New-Object System.IO.FileStream $inFile, ([IO.FileMode]::Open), ([IO.FileAccess]::Read), ([IO.FileShare]::Read)
+    $output = New-Object System.IO.FileStream $outFile, ([IO.FileMode]::Create), ([IO.FileAccess]::Write), ([IO.FileShare]::None)
+    $gzipStream = New-Object System.IO.Compression.GzipStream $input, ([IO.Compression.CompressionMode]::Decompress)
+
+    $buffer = New-Object byte[](1024)
+    while ($true) {
+        $read = $gzipstream.Read($buffer, 0, 1024)
+        if ($read -le 0) { break }
+        $output.Write($buffer, 0, $read)
+    }
+
+    $gzipStream.Close()
+    $output.Close()
+    $input.Close()
+}
+
+function Set-Comment ( $client, $torrent, $label ) {
+    Write-Output ( 'Метим раздачу ' + $torrent.topic_id + ' меткой ' + $label )
+    $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/addTags'
+    $tag_body = @{ hashes = $torrent.hash; tags = $label }
+    Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
 }
