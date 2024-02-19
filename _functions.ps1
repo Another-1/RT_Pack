@@ -50,8 +50,8 @@ function Test-Version ( $name ) {
 function Test-Module ( $module, $description ) {
     Write-Log "Проверяем наличие модуля $module $description"
     if ( -not ( [bool](Get-InstalledModule -Name $module -ErrorAction SilentlyContinue) ) ) {
-        Write-Output 'Не установлен модуль PSIni для чтения настроек Web-TLO, ставим...'
-        Install-Module -Name PsIni -Scope CurrentUser -Force
+        Write-Output @Не установлен модуль $module $description"
+        Install-Module -Name $module -Scope CurrentUser -Force
         Import-Module $module
     }
     else {
