@@ -90,6 +90,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'mix_clients'           = @{ prompt = 'Перемешивать раздачи перед отправкой в рехэш для равномерной загрузки клиентов?'; default = 'N'; type = 'YN' }
         'check_state_delay'     = @{ prompt = 'Задержка в секундах перед опросом состояния после отправки в рехэш. Должнать быть больше или равна интервалу обновления интерфейса кубита.'; default = 5; type = 'number' }
         'start_errored'         = @{ prompt = 'Запускать на докачку раздачи с ошибкой рехэша?'; default = 'Y'; type = 'YN' }
+        'ipfilter_path' = @{ prompt = 'Имя файла блокировок? В клиентах должно быть указано аналогично'; default = 'C:\ipfiler.dat'; type = 'string' }
 
     }
     $changed = $false
@@ -266,8 +267,8 @@ function Get-Clients ( [switch]$LocalOnly ) {
             $i++
         }
     } 
-    Write-Log 'Получаем IP локального компа чтобы не пытаться архивировать то, чего на нём нет'
     if ( $LocalOnly ) {
+        Write-Log 'Получаем IP локального компа чтобы не пытаться архивировать то, чего на нём нет'
         $localIPs = ( Get-NetIPAddress ).IPAddress
         $local_clients = @{}
         $clients.keys | ForEach-Object {
@@ -761,4 +762,8 @@ function Set-Comment ( $client, $torrent, $label ) {
     $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/addTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
     Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+}
+
+function Switch-Filtering ( $client, $enable = $true ) {
+    Set-ClientSetting $client 'ip_filter_enabled' $enable
 }
