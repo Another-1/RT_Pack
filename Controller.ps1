@@ -18,6 +18,10 @@ if ( !$ini_data ) {
     if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
     . "$PSScriptRoot\_functions.ps1"
 
+    Write-Log 'Проверяем актуальность скриптов' 
+    Test-Version ( $PSCommandPath | Split-Path -Leaf ) $alert_oldies
+    Test-Version ( '_functions.ps1' ) -alert $alert_oldies
+
     if ( !$ini_data ) {
         Test-Module 'PsIni' 'для чтения настроек TLO'
         Test-Module 'PSSQLite' 'для работы с базой TLO'
@@ -81,27 +85,17 @@ $states = @{}
 $paused_sort = [System.Collections.ArrayList]::new()
 
 if ( !$tracker_torrents) {
-    $tracker_torrents = Get-TrackerTorrents $sections $max_seeds
+    Write-Log 'Автономный запуск, надо сходить на трекер за актуальными сидами и ID'
+    $tracker_torrents = Get-TrackerTorrents $sections -1 # без ограничения на количество сидов
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
     $clients_torrents = Get-ClientsTorrents $clients
-    $hash_to_id = @{}
     $id_to_info = @{}
     
     Write-Log 'Сортируем таблицы'
     $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
-        if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
-        $hash_to_id[$_.infohash_v1] = $_.topic_id
-    
-        $id_to_info[$_.topic_id] = @{
-            client_key = $_.client_key
-            save_path  = $_.save_path
-            category   = $_.category
-            name       = $_.name
-            hash       = $_.hash
-            size       = $_.size
-        }
+        $id_to_info[$_.topic_id] = 1
     }
 }
 

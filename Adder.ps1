@@ -14,7 +14,6 @@ Write-Log 'Проверяем актуальность скриптов'
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) $alert_oldies
 Test-Version ( '_functions.ps1' ) -alert $alert_oldies
 
-
 try { . ( $PSScriptRoot + $separator + '_client_ssd.ps1' ) } catch { }
 Write-Log 'Проверяем наличие всех нужных настроек'
 $tg_token = Test-Setting 'tg_token'
