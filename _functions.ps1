@@ -92,7 +92,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'check_state_delay'     = @{ prompt = 'Задержка в секундах перед опросом состояния после отправки в рехэш. Должнать быть больше или равна интервалу обновления интерфейса кубита.'; default = 5; type = 'number' }
         'start_errored'         = @{ prompt = 'Запускать на докачку раздачи с ошибкой рехэша?'; default = 'Y'; type = 'YN' }
         'ipfilter_path'         = @{ prompt = 'Имя файла блокировок? В клиентах должно быть указано аналогично'; default = 'C:\ipfiler.dat'; type = 'string' }
-        'hours_to_stop'         = @{ prompt = 'Сколько минимум часов держать раздачу запущенной '; default = 3; type = 'number' }
+        'hours_to_stop'         = @{ prompt = 'Сколько минимум часов держать раздачу запущенной?'; default = 3; type = 'number' }
         'old_starts_per_run'    = @{ prompt = 'Количество запускаемых за раз давно стоящих раздач? '; default = 100; type = 'number' }
     }
     $changed = $false
@@ -171,16 +171,16 @@ Function Set-ForumDetails ( $forum ) {
     return $forum
 }
 
-function  Open-Database( $db_path, $verbose ) {
+function Open-Database( $db_path, [switch]$verbose ) {
     if ( $verbose ) { Write-Log ( 'Путь к базе данных: ' + $db_path ) }
     $conn = New-SQLiteConnection -DataSource $db_path
     return $conn
 }
 
-function  Open-TLODatabase( $verbose ) {
+function Open-TLODatabase( [switch]$verbose ) {
     $separator = Get-Separator
     $database_path = $tlo_path + $separator + 'data' + $separator + 'webtlo.db'
-    $conn = Open-Database $database_path $verbose
+    $conn = Open-Database $database_path -verbose:$verbose.IsPresent
     return $conn
 }
 
@@ -188,7 +188,7 @@ function Get-Blacklist( [switch]$verbose ) {
     Write-Log 'Запрашиваем чёрный список из БД Web-TLO'
     $blacklist = @{}
     # $sepa = Get-Separator
-    $conn = Open-TLODatabase $verbose.IsPresent
+    if (!$conn) { $conn = Open-TLODatabase -verbose:$verbose.IsPresent }
     $query = 'SELECT info_hash FROM TopicsExcluded'
     Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $blacklist[$_.info_hash] = 1 }
     $conn.Close()
@@ -198,7 +198,7 @@ function Get-OldBlacklist( [switch]$verbose ) {
     Write-Log 'Запрашиваем старый чёрный список из БД Web-TLO'
     $oldblacklist = @{}
     # $sepa = Get-Separator
-    $conn = Open-TLODatabase $verbose.IsPresent
+    if (!$conn) { $conn = Open-TLODatabase $verbose.IsPresent }
     $query = 'SELECT id FROM Blacklist'
     Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $oldblacklist[$_.id.ToString()] = 1 }
     $conn.Close()
