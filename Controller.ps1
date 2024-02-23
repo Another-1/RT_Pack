@@ -82,7 +82,12 @@ $paused_sort = [System.Collections.ArrayList]::new()
 
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
+    if ( $id_to_info ) {
     $clients_torrents = Get-ClientsTorrents $clients
+    }
+    else {
+        $clients_torrents = Get-ClientsTorrents $clients -noIDs
+    }
 }
 
 # $i = 0
