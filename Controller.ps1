@@ -86,6 +86,23 @@ if ( !$tracker_torrents) {
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
     $clients_torrents = Get-ClientsTorrents $clients
+    $hash_to_id = @{}
+    $id_to_info = @{}
+    
+    Write-Log 'Сортируем таблицы'
+    $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
+        if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
+        $hash_to_id[$_.infohash_v1] = $_.topic_id
+    
+        $id_to_info[$_.topic_id] = @{
+            client_key = $_.client_key
+            save_path  = $_.save_path
+            category   = $_.category
+            name       = $_.name
+            hash       = $_.hash
+            size       = $_.size
+        }
+    }
 }
 
 # $i = 0
