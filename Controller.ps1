@@ -34,7 +34,7 @@ if ( !$ini_data ) {
 }
 $hours_to_stop = Test-Setting 'hours_to_stop'
 $ok_to_stop = ( Get-Date -UFormat %s ).ToInt32($null) - ( $hours_to_stop * 60 * 60 )
-$old_starts_per_run = 625
+$old_starts_per_run = Test-Setting 'old_starts_per_run'
 
 $global_seeds = $ini_data['topics_control'].peers
 $section_seeds = @{}
@@ -115,7 +115,6 @@ foreach ( $client in $clients.keys ) {
                     $stop_keys = @()
                 }
                 $stop_keys += $_
-                # $states[$_].state = 'pausedUP' # чтобы потом правильно запустить старые
             }
         }
         catch { } # на случай поглощённых раздач.

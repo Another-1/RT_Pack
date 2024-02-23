@@ -93,6 +93,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'start_errored'         = @{ prompt = 'Запускать на докачку раздачи с ошибкой рехэша?'; default = 'Y'; type = 'YN' }
         'ipfilter_path'         = @{ prompt = 'Имя файла блокировок? В клиентах должно быть указано аналогично'; default = 'C:\ipfiler.dat'; type = 'string' }
         'hours_to_stop'         = @{ prompt = 'Сколько минимум часов держать раздачу запущенной '; default = 3; type = 'number' }
+        'old_starts_per_run'    = @{ prompt = 'Количество запускаемых за раз давно стоящих раздач? '; default = 100; type = 'number' }
     }
     $changed = $false
     $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
