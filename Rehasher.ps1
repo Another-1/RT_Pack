@@ -15,13 +15,16 @@ $max_rehash_size_bytes = Test-Setting 'max_rehash_size_bytes'
 $frequency = Test-Setting 'frequency'
 $use_timestamp = Test-Setting 'use_timestamp'
 $rehash_freshes = Test-Setting 'rehash_freshes'
+if ( $rehash_freshes -eq 'N') {
+    $freshes_delay = Test-Setting 'freshes_delay'
+}
 $wait_finish = Test-Setting 'wait_finish'
 $mix_clients = Test-Setting 'mix_clients'
 $check_state_delay = Test-Setting 'check_state_delay'
 $start_errored = Test-Setting 'start_errored' 'Y'
 
 if ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like '*ehasher.ps1*').count -gt 1 ) {
-    Write-Host 'Я и так уже выполняюсь, выходим' -ForegroundColor Red
+    Write-Log 'Я и так уже выполняюсь, выходим' -Red
     exit
 }
 
@@ -29,6 +32,7 @@ Test-Module 'PsIni' 'для чтения настроек TLO'
 Test-Module 'PSSQLite' 'для работы с базой TLO'
 
 $min_repeat_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $frequency * 24 * 60 * 60 ) # количество секунд между повторными рехэшами одной раздачи
+$min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay * 24 * 60 * 60 ) # количество секунд между повторными рехэшами одной раздачи
 
 Write-Log 'Читаем настройки Web-TLO'
 
@@ -48,7 +52,7 @@ Write-Log ( 'Исключено раздач: ' + ( $before - $clients_torrents.
 if ( $rehash_freshes -ne 'Y') {
     $before = $clients_torrents.count
     Write-Log 'Исключаем свежескачанные раздачи'
-    $clients_torrents = $clients_torrents | Where-Object { $_.completion_on -le $min_repeat_epoch }
+    $clients_torrents = $clients_torrents | Where-Object { $_.completion_on -le $min_freshes_epoch }
     Write-Log ( 'Исключено раздач: ' + ( $before - $clients_torrents.count ) )
 }
 
@@ -111,8 +115,14 @@ if ( $mix_clients -eq 'Y') {
 $sum_cnt = 0
 $sum_size = 0
 foreach ( $torrent in $full_data_sorted ) {
+    if ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like '*dder.ps1*').count -gt 0 -or ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like '*ontroller.ps1*').count -gt 0 )) {
+        Write-Log 'Выполняется Adder или Controller, подождём...' -Red
+        while ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like '*dder.ps1*').count -gt 0 -or ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like '*ontroller.ps1*').count -gt 0 )) {
+            Start-Sleep -Seconds 10
+        }
+    }    
     if ( $wait_finish -eq 'Y' ) {
-        Write-Log ( 'Будем рехэшить раздачу "' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
+        Write-Log ( 'Будем рехэшить раздачу "' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name + ' размером ' + ( to_kmg $torrent.size 1 ))
         $prev_state = ( Get-ClientTorrents $clients[$torrent.client_key] '' $false $torrent.hash $null $false ).state
         if ( $prev_state -eq 'pausedUP') { Write-Log 'Раздача уже остановлена, так и запишем' } else { Write-Log 'Раздача запущена, предварительно остановим' }
         if ( $prev_state -ne 'pausedUP' ) {
@@ -134,7 +144,7 @@ foreach ( $torrent in $full_data_sorted ) {
         Start-Sleep -Seconds $check_state_delay
         Write-Log 'Подождём окончания рехэша'
         while ( ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).state -like 'checking*' ) {
-            Start-Sleep -Seconds 5
+            Start-Sleep -Seconds $check_state_delay
         }
         if ( ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).progress -lt 1 ) {
             Write-Log ( 'Раздача ' + $torrent.name + ' битая! Полнота: ' + ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).progress )

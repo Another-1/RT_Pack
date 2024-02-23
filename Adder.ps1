@@ -65,7 +65,7 @@ $sections = Get-IniSections -useForced
 Test-ForumWorkingHours -verbose
 
 Write-Log 'Достаём из TLO данные о разделах'
-$section_details = Get-IniSectionDetails
+$section_details = Get-IniSectionDetails $sections
 $forum = Set-ForumDetails
 
 if ( $get_blacklist -eq 'N' ) {
@@ -77,7 +77,7 @@ if ( $get_blacklist -eq 'N' ) {
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
-    $tracker_torrents = Get-TrackerTorrents $max_seeds
+    $tracker_torrents = Get-TrackerTorrents $sections $max_seeds
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
@@ -329,6 +329,24 @@ elseif ( $report_nowork -eq 'Y' -and $tg_token -ne '' -and $tg_chat -ne '' ) {
     Send-TGMessage 'Adder отработал, ничего делать не пришлось.' $tg_token $tg_chat
 }
 
+if ( $report_stalled -eq 'Y' ) {
+    Write-Log 'Отправляем список некачашек'
+    $month_ago = ( Get-Date -UFormat %s ).ToInt32($null) - 30 * 24 * 60 * 60
+    $stalleds = @()
+    $clients_torrents | Where-Object { $_.state -eq 'stalledDL' -and $_.added_on -le $month_ago } | ForEach-Object {
+        $stalleds += $_.topic_id 
+    }
+    if ( $stalleds.count -gt 0 ) {
+        $params = @{'help_load' = ( $stalleds -join ',') }
+        Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params | Out-Null
+        Write-Log ( 'Отправлено ' + $stalleds.count + ' некачашек' )
+        if ( $tg_token -ne '' ) {
+            Send-TGMessage ( 'Отправлено ' + $stalleds.count + ' некачашек' ) $tg_token $tg_chat
+        }
+    }
+    else { Write-Log 'Некачашек не обнаружено' }
+}
+
 If ( Test-Path -Path $report_flag_file ) {
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
         # что-то добавилось, стоит подождать.
@@ -338,19 +356,4 @@ If ( Test-Path -Path $report_flag_file ) {
         Update-Stats -check -send_reports:( $send_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона. Но с проверкой по чётному времени.
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
-}
-
-if ( $report_stalled -eq 'Y' ) {
-    Write-Log 'Отправляем список некачашек'
-    $month_ago = ( Get-Date -UFormat %s ).ToInt32($null) - 30 * 24 * 60 * 60
-    $ids = ''
-    $clients_torrents | Where-Object { $_.state -eq 'stalledDL' -and $_.added_on -le $month_ago } | ForEach-Object {
-        $ids = $( $ids -eq '' ? $_.topic_id : ( $ids + ',' + $_.topic_id ) )
-    }
-    if ( $ids -ne '' ) {
-        $params = @{'help_load' = $ids }
-        Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params | Out-Null
-        Write-Log 'Готово'
-    }
-    else { Write-Log 'Некачашек не обнаружено' }
 }

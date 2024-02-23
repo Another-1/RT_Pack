@@ -50,7 +50,7 @@ function Test-Version ( $name ) {
 function Test-Module ( $module, $description ) {
     Write-Log "Проверяем наличие модуля $module $description"
     if ( -not ( [bool](Get-InstalledModule -Name $module -ErrorAction SilentlyContinue) ) ) {
-        Write-Output "Не установлен модуль $module $description"
+        Write-Log "Не установлен модуль $module $description, ставим" -Red
         Install-Module -Name $module -Scope CurrentUser -Force
         Import-Module $module
     }
@@ -84,14 +84,15 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'report_obsolete'       = @{ prompt = 'Сообщать в Telegram о неактуальных раздачах? (Y/N)'; default = 'Y'; type = 'YN' }
         'max_rehash_qty'        = @{ prompt = 'Максимальное количество отправляемых в рехэш раздач за один прогон?'; default = 10; type = 'number' }
         'max_rehash_size_bytes' = @{ prompt = 'максимальный объём отправляемых в рехэш раздач за один прогон в байтах?'; default = 10 * 1024 * 1024 * 1024; type = 'number' }
-        'frequency'             = @{ prompt = 'Минимальное время между рехэшами одной раздачи в днях?'; default = 365; type = 'number' }
+        'frequency'             = @{ prompt = 'Минимальное кол-во дней между рехэшами одной раздачи в днях?'; default = 365; type = 'number' }
         'rehash_freshes'        = @{ prompt = 'Игнорировать время завершения скачивания раздачи?'; default = 'Y'; type = 'YN' }
+        'freshes_delay'         = @{ prompt = 'Минимальное кол-во дней c окончания скачивания раздачи до рехэша?'; default = 10; type = 'number' }
         'wait_finish'           = @{ prompt = 'Ожидать ли окончания рехэша раздач с отчётом в телеграм и в журнал о найденных битых и с простановкой им тега "Битая"?'; default = 'Y'; type = 'YN' }
         'mix_clients'           = @{ prompt = 'Перемешивать раздачи перед отправкой в рехэш для равномерной загрузки клиентов?'; default = 'N'; type = 'YN' }
         'check_state_delay'     = @{ prompt = 'Задержка в секундах перед опросом состояния после отправки в рехэш. Должнать быть больше или равна интервалу обновления интерфейса кубита.'; default = 5; type = 'number' }
         'start_errored'         = @{ prompt = 'Запускать на докачку раздачи с ошибкой рехэша?'; default = 'Y'; type = 'YN' }
-        'ipfilter_path' = @{ prompt = 'Имя файла блокировок? В клиентах должно быть указано аналогично'; default = 'C:\ipfiler.dat'; type = 'string' }
-
+        'ipfilter_path'         = @{ prompt = 'Имя файла блокировок? В клиентах должно быть указано аналогично'; default = 'C:\ipfiler.dat'; type = 'string' }
+        'hours_to_stop'         = @{ prompt = 'Сколько минимум часов держать раздачу запущенной '; default = 3; type = 'number' }
     }
     $changed = $false
     $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
@@ -110,12 +111,10 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         } while ( ( $current -eq '' -and $required ) -or ( $settings[$setting].type -eq 'YN' -and $current -notmatch '[YN]' ) )
 
         if ( $changed ) {
-            if ( $settings[$setting].type -in ( 'YN', 'string' ) ) {
-                Set-Variable -Name $setting -Value $current
+            if ( $settings[$setting].type -eq ( 'number' ) ) {
+                $current = $current.ToInt64( $null )
             }
-            else {
-                Set-Variable -Name $setting -Value $current.ToInt64( $null )
-            }
+            Set-Variable -Name $setting -Value $current
             $separator = Get-Separator
             Add-Content -Path ( $PSScriptRoot + $separator + '_settings.ps1' ) `
                 -Value ( '$' + $setting + ' = ' + $( ( $settings[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + $current + $( ( $settings[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + '   # ' + $settings[$setting].prompt )
@@ -154,6 +153,10 @@ Function Set-ForumDetails ( $forum ) {
     }
     $forum.UseApiProxy = $ini_data.proxy.activate_api
     $forum.UseProxy = $ini_data.proxy.activate_forum
+    if ( $forum.UseProxy -eq '1' -and $ini_data.proxy.type -notlike 'socks*' ) {
+        Write-Log 'Выберите прокси типа SOCKS5 или SOCKS5H в настройках TLO' -Red
+        Exit
+    }
     $forum.Login = $ini_data.'torrent-tracker'.login
     $forum.Password = $ini_data.'torrent-tracker'.password
     $forum.url = $ini_data.'torrent-tracker'.forum_url
@@ -231,7 +234,7 @@ function Get-SectionTorrents ( $forum, $section, $max_seeds) {
     return $tmp_torrents
 }
 
-function Get-TrackerTorrents ( $max_seeds ) {
+function Get-TrackerTorrents ( $sections, $max_seeds ) {
     $titles = (( Invoke-WebRequest -Uri 'https://api.rutracker.cc/v1/get_tor_status_titles' ).content | ConvertFrom-Json -AsHashtable ).result
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
 
@@ -382,17 +385,24 @@ function Add-ClientTorrent ( $Client, $File, $Path, $Category, [switch]$Skip_che
     # Добавляем раздачу в клиент.
     $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/add'
     $added_ok = $false
+    $abort = $false
     $i = 1
-    while ( $added_ok -eq $false) {
-        try {
-            Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
-            $added_ok = $true
+    while ( $added_ok -eq $false -and $abort -eq $false ) {
+        if ( $i -gt 10) {
+            Write-Log "Не удалось добавить раздачу" -Red
+            $abort = $true
         }
-        catch {
-            $i++
-            Initialize-Client $client -force
-            Start-Sleep -Seconds 1
-            Write-Host "Попытка № $i"
+        else {
+            try {
+                if ( $i -gt 1 ) { Write-Log "Попытка № $i" }
+                Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
+                $added_ok = $true
+            }
+            catch {
+                $i++
+                Initialize-Client $client -force
+                Start-Sleep -Seconds 1
+            }
         }
     }
     Remove-Item $File
@@ -714,16 +724,21 @@ function Get-IniSections ( [switch]$useForced ) {
     return $result
 }
 
-function Get-IniSectionDetails {
+function Get-IniSectionDetails ( $sections ) {
     $section_details = @{}
     $sections | ForEach-Object {
-        $section_details[$_] = [PSCustomObject]@{
-            client         = $ini_data[ $_ ].client
-            data_folder    = $ini_data[ $_ ].'data-folder'
-            data_subfolder = $ini_data[ $_ ].'data-sub-folder'
-            hide_topics    = $ini_data[ $_ ].'hide-topics'
-            label          = $ini_data[ $_ ].'label'
-            control_peers  = $ini_data[ $_ ].'control-peers'
+        if ( $ini_data[ $_ ].client -ne '' -and $null -ne $ini_data[ $_ ].client ) {
+            $section_details[$_] = [PSCustomObject]@{
+                client         = $ini_data[ $_ ].client
+                data_folder    = $ini_data[ $_ ].'data-folder'
+                data_subfolder = $ini_data[ $_ ].'data-sub-folder'
+                hide_topics    = $ini_data[ $_ ].'hide-topics'
+                label          = $ini_data[ $_ ].'label'
+                control_peers  = $ini_data[ $_ ].'control-peers'
+            }
+        }
+        else {
+            Write-Log "У раздела $_ не указан клиент, пропускаем" -Red
         }
     }
     return $section_details    

@@ -1,6 +1,3 @@
-$four_hours_ago = ( Get-Date -UFormat %s ).ToInt32($null) - ( 3 * 60 * 60 )
-$old_starts_per_run = 625
-
 function  Start-batch {
     Write-Log 'Запускаем пачку'
     Start-Torrents $start_keys $clients[$client]
@@ -12,26 +9,32 @@ function  Stop-batch {
     Set-StartStop $stop_keys
 }
 
-. "$PSScriptRoot\_functions.ps1"
-
-$separator = $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
-
-Write-Log 'Подгружаем настройки'
-. ( $PSScriptRoot + $separator + '_settings.ps1' )
-
 if ( !$ini_data ) {
-    Test-Module 'PsIni' 'для чтения настроек TLO'
-    Test-Module 'PSSQLite' 'для работы с базой TLO'
+    Write-Output 'Подгружаем настройки'
+    $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
+    . ( $PSScriptRoot + $separator + '_settings.ps1' )
+
+    $str = 'Подгружаем функции'
+    if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
+    . "$PSScriptRoot\_functions.ps1"
+
+    if ( !$ini_data ) {
+        Test-Module 'PsIni' 'для чтения настроек TLO'
+        Test-Module 'PSSQLite' 'для работы с базой TLO'
     
-    while ( $true ) {
-        $tlo_path = Test-Setting 'tlo_path' -required
-        $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
-        If ( Test-Path $ini_path ) { break }
-        Write-Log 'Не нахожу такого файла, проверьте ввод' -ForegroundColor -Red
+        while ( $true ) {
+            $tlo_path = Test-Setting 'tlo_path' -required
+            $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
+            If ( Test-Path $ini_path ) { break }
+            Write-Log 'Не нахожу такого файла, проверьте ввод' -ForegroundColor -Red
+        }
+        Write-Log 'Читаем настройки Web-TLO'
+        $ini_data = Get-IniContent $ini_path
     }
-    Write-Log 'Читаем настройки Web-TLO'
-    $ini_data = Get-IniContent $ini_path
 }
+$hours_to_stop = Test-Setting 'hours_to_stop'
+$ok_to_stop = ( Get-Date -UFormat %s ).ToInt32($null) - ( $hours_to_stop * 60 * 60 )
+$old_starts_per_run = 625
 
 $global_seeds = $ini_data['topics_control'].peers
 $section_seeds = @{}
@@ -60,7 +63,7 @@ Invoke-SqliteQuery -Query 'SELECT * FROM start_dates' -SQLiteConnection $conn | 
 
 Write-Log 'Строим таблицы'
 $sections = $ini_data.sections.subsections.split( ',' )
-$section_details = Get-IniSectionDetails
+$section_details = Get-IniSectionDetails $sections
 $sections | ForEach-Object {
     $section_seeds[$_] = ( $section_details[$_].control_peers -ne '' ? $section_details[$_].control_peers : $global_seeds )
     #     if (
@@ -106,7 +109,7 @@ foreach ( $client in $clients.keys ) {
                 $start_keys += $_
                 $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
             }
-            elseif ( $states[$_].state -in @('uploading', 'stalledUP') -and $tracker_torrents[$_].seeders -gt ( $section_seeds[$tracker_torrents[$_].section] ) -and $states[$_].start_date -le $four_hours_ago ) {
+            elseif ( $states[$_].state -in @('uploading', 'stalledUP') -and $tracker_torrents[$_].seeders -gt ( $section_seeds[$tracker_torrents[$_].section] ) -and $states[$_].start_date -le $ok_to_stop ) {
                 if ( $stop_keys.count -eq $batch_size ) {
                     Stop-batch
                     $stop_keys = @()
