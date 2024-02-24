@@ -115,9 +115,9 @@ if ( $mix_clients -eq 'Y') {
 $sum_cnt = 0
 $sum_size = 0
 foreach ( $torrent in $full_data_sorted ) {
-    if ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like '*dder.ps1*').count -gt 0 -or ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like '*ontroller.ps1*').count -gt 0 )) {
+    if  ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
         Write-Log 'Выполняется Adder или Controller, подождём...' -Red
-        while ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like '*dder.ps1*').count -gt 0 -or ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like '*ontroller.ps1*').count -gt 0 )) {
+        while ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
             Start-Sleep -Seconds 10
         }
     }    
@@ -156,7 +156,7 @@ foreach ( $torrent in $full_data_sorted ) {
             Send-TGMessage $message $tg_token $tg_chat
         }
         else {
-            Write-Log ( 'Раздача ' + $torrent.name + ' в порядке' )
+            Write-Log ( 'Раздача ' + $torrent.name + ' в порядке' ) -Green
             if ( $prev_state -ne 'pausedUP' ) { 
                 Write-Log 'Запускаем раздачу обратно'
                 Start-Torrents $torrent.hash $clients[$torrent.client_key]
