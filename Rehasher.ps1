@@ -115,7 +115,7 @@ if ( $mix_clients -eq 'Y') {
 $sum_cnt = 0
 $sum_size = 0
 foreach ( $torrent in $full_data_sorted ) {
-    if  ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
+    if ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
         Write-Log 'Выполняется Adder или Controller, подождём...' -Red
         while ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
             Start-Sleep -Seconds 10
@@ -164,14 +164,19 @@ foreach ( $torrent in $full_data_sorted ) {
         }
     }
 
-    if ( $sum_cnt -ge $max_rehash_qty -or $sum_size -ge $max_rehash_size_bytes) {
+    if ( $sum_cnt -ge $max_rehash_qty ) {
+        Write-Log 'Достигнуто целевое количество раздач'
+        break
+    }
+    elseif ( $sum_size -ge $max_rehash_size_bytes ) {
+        Write-Log 'Достигнут целевой объём раздач'
         break
     }
 }
 
 Write-Log 'Прогон завершён'
-Write-Log ( "Отправлено в рехэш: $sum_cnt раздач объёмом " + [math]::Round( $sum_size / 1024 / 1024 / 1024, 2 ) + ' ГБ' )
-Write-Log ( 'Осталось: ' + ( $was_count - $sum_cnt ) + ' раздач объёмом ' + [math]::Round( ( $was_sum_size - $sum_size ) / 1024 / 1024 / 1024, 2 ) + ' ГБ' )
+Write-Log ( "Отправлено в рехэш: $sum_cnt раздач объёмом " + ( to_kmg $sum_size.size 1 ) ) 
+Write-Log ( 'Осталось: ' + ( $was_count - $sum_cnt ) + ' раздач объёмом ' + ( to_kmg ( $was_sum_size - $sum_size ) 1 ) )
 
 $conn.Close()
 # Remove-Item -Path ( $PSScriptRoot + $separator + 'rehasher.lck') | Out-Null
