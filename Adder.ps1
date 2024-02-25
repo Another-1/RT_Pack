@@ -46,6 +46,7 @@ if ( $tg_token -ne '') {
     $report_obsolete = Test-Setting 'report_obsolete'
 }
 $report_stalled = Test-Setting 'report_stalled'
+$report_nowork = Test-Setting 'report_nowork'
 $update_stats = Test-Setting 'update_stats'
 
 if ( $update_stats -eq 'Y') {
