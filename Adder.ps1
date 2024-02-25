@@ -48,9 +48,10 @@ if ( $tg_token -ne '') {
 $report_stalled = Test-Setting 'report_stalled'
 $report_nowork = Test-Setting 'report_nowork'
 $update_stats = Test-Setting 'update_stats'
-
-if ( $update_stats -eq 'Y') {
+if ( $update_stats -eq 'Y' ) {
+    $update_obsolete = Test-Setting 'update_obsolete'
 }
+
 if ( $update_stats -eq 'Y') {
     if ( !$send_reports ) { Write-Log 'Для обновления БД TLO и отправки отчётов нужен интерпретатор php на этом же компе.' }
     $send_reports = Test-Setting 'send_reports'
@@ -315,7 +316,7 @@ if ( $control -eq 'Y' ) {
 }
 
 $report_flag_file = "$PSScriptRoot\report_needed.flg"
-if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 ) -and $update_stats -eq 'Y' -and $php_path ) {
+if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or ( $obsolete.Count -gt 0 -and $update_obsolete -eq 'Y' ) ) -and $update_stats -eq 'Y' -and $php_path ) {
     New-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
 }
 elseif ( $update_stats -ne 'Y' -or !$php_path ) {
@@ -340,9 +341,9 @@ if ( $report_stalled -eq 'Y' ) {
         $params = @{'help_load' = ( $stalleds -join ',') }
         Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params | Out-Null
         Write-Log ( 'Отправлено ' + $stalleds.count + ' некачашек' )
-        if ( $tg_token -ne '' ) {
-            Send-TGMessage ( 'Отправлено ' + $stalleds.count + ' некачашек' ) $tg_token $tg_chat
-        }
+        # if ( $tg_token -ne '' ) {
+        #     Send-TGMessage ( 'Отправлено ' + $stalleds.count + ' некачашек' ) $tg_token $tg_chat
+        # }
     }
     else { Write-Log 'Некачашек не обнаружено' }
 }
@@ -351,11 +352,11 @@ If ( Test-Path -Path $report_flag_file ) {
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
         # что-то добавилось, стоит подождать.
         # Update-Stats -wait -check -send_report:( $send_reports -eq 'Y' ) # с паузой и проверкой условия по чётному времени.
-        Update-Stats -wait -send_report:( $send_reports -eq 'Y' ) # с паузой и проверкой условия по чётному времени.
+        Update-Stats -wait -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # с паузой.
     }
     else {
         # Update-Stats -check -send_reports:( $send_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона. Но с проверкой по чётному времени.
-        Update-Stats -send_reports:( $send_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона. Но с проверкой по чётному времени.
+        Update-Stats -send_reports:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # без паузы, так как это сработал флаг от предыдущего прогона.
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
 }

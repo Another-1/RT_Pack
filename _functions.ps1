@@ -77,7 +77,8 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'get_highs'             = @{ prompt = 'Скачивать раздачи c высоким приоритетом? (Y/N)'; default = 'Y'; type = 'YN' }
         'get_news'              = @{ prompt = 'Скачивать новые раздачи? (Y/N)'; default = 'Y'; type = 'YN' }
         'control'               = @{ prompt = 'Запускать встроенную регулировку по завершению? (Y/N)'; default = 'Y'; type = 'YN' }
-        'update_stats'          = @{ prompt = 'Запускать обновление БД TLO по завершению? (Y/N)'; default = 'Y'; type = 'YN' }
+        'update_stats'          = @{ prompt = 'Запускать обновление БД TLO если добавлены или обновлены раздачи? (Y/N)'; default = 'Y'; type = 'YN' }
+        'update_obsolete'       = @{ prompt = 'Запускать обновление БД TLO даже если найдены только неактуальные раздачи? (Y/N)'; default = 'Y'; type = 'YN' }
         'send_reports'          = @{ prompt = 'Вызывать отправку отчётов если что-то изменилось? (Y/N)'; default = 'Y'; type = 'YN' }
         'php_path'              = @{ prompt = 'Путь к интерпретатору PHP'; default = ''; type = 'string' }
         'report_stalled'        = @{ prompt = 'Отправлять боту призыв о помощи по некачашкам более месяца? (Y/N)'; default = 'N'; type = 'YN' }
@@ -94,7 +95,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'ipfilter_path'         = @{ prompt = 'Имя файла блокировок? В клиентах должно быть указано аналогично'; default = 'C:\ipfiler.dat'; type = 'string' }
         'hours_to_stop'         = @{ prompt = 'Сколько минимум часов держать раздачу запущенной?'; default = 3; type = 'number' }
         'old_starts_per_run'    = @{ prompt = 'Количество запускаемых за раз давно стоящих раздач? '; default = 100; type = 'number' }
-        'report_nowork'         = @{ prompt = 'Сообщать в Telegam если ничего не пришлось делать? '; default = 'Y'; type = 'YN' }
+        'report_nowork'         = @{ prompt = 'Сообщать в Telegam если ничего не пришлось делать?'; default = 'Y'; type = 'YN' }
     }
     $changed = $false
     $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
