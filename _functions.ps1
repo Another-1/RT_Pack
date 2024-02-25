@@ -358,8 +358,8 @@ function Get-TopicIDs ( $client, $torrent_list ) {
     Write-Log 'Ищем ID'
     if ( $torrent_list.count -gt 0 ) {
         $torrent_list | ForEach-Object {
-            if ( $nul -ne $tracker_torrents ) { $_.topic_id = $tracker_torrents[$_.hash.toUpper()].id }
-            if ( $nul -eq $_.topic_id ) {
+            if ( $null -ne $tracker_torrents ) { $_.topic_id = $tracker_torrents[$_.hash.toUpper()].id }
+            if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
                 $Params = @{ hash = $_.hash }
                 try {
                     $comment = ( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.Port + '/api/v2/torrents/properties' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json | Select-Object comment -ExpandProperty comment
