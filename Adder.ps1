@@ -349,10 +349,12 @@ if ( $report_stalled -eq 'Y' ) {
 If ( Test-Path -Path $report_flag_file ) {
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
         # что-то добавилось, стоит подождать.
-        Update-Stats -wait -check -send_report:( $send_reports -eq 'Y' ) # с паузой и проверкой условия по чётному времени.
+        # Update-Stats -wait -check -send_report:( $send_reports -eq 'Y' ) # с паузой и проверкой условия по чётному времени.
+        Update-Stats -wait -send_report:( $send_reports -eq 'Y' ) # с паузой и проверкой условия по чётному времени.
     }
     else {
-        Update-Stats -check -send_reports:( $send_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона. Но с проверкой по чётному времени.
+        # Update-Stats -check -send_reports:( $send_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона. Но с проверкой по чётному времени.
+        Update-Stats -send_reports:( $send_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона. Но с проверкой по чётному времени.
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
 }

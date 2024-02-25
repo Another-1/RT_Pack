@@ -355,7 +355,7 @@ function Get-ClientsTorrents ($clients, [switch]$completed, [switch]$noIDs) {
 }
 
 function Get-TopicIDs ( $client, $torrent_list ) {
-    Write-Log 'Ищем ID'
+    Write-Log 'Ищем ID раздач по хэшам от клиента в данных от трекера'
     if ( $torrent_list.count -gt 0 ) {
         $torrent_list | ForEach-Object {
             if ( $null -ne $tracker_torrents ) { $_.topic_id = $tracker_torrents[$_.hash.toUpper()].id }
