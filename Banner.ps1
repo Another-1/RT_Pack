@@ -40,6 +40,9 @@ try {
             Switch-Filtering $clients[$client_key] $true
             Write-Log 'Готово'
         }
+        if ( $tg_toke -and $tg_token -ne '' ) {
+            Send-TGMessage 'Обновился файл блокировок.' $tg_token $tg_chat
+        }
     }
     else {
         Write-Output 'Файл не изменился'
