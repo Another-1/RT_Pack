@@ -617,13 +617,14 @@ function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles ) {
 }
 
 function Send-TGMessage ( $message, $token, $chat_id ) {
-    $payload = @{
-        "chat_id"                  = $chat_id
-        "parse_mode"               = 'html'
-        "disable_web_page_preview" = $true
-        "text"                     = $message
+    if ( $token -ne '' ) {
+        $payload = @{
+            "chat_id"                  = $chat_id
+            "parse_mode"               = 'html'
+            "disable_web_page_preview" = $true
+            "text"                     = $message
+        }
     }
-    
     Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
 }
 
