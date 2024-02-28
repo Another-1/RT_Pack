@@ -39,7 +39,7 @@ function Test-Version ( $name ) {
             if ( $old_hash -ne $new_hash ) {
                 $text = "$name обновился! Рекомендуется скачать новую версию."
                 Write-Log $text -Red
-                if ( $alert_oldies -eq 'Y' and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
+                if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
             }
         }
         Remove-Item $new_file_path
