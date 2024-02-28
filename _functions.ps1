@@ -298,7 +298,7 @@ function Get-Clients ( [switch]$LocalOnly ) {
         }
         $clients = $local_clients
     }
-    Write-Log ( 'Актуальных клиентов к обработке: ' + $clients.count )
+    Write-Log ( 'Актуальных клиентов к обработке: ' + $clients.count + ': ' + ( ( $clients.Keys | Sort-Object | ForEach-Object { $clients[$_].Name } ) -join ', ' ) )
     return $clients
 }
 
@@ -322,7 +322,9 @@ function Initialize-Client ($client, [switch]$verbose, [switch]$force ) {
         }
         catch {
             Write-Log ( '[client] Не удалось авторизоваться в клиенте, прерываем. Ошибка: {0}.' -f $Error[0] ) -Red
-            Send-TGMessage ( 'Нет связи с клиентом ' + $client.Name + '. Процесс остановлен.' ) $tg_token $tg_chat
+            if ( $tg_token -ne '' ) {
+                Send-TGMessage ( 'Нет связи с клиентом ' + $client.Name + '. Процесс остановлен.' ) $tg_token $tg_chat
+            }
             Exit
         }
     }
@@ -353,7 +355,7 @@ function  Get-ClientTorrents ( $client, $disk = '', [switch]$completed, $hash, $
         }
         if ( $json_content -or $i -gt 3 ) { break }
     }
-    if ( !$json_content ) { 
+    if ( !$json_content -and $tg_token -ne '' ) { 
         Send-TGMessage ( 'Нет связи с клиентом ' + $client.Name + '. Adder остановлен.' ) $tg_token $tg_chat
     }
     if ( !$torrents_list ) { $torrents_list = @() }
