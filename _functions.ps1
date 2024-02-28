@@ -110,7 +110,28 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
             if ( $current -eq '' -and $nul -ne $settings[$setting].default ) {
                 $current = $settings[$setting].default
             }
-            $changed = $true
+            if ( $setting -eq 'tlo_path') {
+                $ini_path = $current + $separator + 'data' + $separator + 'config.ini'
+                If ( -not ( Test-Path $ini_path ) ) {
+                    Write-Log ( 'Не нахожу файла ' + ( $ini_path ) + ', проверьте ввод' ) -ForegroundColor -Red
+                    $current = ''
+                }
+                else { 
+                    $changed = $true
+                }
+            }
+            elseif ( $setting -eq 'php_path' ) {
+                If ( -not ( Test-Path $current ) ) {
+                    Write-Log ( 'Не нахожу такого файла , проверьте ввод' ) -ForegroundColor -Red
+                    $current = ''
+                }
+                else { 
+                    $changed = $true
+                }
+            }
+            else {
+                $changed = $true
+            }
         } while ( ( $current -eq '' -and $required ) -or ( $settings[$setting].type -eq 'YN' -and $current -notmatch '[YN]' ) )
 
         if ( $changed ) {

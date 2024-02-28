@@ -1,7 +1,9 @@
 Write-Output 'Подгружаем настройки'
 
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
-. ( $PSScriptRoot + $separator + '_settings.ps1' )
+if ( Test-Path ( $PSScriptRoot + $separator + '_settings.ps1' ) ) {
+    . ( $PSScriptRoot + $separator + '_settings.ps1' )
+}
 
 $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
@@ -23,12 +25,8 @@ if ( $tg_token -ne '') {
 
 $alert_oldies = Test-Setting 'alert_oldies'
 $use_timestamp = Test-Setting 'use_timestamp'
-while ( $true ) {
-     $tlo_path = Test-Setting 'tlo_path' -required
-    $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
-    If ( Test-Path $ini_path ) { break }
-    Write-Log 'Не нахожу такого файла, проверьте ввод' -ForegroundColor -Red
-}
+$tlo_path = Test-Setting 'tlo_path' -required
+$ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
 Write-Log 'Читаем настройки Web-TLO'
 $ini_data = Get-IniContent $ini_path
 $get_news = Test-Setting 'get_news'
@@ -59,6 +57,7 @@ if ( $update_stats -eq 'Y') {
         $php_path = Test-Setting 'php_path' -required
         If ( Test-Path $php_path ) { break }
         Write-Log 'Не нахожу такого файла, проверьте ввод' -ForegroundColor -Red
+        Remove-Variable -Name $php_path
     }
 }
 
