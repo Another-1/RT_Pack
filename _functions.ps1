@@ -39,7 +39,7 @@ function Test-Version ( $name ) {
             if ( $old_hash -ne $new_hash ) {
                 $text = "$name обновился! Рекомендуется скачать новую версию."
                 Write-Log $text -Red
-                if ( $alert_oldies -eq 'Y') { Send-TGMessage $text $tg_token $tg_chat }
+                if ( $alert_oldies -eq 'Y' and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
             }
         }
         Remove-Item $new_file_path
@@ -145,11 +145,6 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         }
     }
     return $current
-}
-
-function Send-TGMessage ( $message, $token, $chat_id ) {
-    $payload = @{ 'chat_id' = $chat_id; 'parse_mode' = 'html'; 'disable_web_page_preview' = $true; 'text' = $message }
-    Invoke-WebRequest -Uri ("https://api.telegram.org/bot{0}/sendMessage" -f $token) -Method Post -ContentType "application/json;charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
 }
 
 function Test-ForumWorkingHours ( [switch]$verbose ) {
