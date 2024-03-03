@@ -10,7 +10,7 @@ function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [sw
         else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -NoNewline:$NoNewLine } 
     }
 }
- 
+
 function Test-PSVersion {
     Write-Log 'Проверяем версию Powershell...'
     if ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
@@ -39,20 +39,20 @@ function Test-Version ( $name ) {
                 $text = "$name обновился! Рекомендуется скачать новую версию."
                 Write-Log $text -Red
                 if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
-                if ( $auto_update -eq 'N' -or $debug -eq 1 ) {
-                    Remove-Item $new_file_path
-                }
-                else {
-                    Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name )
-                    if ( $name -ne '_functions.ps1' ) {
-                        Start-Process pwsh ( Join-Path $PSScriptRoot $name )
-                    }
-                    else { 
-                        . ( Join-Path $PSScriptRoot _functions.ps1 )
-                    }
-                }
             }
         } 
+        if ( $auto_update -eq 'N' -or $debug -eq 1 ) {
+            Remove-Item $new_file_path
+        }
+        else {
+            Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name )
+            if ( $name -ne '_functions.ps1' ) {
+                Start-Process pwsh ( Join-Path $PSScriptRoot $name )
+            }
+            else { 
+                . ( Join-Path $PSScriptRoot _functions.ps1 )
+            }
+        }
     }
     catch {}
 }
