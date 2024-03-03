@@ -36,9 +36,11 @@ function Test-Version ( $name ) {
         if ( Test-Path $new_file_path ) {
             $new_hash = ( Get-FileHash -Path $new_file_path ).Hash
             if ( $old_hash -ne $new_hash ) {
-                $text = "$name обновился! Рекомендуется скачать новую версию."
-                Write-Log $text -Red
-                if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
+                if ( $auto_update -eq 'N' ) {
+                    $text = "$name обновился! Рекомендуется скачать новую версию."
+                    Write-Log $text -Red
+                    if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
+                }
                 if ( $auto_update -eq 'N' -or $debug -eq 1 ) {
                     Remove-Item $new_file_path
                 }
