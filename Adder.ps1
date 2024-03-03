@@ -1,3 +1,4 @@
+$ProgressPreference = 'SilentlyContinue'
 Write-Output 'Подгружаем настройки'
 
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
@@ -107,7 +108,7 @@ if ( $get_blacklist -eq 'N' ) {
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
-    $tracker_torrents = Get-TrackerTorrents $sections $max_seeds
+    $tracker_torrents = Get-TrackerTorrents $sections
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
@@ -137,6 +138,12 @@ Write-Log 'Ищем новые раздачи'
 
 $new_torrents_keys = $tracker_torrents.keys | Where-Object { $null -eq $hash_to_id[$_] }
 Write-Log ( 'Новых раздач: ' + $new_torrents_keys.count )
+
+if ( $max_seeds -ne -1 ) {
+    Write-Log "Отсеиваем с количеством сидов больше $max_seeds"
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].seeders -le $max_seeds }
+    Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
+}
 
 if ( $get_hidden -and $get_hidden -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи из скрытых разделов'

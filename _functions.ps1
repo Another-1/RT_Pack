@@ -232,8 +232,7 @@ function Get-OldBlacklist( [switch]$verbose ) {
     return $oldblacklist
 }
 
-function Get-SectionTorrents ( $forum, $section, $max_seeds) {
-    if ( $max_seeds -eq -1 ) { $seed_limit = 999 } else { $seed_limit = $max_seeds }
+function Get-SectionTorrents ( $forum, $section ) {
     $i = 1
     Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
     while ( $true) {
@@ -248,13 +247,6 @@ function Get-SectionTorrents ( $forum, $section, $max_seeds) {
         catch { Start-Sleep -Seconds 10; $i++; Write-Host "Попытка номер $i" -ForegroundColor Cyan }
     }
     Write-Log ( 'Получено раздач: ' + $tmp_torrents.count ) -skip_timestamp
-    if ( $max_seeds -gt -1 ) {
-        $tmp_torrents_2 = @{}
-        $tmp_torrents.keys | Where-Object { $tmp_torrents[$_][1] -le $seed_limit } | ForEach-Object { $tmp_torrents_2[$_] = $tmp_torrents[$_] }
-        $tmp_torrents = $tmp_torrents_2
-        Remove-Variable -Name tmp_torrents_2
-        Write-Log ( 'Раздач с кол-вом сидов не более ' + $seed_limit + ': ' + $tmp_torrents.count )
-    }
     if ( !$tmp_torrents ) {
         Write-Host 'Не получилось' -ForegroundColor Red
         exit 
@@ -262,13 +254,12 @@ function Get-SectionTorrents ( $forum, $section, $max_seeds) {
     return $tmp_torrents
 }
 
-function Get-TrackerTorrents ( $sections, $max_seeds ) {
+function Get-TrackerTorrents ( $sections ) {
     $titles = (( Invoke-WebRequest -Uri 'https://api.rutracker.cc/v1/get_tor_status_titles' ).content | ConvertFrom-Json -AsHashtable ).result
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
-    $ProgressPreference = 'SilentlyContinue'
     $tracker_torrents = @{}
     foreach ( $section in $sections ) {
-        $section_torrents = Get-SectionTorrents $forum $section $max_seeds
+        $section_torrents = Get-SectionTorrents $forum $section
         $section_torrents.Keys | Where-Object { $section_torrents[$_][0] -in $ok_states } | ForEach-Object {
             $tracker_torrents[$section_torrents[$_][7]] = @{
                 id             = $_
@@ -284,7 +275,6 @@ function Get-TrackerTorrents ( $sections, $max_seeds ) {
             }
         }
     }
-    $ProgressPreference = 'Continue'
     return $tracker_torrents
 }
 
