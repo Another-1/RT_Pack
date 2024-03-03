@@ -1,9 +1,7 @@
 Write-Output 'Подгружаем настройки'
 
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
-if ( Test-Path ( $PSScriptRoot + $separator + '_settings.ps1' ) ) {
-    . ( $PSScriptRoot + $separator + '_settings.ps1' )
-}
+. ( Join-Path $PSScriptRoot _settings.ps1 )
 
 $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
@@ -16,7 +14,7 @@ Write-Log 'Проверяем актуальность скриптов'
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) $alert_oldies
 Test-Version ( '_functions.ps1' ) -alert $alert_oldies
 
-try { . ( $PSScriptRoot + $separator + '_client_ssd.ps1' ) } catch { }
+try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
 Write-Log 'Проверяем наличие всех нужных настроек'
 $tg_token = Test-Setting 'tg_token'
 if ( $tg_token -ne '') {
@@ -26,7 +24,7 @@ if ( $tg_token -ne '') {
 $alert_oldies = Test-Setting 'alert_oldies'
 $use_timestamp = Test-Setting 'use_timestamp'
 $tlo_path = Test-Setting 'tlo_path' -required
-$ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
+$ini_path = Join-Path $tlo_path 'data' 'config.ini'
 Write-Log 'Читаем настройки Web-TLO'
 $ini_data = Get-IniContent $ini_path
 $get_news = Test-Setting 'get_news'
@@ -308,7 +306,7 @@ if ( $new_torrents_keys ) {
             $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$section_details[$new_tracker_data.section].client] )
             if ( $ssd -and $ssd[$section_details[$new_tracker_data.section].client] ) {
                 if ( $on_ssd -eq $false ) {
-                    Set-ClientSetting $client 'temp_path' ( $ssd[$section_details[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':\Incomplete' : '/Incomplete' ) )
+                    Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$section_details[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
                     Set-ClientSetting $client 'temp_path_enabled' $true
                     Set-ClientSetting $client 'preallocate_all' $false
                 }

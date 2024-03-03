@@ -30,9 +30,8 @@ function Get-Separator {
 
 function Test-Version ( $name ) {
     try {
-        $separator = Get-Separator
-        $old_hash = ( Get-FileHash -Path ( $PSScriptRoot + $separator + $name ) ).Hash
-        $new_file_path = ( $PSScriptRoot + $separator + $name.replace( '.ps1', '.new' ) )
+        $old_hash = ( Get-FileHash -Path ( Join-Path $PSScriptRoot $name ) ).Hash
+        $new_file_path = ( Join-Path $PSScriptRoot $name.replace( '.ps1', '.new' ) )
         Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path | Out-Null
         if ( Test-Path $new_file_path ) {
             $new_hash = ( Get-FileHash -Path $new_file_path ).Hash
@@ -111,7 +110,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
                 $current = $settings[$setting].default
             }
             if ( $setting -eq 'tlo_path') {
-                $ini_path = $current + $separator + 'data' + $separator + 'config.ini'
+                $ini_path = Join-Path $current 'data' 'config.ini'
                 If ( -not ( Test-Path $ini_path ) ) {
                     Write-Log ( 'Не нахожу файла ' + ( $ini_path ) + ', проверьте ввод' ) -ForegroundColor -Red
                     $current = ''
@@ -139,8 +138,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
                 $current = $current.ToInt64( $null )
             }
             Set-Variable -Name $setting -Value $current
-            $separator = Get-Separator
-            Add-Content -Path ( $PSScriptRoot + $separator + '_settings.ps1' ) `
+            Add-Content -Path ( Join-Path $PSScriptRoot '_settings.ps1' ) `
                 -Value ( '$' + $setting + ' = ' + $( ( $settings[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + $current + $( ( $settings[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + '   # ' + $settings[$setting].prompt )
         }
     }
@@ -196,8 +194,7 @@ function Open-Database( $db_path, [switch]$verbose ) {
 }
 
 function Open-TLODatabase( [switch]$verbose ) {
-    $separator = Get-Separator
-    $database_path = $tlo_path + $separator + 'data' + $separator + 'webtlo.db'
+    $database_path = Join-Path $tlo_path 'data' 'webtlo.db'
     $conn = Open-Database $database_path -verbose:$verbose.IsPresent
     return $conn
 }
@@ -205,7 +202,6 @@ function Open-TLODatabase( [switch]$verbose ) {
 function Get-Blacklist( [switch]$verbose ) {
     Write-Log 'Запрашиваем чёрный список из БД Web-TLO'
     $blacklist = @{}
-    # $sepa = Get-Separator
     if ( !$conn -or $conn.ConnectionString -notlike '*webtlo.db' ) { $conn = Open-TLODatabase -verbose:$verbose.IsPresent }
     $query = 'SELECT info_hash FROM TopicsExcluded'
     Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $blacklist[$_.info_hash] = 1 }
@@ -215,7 +211,6 @@ function Get-Blacklist( [switch]$verbose ) {
 function Get-OldBlacklist( [switch]$verbose ) {
     Write-Log 'Запрашиваем старый чёрный список из БД Web-TLO'
     $oldblacklist = @{}
-    # $sepa = Get-Separator
     if (!$conn) { $conn = Open-TLODatabase $verbose.IsPresent }
     $query = 'SELECT id FROM Blacklist'
     Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $oldblacklist[$_.id.ToString()] = 1 }
@@ -482,10 +477,9 @@ function Initialize-Forum () {
 }
 
 function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
-    $separator = Get-Separator
     if ( !$forum.sid ) { Initialize-Forum }
     $get_url = 'https://' + $forum.url + '/forum/dl.php?t=' + $Id
-    if ( $null -eq $save_path ) { $Path = $PSScriptRoot + $separator + $Id + '.torrent' } else { $path = $save_path + '\' + $Id + '.torrent' }
+    if ( $null -eq $save_path ) { $Path = Join-Path $PSScriptRoot ( $Id.ToString() + '.torrent' ) } else { $path = Join-Path $save_path ( $Id.ToString() + '.torrent' ) }
     $i = 1
     while ( $i -le 30 ) {
         try { 
