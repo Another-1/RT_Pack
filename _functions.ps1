@@ -41,7 +41,18 @@ function Test-Version ( $name ) {
                 if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
             }
         }
-        Remove-Item $new_file_path
+        if ( $auto_update -eq 'N' -or $debug -eq 1 ) {
+            Remove-Item $new_file_path
+        }
+        else {
+            Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name )
+            if ( $name -ne '_functions.ps1' ) {
+                Start-Process pwsh ( Join-Path $PSScriptRoot $name )
+            }
+            else { 
+                . ( Join-Path $PSScriptRoot _functions.ps1 )
+            }
+        }
     }
     catch {}
 }

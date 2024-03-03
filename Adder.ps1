@@ -5,7 +5,7 @@ $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
 
 $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
-. "$PSScriptRoot\_functions.ps1"
+. ( Join-Path $PSScriptRoot _functions.ps1 )
 
 Test-PSVersion
 Test-Module 'PsIni' 'для чтения настроек TLO'
