@@ -559,9 +559,9 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
             New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
             try {
                 Write-Log 'Обновляем БД TLO'
-                . $php_path "$tlo_path\cron\update.php"
+                . $php_path ( Join-Path $tlo_path 'cron' 'update.php' )
                 Write-Log 'Обновляем списки других хранителей'
-                . $php_path "$tlo_path\cron\keepers.php"
+                . $php_path ( Join-Path $tlo_path 'cron' 'keepers.php' )
                 if ( $send_report ) {
                     Send-Report
                 }
