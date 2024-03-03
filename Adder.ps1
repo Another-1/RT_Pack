@@ -1,6 +1,5 @@
 Write-Output 'Подгружаем настройки'
 
-$use_timestamp = 'N'
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
 try { . ( Join-Path $PSScriptRoot _settings.ps1 ) } catch { }
 
