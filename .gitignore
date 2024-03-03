@@ -9,3 +9,4 @@ starts.db
 rehashes.db
 ipfilter.dat
 *.torrent
+*.new
