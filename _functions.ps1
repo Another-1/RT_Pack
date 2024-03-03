@@ -43,8 +43,10 @@ function Test-Version ( $name ) {
                 }
                 if ( $auto_update -eq 'Y' -and $debug -ne 1 ) {
                     Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name )
+                    Unblock-File -Path ( Join-Path $PSScriptRoot $name )
                     if ( $name -ne '_functions.ps1' ) {
                         Start-Process pwsh ( Join-Path $PSScriptRoot $name )
+                        exit
                     }
                     else { 
                         . ( Join-Path $PSScriptRoot _functions.ps1 )
