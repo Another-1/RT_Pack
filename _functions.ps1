@@ -113,7 +113,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
     $changed = $false
     $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
     if ( $current_var ) { $current = $current_var.Value }
-    if (!$current) {
+    else {
         if ( $default ) { $settings[$setting].default = $default }
         do {
             $current = Read-Host -Prompt ( $settings[$setting].prompt + $( $settings[$setting].default -ne '' ? ' [' + $settings[$setting].default + ']' : '' ) )
