@@ -1,7 +1,8 @@
 Write-Output 'Подгружаем настройки'
 
+$use_timestamp = 'N'
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
-. ( Join-Path $PSScriptRoot _settings.ps1 )
+try { . ( Join-Path $PSScriptRoot _settings.ps1 ) } catch { }
 
 $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
