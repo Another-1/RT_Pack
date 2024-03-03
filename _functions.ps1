@@ -253,7 +253,7 @@ function Get-SectionTorrents ( $forum, $section, $max_seeds) {
         $tmp_torrents.keys | Where-Object { $tmp_torrents[$_][1] -le $seed_limit } | ForEach-Object { $tmp_torrents_2[$_] = $tmp_torrents[$_] }
         $tmp_torrents = $tmp_torrents_2
         Remove-Variable -Name tmp_torrents_2
-        Write-Host ( 'Раздач с кол-вом сидов не более ' + $seed_limit + ': ' + $tmp_torrents.count )
+        Write-Log ( 'Раздач с кол-вом сидов не более ' + $seed_limit + ': ' + $tmp_torrents.count )
     }
     if ( !$tmp_torrents ) {
         Write-Host 'Не получилось' -ForegroundColor Red
@@ -265,7 +265,7 @@ function Get-SectionTorrents ( $forum, $section, $max_seeds) {
 function Get-TrackerTorrents ( $sections, $max_seeds ) {
     $titles = (( Invoke-WebRequest -Uri 'https://api.rutracker.cc/v1/get_tor_status_titles' ).content | ConvertFrom-Json -AsHashtable ).result
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
-
+    $ProgressPreference = 'SilentlyContinue'
     $tracker_torrents = @{}
     foreach ( $section in $sections ) {
         $section_torrents = Get-SectionTorrents $forum $section $max_seeds
@@ -284,6 +284,7 @@ function Get-TrackerTorrents ( $sections, $max_seeds ) {
             }
         }
     }
+    $ProgressPreference = 'Continue'
     return $tracker_torrents
 }
 
@@ -394,6 +395,7 @@ function Get-TopicIDs ( $client, $torrent_list ) {
         $torrent_list | ForEach-Object {
             if ( $null -ne $tracker_torrents ) { $_.topic_id = $tracker_torrents[$_.hash.toUpper()].id }
             if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
+                Write-Log ( 'Не нашлось информации по ID для раздачи ' + $_.hash.toUpper() + ', попробуем достать из клиента')
                 $Params = @{ hash = $_.hash }
                 try {
                     $comment = ( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.Port + '/api/v2/torrents/properties' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json | Select-Object comment -ExpandProperty comment
@@ -401,6 +403,9 @@ function Get-TopicIDs ( $client, $torrent_list ) {
                 }
                 catch { }
                 $_.topic_id = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
+                if ( $_.topic_id -ne '' -and $null -ne $_.topic_id ) {
+                    Write-Log 'из клиента добыть ID получилось'
+                }
             }
         }
         $success = ( $torrent_list | Where-Object { $_.topic_id } ).count
