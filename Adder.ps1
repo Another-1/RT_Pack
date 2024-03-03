@@ -2,7 +2,8 @@ $ProgressPreference = 'SilentlyContinue'
 Write-Output 'Подгружаем настройки'
 
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
-try { . ( Join-Path $PSScriptRoot _settings.ps1 ) } catch { }
+try { . ( Join-Path $PSScriptRoot _settings.ps1 ) }
+catch { Write-Host 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.'}
 
 $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
