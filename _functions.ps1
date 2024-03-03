@@ -40,7 +40,7 @@ function Test-Version ( $name ) {
                 Write-Log $text -Red
                 if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
             }
-        }
+        } 
         if ( $auto_update -eq 'N' -or $debug -eq 1 ) {
             Remove-Item $new_file_path
         }
@@ -106,6 +106,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'hours_to_stop'         = @{ prompt = 'Сколько минимум часов держать раздачу запущенной?'; default = 3; type = 'number' }
         'old_starts_per_run'    = @{ prompt = 'Количество запускаемых за раз давно стоящих раздач? '; default = 100; type = 'number' }
         'report_nowork'         = @{ prompt = 'Сообщать в Telegam если ничего не пришлось делать?'; default = 'Y'; type = 'YN' }
+        'auto_update'           = @{ prompt = 'Автоматически обновлять версии скриптов?'; default = 'N'; type = 'YN' }
     }
     $changed = $false
     $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )

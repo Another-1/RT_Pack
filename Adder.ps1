@@ -38,6 +38,7 @@ $get_lows = Test-Setting 'get_lows'
 $get_mids = Test-Setting 'get_mids'
 $get_highs = Test-Setting 'get_highs'
 $control = Test-Setting 'control'
+$auto_update = Test-Setting 'auto_update'
 if ( $tg_token -ne '') {
     $report_obsolete = Test-Setting 'report_obsolete'
 }
