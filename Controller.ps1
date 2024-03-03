@@ -25,13 +25,8 @@ if ( !$ini_data ) {
     if ( !$ini_data ) {
         Test-Module 'PsIni' 'для чтения настроек TLO'
         Test-Module 'PSSQLite' 'для работы с базой TLO'
-    
-        while ( $true ) {
-            $tlo_path = Test-Setting 'tlo_path' -required
-            $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
-            If ( Test-Path $ini_path ) { break }
-            Write-Log 'Не нахожу такого файла, проверьте ввод' -ForegroundColor -Red
-        }
+         $tlo_path = Test-Setting 'tlo_path' -required
+         $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
         Write-Log 'Читаем настройки Web-TLO'
         $ini_data = Get-IniContent $ini_path
     }
@@ -175,3 +170,4 @@ if ( $id_to_info ) {
     }
 }
 $conn.Close()
+Remove-Variable -Name conn

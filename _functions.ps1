@@ -206,7 +206,7 @@ function Get-Blacklist( [switch]$verbose ) {
     Write-Log 'Запрашиваем чёрный список из БД Web-TLO'
     $blacklist = @{}
     # $sepa = Get-Separator
-    if (!$conn) { $conn = Open-TLODatabase -verbose:$verbose.IsPresent }
+    if ( !$conn -or $conn.ConnectionString -notlike '*webtlo.db' ) { $conn = Open-TLODatabase -verbose:$verbose.IsPresent }
     $query = 'SELECT info_hash FROM TopicsExcluded'
     Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $blacklist[$_.info_hash] = 1 }
     $conn.Close()
@@ -315,9 +315,10 @@ function Initialize-Client ($client, [switch]$verbose, [switch]$force ) {
                 exit
             }
             if ( $result.Content.ToUpper() -ne 'OK.') {
-                Write-Log $result.Content -Red
+                Write-Log ( 'Клиент вернул ошибку авторизации: ' + $result.Content ) -Red
                 exit
             }
+            Write-Log 'Успешная авторизация'
             $client.sid = $sid
         }
         catch {
@@ -344,7 +345,7 @@ function  Get-ClientTorrents ( $client, $disk = '', [switch]$completed, $hash, $
     $i = 0
     while ( $true ) {
         try {
-            $json_content = ( Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 30 ).Content
+            $json_content = ( Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
             $torrents_list = $json_content | ConvertFrom-Json | `
                 Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client_key } }, infohash_v1, size, completion_on, progress, tracker, added_on | `
                 Where-Object { $_.save_path -match ('^' + $dsk ) }
@@ -355,10 +356,14 @@ function  Get-ClientTorrents ( $client, $disk = '', [switch]$completed, $hash, $
         }
         if ( $json_content -or $i -gt 3 ) { break }
     }
-    if ( !$json_content -and $tg_token -ne '' ) { 
-        Send-TGMessage ( 'Нет связи с клиентом ' + $client.Name + '. Adder остановлен.' ) $tg_token $tg_chat
+    if ( !$json_content ) {
+        if ( $tg_token -ne '' ) { 
+            Send-TGMessage ( 'Не удалось получить список раздач от клиента ' + $client.Name. + ', Выполнение прервано.' ) $tg_token $tg_chat
+        }
+        Write-Log ( 'Не удалось получить список раздач от клиента ' + $client.Name )
     }
     if ( !$torrents_list ) { $torrents_list = @() }
+    if ( $verbose ) { Write-Log ( 'Получено ' + $torrents_list.Count + ' раздач от клиента ' + $client.Name ) }
     return $torrents_list
 }
 
@@ -389,6 +394,8 @@ function Get-TopicIDs ( $client, $torrent_list ) {
                 $_.topic_id = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
             }
         }
+        $success = ( $torrent_list | Where-Object { $_.topic_id } ).count
+        Write-Log ( 'Найдено ' + $success + ' штук ID' ) -Red:( $success -ne $torrent_list.Count )
     }
 }
 
@@ -723,13 +730,19 @@ function Set-StartStop ( $keys ) {
         try {
             Invoke-SqliteQuery -Query "INSERT INTO start_dates (id,start_date) VALUES $sql_values" -SQLiteConnection $conn
         }
-        catch { Pause }
+        catch { 
+            Write-Log 'Что-то пошло не так при записи даты запуска/остановки в БД, этого не должно было случиться' -Red
+            Pause
+        }
     }
     if ( $existing_keys -and $existing_keys.count -gt 0 ) {
         try {
             Invoke-SqliteQuery -Query "UPDATE start_dates SET start_date = @st_date WHERE id IN (@id)" -SqlParameters @{ id = ( $hash_to_id[$existing_keys] -join ',' ) ; st_date = $now_epoch } -SQLiteConnection $conn
         }
-        catch { Pause }
+        catch {
+            Write-Log 'Что-то пошло не так при обновлении даты запуска/остановки в БД, этого не должно было случиться' -Red
+            Pause
+        }
     }
 }
 

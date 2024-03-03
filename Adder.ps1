@@ -64,6 +64,37 @@ if ( $update_stats -eq 'Y') {
 $sections = Get-IniSections -useForced
 Test-ForumWorkingHours -verbose
 
+If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
+    Write-Output 'Подтягиваем названия раздач из маскированных разделов'
+    . "$PSScriptRoot\_masks.ps1"
+    $masks_db = @{}
+    $masks_db_plain = @{}
+    $masks_like = @{}
+    $conn = Open-TLODatabase
+    $columnNames = Get-DB_ColumnNames $conn
+    $masks.GetEnumerator() | ForEach-Object {
+        $group_mask = $_.Value
+        ( $_.Key -replace ( '\s*', '')).split(',') | ForEach-Object {
+            $db_return = ( Invoke-SqliteQuery -Query ( 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $_ + ' AND ' + $columnNames['name'] + ' NOT LIKE "%' + ( ($group_mask -replace ('\s', '%')) -join '%" AND ' + $columnNames['name'] + ' NOT LIKE "%' ) + '%"' ) -SQLiteConnection $conn )
+            if ( $db_return ) {
+                $masks_db[$_] = $db_return.GetEnumerator() | ForEach-Object { @{$_.id.ToString() = 1 } }
+                Write-Output ( 'По разделу ' + $_ + ' найдено ' + $masks_db[$_].count + ' неподходящих раздач' )
+            }
+            $masks_like[$_] = $group_mask -replace ('^|$|\s', '*')
+        }
+    }
+    $masks_db.Keys | ForEach-Object {
+        $masks_db[$_].Keys | ForEach-Object {
+            $masks_db_plain[$_] = 1
+        }
+    }
+    $conn.Close()
+}
+else {
+    Remove-Variable -Name masks_like -ErrorAction SilentlyContinue
+    Remove-Variable -Name masks_db -ErrorAction SilentlyContinue
+}
+
 Write-Log 'Достаём из TLO данные о разделах'
 $section_details = Get-IniSectionDetails $sections
 $forum = Set-ForumDetails
@@ -143,6 +174,12 @@ if ( $nul -ne $get_blacklist -and $get_blacklist.ToUpper() -eq 'N' ) {
     if ( $blacklist.Count -ne 0 ) { $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $blacklist[$_] } }
     if ( $oldblacklist -and $oldblacklist.Count -ne 0 ) { $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $oldblacklist[$tracker_torrents[$_].id] } }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
+}
+
+if ( $masks_db ) {
+    Write-Output 'Отфильтровываем раздачи по маскам'
+    $new_torrents_keys = $new_torrents_keys | Where-Object { !$masks_db_plain[$tracker_torrents[$_].id] }
+    Write-Output ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
 $added = @{}
