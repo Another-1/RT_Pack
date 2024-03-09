@@ -3,7 +3,7 @@ Write-Output 'Подгружаем настройки'
 
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
 try { . ( Join-Path $PSScriptRoot _settings.ps1 ) }
-catch { Write-Host 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.'}
+catch { Write-Host 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' }
 
 $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
@@ -45,6 +45,9 @@ if ( $tg_token -ne '') {
     $report_obsolete = Test-Setting 'report_obsolete'
 }
 $report_stalled = Test-Setting 'report_stalled'
+if ( $report_stalled -eq 'Y' ) {
+    $stalled_pwd = Test-Setting 'stalled_pwd' -required
+}
 $report_nowork = Test-Setting 'report_nowork'
 $update_stats = Test-Setting 'update_stats'
 if ( $update_stats -eq 'Y' ) {
@@ -259,16 +262,19 @@ if ( $new_torrents_keys ) {
                 Set-ClientSetting $client 'temp_path_enabled' $false
             }
             Add-ClientTorrent $client $new_torrent_file $existing_torrent.save_path $existing_torrent.category
-            While ($true) {
-                Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
-                Start-Sleep -Seconds 5
-                $new_tracker_data.name = ( Get-ClientTorrents -client $client -hash $new_torrent_key ).name
-                if ( $null -ne $new_tracker_data.name ) { break }
-            }
-            if ( $new_tracker_data.name -eq $existing_torrent.name -and $subfolder_kind -le '2') {
+            # While ($true) {
+            Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
+            Start-Sleep -Seconds 5
+            $new_tracker_data.name = ( Get-ClientTorrents -client $client -hash $new_torrent_key ).name
+            # # на случай, если в pvc были устаревшие данные, и по старому хшу раздача не находится, будем считать, что имя совпало.
+            # if ( $null -eq $new_tracker_data.name ) { $new_tracker_data.name = $existing_torrent.name }
+            # if ( $null -ne $new_tracker_data.name ) { break }
+
+            # }
+            if ( $null -ne $new_tracker_data.name -and $new_tracker_data.name -eq $existing_torrent.name -and $subfolder_kind -le '2') {
                 Remove-ClientTorrent $client $existing_torrent.hash
             }
-            else {
+            elseif ($null -ne $new_tracker_data.name ) {
                 Remove-ClientTorrent $client $existing_torrent.hash -deleteFiles
             }
             Start-Sleep -Milliseconds 100 
@@ -381,12 +387,18 @@ if ( $report_stalled -eq 'Y' ) {
         $stalleds += $_.topic_id 
     }
     if ( $stalleds.count -gt 0 ) {
-        $params = @{'help_load' = ( $stalleds -join ',') }
-        Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params | Out-Null
-        Write-Log ( 'Отправлено ' + $stalleds.count + ' некачашек' )
-        # if ( $tg_token -ne '' ) {
-        #     Send-TGMessage ( 'Отправлено ' + $stalleds.count + ' некачашек' ) $tg_token $tg_chat
-        # }
+        $params = @{
+            'help_load' = ( $stalleds -join ',')
+            'help_pwd'  = $stalled_pwd
+        }
+        if (!$send_result)
+        Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params -ErrorVariable send_result | Out-Null
+        if ( $send_result.count -eq 0 ){
+            Write-Log ( 'Отправлено ' + $stalleds.count + ' некачашек' )
+        }
+        else {
+            Write-Log 'Не удалось отправить некачашки, проверьте пароль.'
+        }
     }
     else { Write-Log 'Некачашек не обнаружено' }
 }

@@ -10,3 +10,4 @@ rehashes.db
 ipfilter.dat
 *.torrent
 *.new
+*.was

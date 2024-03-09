@@ -109,14 +109,15 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'old_starts_per_run'    = @{ prompt = 'Количество запускаемых за раз давно стоящих раздач? '; default = 100; type = 'number' }
         'report_nowork'         = @{ prompt = 'Сообщать в Telegam если ничего не пришлось делать?'; default = 'Y'; type = 'YN' }
         'auto_update'           = @{ prompt = 'Автоматически обновлять версии скриптов?'; default = 'N'; type = 'YN' }
+        'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота в /about_me)'; type = 'string' }
     }
     $changed = $false
     $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
     if ( $current_var ) { $current = $current_var.Value }
     else {
-        if ( $default ) { $settings[$setting].default = $default }
+        if ( $default -and $default -ne '' ) { $settings[$setting].default = $default }
         do {
-            $current = Read-Host -Prompt ( $settings[$setting].prompt + $( $settings[$setting].default -ne '' ? ' [' + $settings[$setting].default + ']' : '' ) )
+            $current = Read-Host -Prompt ( $settings[$setting].prompt + $( ( $settings[$setting].default -and $settings[$setting].default -ne '' ) ? ' [' + $settings[$setting].default + ']' : '' ) )
             if ( $settings[$setting].type -eq 'YN' ) {
                 if ( $current -ne '' ) { $current = $current.ToUpper() }
             }

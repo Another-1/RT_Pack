@@ -25,8 +25,8 @@ if ( !$ini_data ) {
     if ( !$ini_data ) {
         Test-Module 'PsIni' 'для чтения настроек TLO'
         Test-Module 'PSSQLite' 'для работы с базой TLO'
-         $tlo_path = Test-Setting 'tlo_path' -required
-         $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
+        $tlo_path = Test-Setting 'tlo_path' -required
+        $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
         Write-Log 'Читаем настройки Web-TLO'
         $ini_data = Get-IniContent $ini_path
     }
@@ -87,16 +87,19 @@ if ( !$tracker_torrents) {
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
     $clients_torrents = Get-ClientsTorrents $clients
+    $hash_to_id = @{}
     $id_to_info = @{}
     
     Write-Log 'Сортируем таблицы'
     $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
+        if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
+        $hash_to_id[$_.infohash_v1] = $_.topic_id
         $id_to_info[$_.topic_id] = 1
     }
 }
 
 # $i = 0
-$clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
+$clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' -and $_.topic_id -ne '6336688' } | ForEach-Object {
     $states[$_.hash] = @{ client = $_.client_key; state = $_.state; start_date = $( $null -ne $db_data[$_.topic_id] -and $db_data[$_.topic_id] -gt 0 ? $db_data[$_.topic_id] : 0 ) }
     if ( $_.state -eq 'pausedUP' ) {
         $paused_sort.Add( [PSCustomObject]@{ hash = $_.hash; client = $_.client_key; start_date = $( $null -ne $db_data[$_.topic_id] -and $db_data[$_.topic_id] -gt 0 ? $db_data[$_.topic_id] : 0 ) } ) | Out-Null
@@ -165,7 +168,7 @@ if ( $paused_sort ) {
     }
 }
 if ( $id_to_info ) {
-    Write-Log 'Очищаем БД от неактуальных раздач'
+    Write-Log 'Очищаем БД запусков от неактуальных раздач'
     $db_data.keys | Where-Object { !$id_to_info[$_] } | ForEach-Object {
         Invoke-SqliteQuery -Query "DELETE FROM start_dates WHERE id = @id" -SqlParameters @{ id = $_ } -SQLiteConnection $conn | ForEach-Object { $db_data[$_.id] = $_.start_date }
     }
