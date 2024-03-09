@@ -391,7 +391,6 @@ if ( $report_stalled -eq 'Y' ) {
             'help_load' = ( $stalleds -join ',')
             'help_pwd'  = $stalled_pwd
         }
-        if (!$send_result)
         Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params -ErrorVariable send_result | Out-Null
         if ( $send_result.count -eq 0 ){
             Write-Log ( 'Отправлено ' + $stalleds.count + ' некачашек' )
