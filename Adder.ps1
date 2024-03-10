@@ -350,6 +350,9 @@ if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report
     Write-Log 'Ищем неактуальные раздачи.'
     $obsolete_keys = $hash_to_id.Keys | Where-Object { !$tracker_torrents[$_] } | Where-Object { $refreshed_ids -notcontains $hash_to_id[$_] } | `
         Where-Object { $tracker_torrents.Values.id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] }
+    if ( $skip_obsolete ) {
+        $obsolete_keys = $obsolete_keys | Where-Object { $clients[$id_to_info[$hash_to_id[$_]].client_key].Name -notin $skip_obsolete }
+    }
     $obsolete_torrents = $clients_torrents | Where-Object { $_.hash -in $obsolete_keys } | Where-Object { $_.topic_id -ne '' }
     $obsolete_torrents | ForEach-Object {
         If ( !$obsolete ) { $obsolete = @{} }
@@ -392,7 +395,7 @@ if ( $report_stalled -eq 'Y' ) {
             'help_pwd'  = $stalled_pwd
         }
         Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params -ErrorVariable send_result | Out-Null
-        if ( $send_result.count -eq 0 ){
+        if ( $send_result.count -eq 0 ) {
             Write-Log ( 'Отправлено ' + $stalleds.count + ' некачашек' )
         }
         else {
