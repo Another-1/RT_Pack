@@ -386,7 +386,7 @@ function Get-TopicIDs ( $client, $torrent_list ) {
         $torrent_list | ForEach-Object {
             if ( $null -ne $tracker_torrents ) { $_.topic_id = $tracker_torrents[$_.hash.toUpper()].id }
             if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
-                Write-Log ( 'Не нашлось информации по ID для раздачи ' + $_.hash.toUpper() + ', попробуем достать из клиента')
+                # Write-Log ( 'Не нашлось информации по ID для раздачи ' + $_.hash.toUpper() + ', попробуем достать из клиента')
                 $Params = @{ hash = $_.hash }
                 try {
                     $comment = ( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.Port + '/api/v2/torrents/properties' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json | Select-Object comment -ExpandProperty comment
@@ -394,9 +394,9 @@ function Get-TopicIDs ( $client, $torrent_list ) {
                 }
                 catch { }
                 $_.topic_id = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
-                if ( $_.topic_id -ne '' -and $null -ne $_.topic_id ) {
-                    Write-Log 'из клиента добыть ID получилось'
-                }
+                # if ( $_.topic_id -ne '' -and $null -ne $_.topic_id ) {
+                #     Write-Log 'из клиента добыть ID получилось'
+                # }
             }
         }
         $success = ( $torrent_list | Where-Object { $_.topic_id } ).count
@@ -554,7 +554,7 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
     If ( ( ( Get-Date($MoscowTime) -UFormat %H ).ToInt16( $nul ) + 2 ) % 2 -eq 0 -or ( $check -eq $false ) ) {
         if ( !$in_progress ) {
             if ( $wait ) {
-                Write-Log 'Подождём 5 минут, вдруг быстро скачается.'
+                Write-Log 'Подождём 5 минут, вдруг быстро скачаются добавленные/обновлённые.'
                 Start-Sleep -Seconds 300
             }
             New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
