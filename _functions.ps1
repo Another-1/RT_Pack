@@ -49,7 +49,7 @@ function Test-Version ( $name ) {
                         exit
                     }
                     else { 
-                        . ( Join-Path $PSScriptRoot _functions.ps1 )
+                        . ( Join-Path $PSScriptRoot $name )
                     }
                 }
                 Remove-Item $new_file_path
