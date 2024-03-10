@@ -175,8 +175,8 @@ foreach ( $torrent in $full_data_sorted ) {
 }
 
 Write-Log 'Прогон завершён'
-Write-Log ( "Отправлено в рехэш: $sum_cnt раздач объёмом " + ( to_kmg $sum_size.size 1 ) ) 
-Write-Log ( 'Осталось: ' + ( $was_count - $sum_cnt ) + ' раздач объёмом ' + ( to_kmg ( $was_sum_size - $sum_size ) 1 ) )
+Write-Log ( "Отправлено в рехэш: $sum_cnt раздач объёмом " + ( $sum_size.size -eq 0 ? 0 : ( to_kmg $sum_size.size 1 ) ) )
+Write-Log ( 'Осталось: ' + ( $was_count - $sum_cnt ) + ' раздач объёмом ' + ( ( $was_sum_size - $sum_size ) -eq 0 ? 0 : ( to_kmg( $was_sum_size - $sum_size ) 1 ) ) )
 
 $conn.Close()
 # Remove-Item -Path ( $PSScriptRoot + $separator + 'rehasher.lck') | Out-Null
