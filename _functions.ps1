@@ -648,7 +648,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $token, $chat_id ) {
                 $message += "Обновлены в клиенте <b>$client</b>`n"
                 $refreshed[$client].keys | Sort-Object | ForEach-Object {
                     # $message += "<i>Раздел $_</i>`n"
-                    $refreshed[$client][$_] | ForEach-Object { $message += ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 1 ) + ' -> ' + ( to_kmg $_.new_size 1 ) + ")`n`n" ) }
+                    $refreshed[$client][$_] | ForEach-Object { $message += ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" ) }
                 }
             }
 
