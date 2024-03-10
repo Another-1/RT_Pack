@@ -13,8 +13,8 @@ Test-PSVersion
 Test-Module 'PsIni' 'для чтения настроек TLO'
 Test-Module 'PSSQLite' 'для работы с базой TLO'
 Write-Log 'Проверяем актуальность скриптов' 
-Test-Version ( $PSCommandPath | Split-Path -Leaf ) $alert_oldies
 Test-Version ( '_functions.ps1' ) -alert $alert_oldies
+Test-Version ( $PSCommandPath | Split-Path -Leaf ) $alert_oldies
 
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
 Write-Log 'Проверяем наличие всех нужных настроек'
