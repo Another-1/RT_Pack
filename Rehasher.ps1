@@ -146,14 +146,19 @@ foreach ( $torrent in $full_data_sorted ) {
         while ( ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).state -like 'checking*' ) {
             Start-Sleep -Seconds $check_state_delay
         }
-        if ( ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).progress -lt 1 ) {
-            Write-Log ( 'Раздача ' + $torrent.name + ' битая! Полнота: ' + ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).progress )
+        $percentage = ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).progress
+        if ( $percentage -lt 1 ) {
+            Write-Log ( 'Раздача ' + $torrent.name + ' битая! Полнота: ' + $percentage )
             if ( $start_errored -eq 'Y' ) {
                 Start-Torrents $torrent.hash $clients[$torrent.client_key]
             }
-            Set-Comment $clients[$torrent.client_key] $torrent 'Битая'
-            $message = 'Битая раздача ' + $torrent.name + ' в клиенте http://' + $clients[$torrent.client_key].IP + ':' + $clients[$torrent.client_key].Port + ' , Полнота: ' + ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).progress
+            $torrent | Add-Member -NotePropertyName topic_id -NotePropertyValue $null
+            $torrents_list = @( $torrent )
+            Get-TopicIDs -client $clients[$torrent.client_key] -torrent_list $torrents_list
+            $message = 'Битая раздача ' + $torrent.name + ' в клиенте http://' + $clients[$torrent.client_key].IP + ':' + $clients[$torrent.client_key].Port + `
+                ', полнота: ' + [math]::Round($percentage * 100) + '%, ссылка: https://rutracker.org/forum/viewtopic.php?t=' + $torrent.topic_id 
             Send-TGMessage $message $tg_token $tg_chat
+            Set-Comment $clients[$torrent.client_key] $torrent 'Битая'
         }
         else {
             Write-Log ( 'Раздача ' + $torrent.name + ' в порядке' ) -Green
