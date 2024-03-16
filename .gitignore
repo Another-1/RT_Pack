@@ -11,3 +11,4 @@ ipfilter.dat
 *.torrent
 *.new
 *.was
+*.journal
