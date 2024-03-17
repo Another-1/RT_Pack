@@ -671,7 +671,12 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $token, $chat_id ) {
                 if ( !$first ) { $message += "`n" }
                 $first = $false
                 $message += "Лишние в клиенте $client :`n"
-                $obsolete[$client] | ForEach-Object { $message += "https://rutracker.org/forum/viewtopic.php?t=$_`n" }
+                $obsolete[$client] | ForEach-Object {
+                    $message += "https://rutracker.org/forum/viewtopic.php?t=$_`n"
+                    if ( $id_to_info[$_].name ) {
+                        $message += ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
+                    }
+                }
             }
         }
         else {
