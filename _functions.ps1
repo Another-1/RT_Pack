@@ -52,8 +52,8 @@ function Test-Version ( $name ) {
                         . ( Join-Path $PSScriptRoot $name )
                     }
                 }
-                Remove-Item $new_file_path
             }
+            Remove-Item $new_file_path -Force -ErrorAction SilentlyContinue
         } 
     }
     catch {}
