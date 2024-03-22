@@ -256,7 +256,21 @@ function Get-SectionTorrents ( $forum, $section ) {
 }
 
 function Get-TrackerTorrents ( $sections ) {
-    $titles = (( Invoke-WebRequest -Uri 'https://api.rutracker.cc/v1/get_tor_status_titles' ).content | ConvertFrom-Json -AsHashtable ).result
+    Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
+    $i = 1
+    do {
+        try {
+            $titles = (( Invoke-WebRequest -Uri 'https://api.rutracker.cc/v1/get_tor_status_titles' ).content | ConvertFrom-Json -AsHashtable ).result
+            if ( $titles ) { break }
+        }
+        catch { Start-Sleep -Seconds 10;
+            $i++; Write-Log "Попытка номер $i" }
+    }
+    until ( $i -ge 5 )
+    if (!$titles) {
+        Write-Log 'Нет связис API трекера, выходим' -Red
+        exit
+    }
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
     $tracker_torrents = @{}
     foreach ( $section in $sections ) {
