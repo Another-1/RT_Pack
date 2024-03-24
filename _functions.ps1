@@ -40,7 +40,7 @@ function Test-Version ( $name ) {
                     $text = "$name обновился! Рекомендуется скачать новую версию."
                     Write-Log $text -Red
                     if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
-                }F
+                }
                 if ( $auto_update -eq 'Y' -and $debug -ne 1 ) {
                     Write-Log 'Я обновился, запускаю нового себя'
                     Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name ) -Force
