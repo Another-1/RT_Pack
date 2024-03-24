@@ -260,11 +260,11 @@ function Get-TrackerTorrents ( $sections ) {
     $i = 1
     do {
         try {
+            if ($i -gt 1 ) { Write-Log "Попытка номер $i" }
             $titles = (( Invoke-WebRequest -Uri 'https://api.rutracker.cc/v1/get_tor_status_titles' ).content | ConvertFrom-Json -AsHashtable ).result
             if ( $titles ) { break }
         }
-        catch { Start-Sleep -Seconds 10;
-            $i++; Write-Log "Попытка номер $i" }
+        catch { Start-Sleep -Seconds 10; $i++ }
     }
     until ( $i -ge 5 )
     if (!$titles) {
