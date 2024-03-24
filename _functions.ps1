@@ -261,7 +261,11 @@ function Get-TrackerTorrents ( $sections ) {
     do {
         try {
             if ($i -gt 1 ) { Write-Log "Попытка номер $i" }
-            $titles = (( Invoke-WebRequest -Uri 'https://api.rutracker.cc/v1/get_tor_status_titles' ).content | ConvertFrom-Json -AsHashtable ).result
+            if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
+                if ( $forum.proxyCred ) { $titles = (( Invoke-WebRequest -Uri 'https://api.rutracker.cc/v1/get_tor_status_titles' -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred ).content | ConvertFrom-Json -AsHashtable ).result }
+                else { $titles = (( Invoke-WebRequest -Uri 'https://api.rutracker.cc/v1/get_tor_status_titles' -Proxy $forum.ProxyURL ).content | ConvertFrom-Json -AsHashtable ).result }
+            }
+            else { $titles = (( Invoke-WebRequest -Uri 'https://api.rutracker.cc/v1/get_tor_status_titles' ).content | ConvertFrom-Json -AsHashtable ).result }
             if ( $titles ) { break }
         }
         catch { Start-Sleep -Seconds 10; $i++ }
@@ -546,16 +550,25 @@ function Get-ForumTorrentInfo ( $id ) {
 
     while ( $true ) {
         try {
-            $torinfo = ( ( Invoke-WebRequest -Uri ( 'https://api.rutracker.cc/v1/get_tor_topic_data' ) -Body $params ).Content | ConvertFrom-Json ).result.$id
+            if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
+                if ( $forum.proxyCred ) { $torinfo = ( ( Invoke-WebRequest -Uri ( 'https://api.rutracker.cc/v1/get_tor_topic_data' ) -Body $params -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred ).Content | ConvertFrom-Json ).result.$id }
+                else { $torinfo = ( ( Invoke-WebRequest -Uri ( 'https://api.rutracker.cc/v1/get_tor_topic_data' ) -Body $params -Proxy $forum.ProxyURL ).Content | ConvertFrom-Json ).result.$id }
+            }
+            else { $torinfo = ( ( Invoke-WebRequest -Uri ( 'https://api.rutracker.cc/v1/get_tor_topic_data' ) -Body $params ).Content | ConvertFrom-Json ).result.$id }
             $name = $torinfo.topic_title
             $size = $torinfo.size
             break
         }
         catch {
             Start-Sleep -Seconds 10; $i++; Write-Host "Попытка номер $i" -ForegroundColor Cyan
-            If ( $i -gt 20 ) { break }
+            If ( $i -gt 5 ) { break }
         }
     }
+    if (!$name) {
+        Write-Log 'Нет связис API трекера, выходим' -Red
+        exit
+    }
+    
     return [PSCustomObject]@{ 'name' = $name; 'size' = $size }
 }
 
@@ -594,27 +607,6 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
 function Send-Report () {
     Write-Log 'Шлём отчёт'
     . $php_path "$tlo_path\cron\reports.php"
-}
-
-function Get-TorrentInfo ( $id ) {
-    $params = @{ 
-        by  = 'topic_id'
-        val = $id 
-    }
-
-    while ( $true ) {
-        try {
-            $torinfo = ( ( Invoke-WebRequest -Uri ( 'https://api.rutracker.cc/v1/get_tor_topic_data' ) -Body $params ).Content | ConvertFrom-Json ).result.$id
-            $name = $torinfo.topic_title
-            $size = $torinfo.size
-            break
-        }
-        catch {
-            Start-Sleep -Seconds 10; $i++; Write-Host "Попытка номер $i" -ForegroundColor Cyan
-            If ( $i -gt 20 ) { break }
-        }
-    }
-    return [PSCustomObject]@{ 'name' = $name; 'size' = $size }
 }
 
 function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles ) {

@@ -222,7 +222,7 @@ if ( $new_torrents_keys ) {
             if ( !$forum.sid ) { Initialize-Forum $forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.id
             $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
-            $new_tracker_data.name = ( Get-TorrentInfo $new_tracker_data.id ).name
+            $new_tracker_data.name = ( Get-ForumTorrentInfo $new_tracker_data.id ).name
             $text = "Обновляем раздачу " + $new_tracker_data.id + " " + $new_tracker_data.name + ' в клиенте ' + $client.Name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.size 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
@@ -284,7 +284,7 @@ if ( $new_torrents_keys ) {
             if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.id] ) { $is_ok = $false }
             else {
                 if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
-                    $new_tracker_data.name = ( Get-TorrentInfo $new_tracker_data.id ).name
+                    $new_tracker_data.name = ( Get-ForumTorrentInfo $new_tracker_data.id ).name
                     $is_ok = $false
                     $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
                         if ( -not $is_ok -and $new_tracker_data.name -like $_ ) {
