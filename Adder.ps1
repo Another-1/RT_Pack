@@ -65,7 +65,15 @@ if ( $update_stats -eq 'Y') {
     }
 }
 
-$sections = Get-IniSections -useForced
+# $sections = Get-IniSections -useForced
+$sections = $ini_data.sections.subsections.split( ',' )
+if ( $forced_sections ) {
+    Write-Output 'Анализируем forced_sections'
+    $forced_sections = $forced_sections.Replace(' ', '')
+    $forced_sections_array = @()
+    $forced_sections.split(',') | ForEach-Object { $forced_sections_array += $_ }
+}
+
 Test-ForumWorkingHours -verbose
 
 If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
@@ -184,6 +192,12 @@ if ( $nul -ne $get_blacklist -and $get_blacklist.ToUpper() -eq 'N' ) {
     if ( $blacklist.Count -ne 0 ) { $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $blacklist[$_] } }
     if ( $oldblacklist -and $oldblacklist.Count -ne 0 ) { $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $oldblacklist[$tracker_torrents[$_].id] } }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
+}
+
+if ( $forced_sections_array ) {
+    Write-Output 'Применяем forced_sections'
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].section.ToString() -in $forced_sections_array }
+    Write-Output ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
 if ( $masks_db ) {
