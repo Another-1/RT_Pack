@@ -835,8 +835,6 @@ function Switch-Filtering ( $client, $enable = $true ) {
     Set-ClientSetting $client 'ip_filter_enabled' $enable
 }
 
-}
-
 function Get-DB_ColumnNames ($conn) {
     if ( ( ( Invoke-SqliteQuery -Query ( "PRAGMA table_info('topics')" ) -SQLiteConnection $conn ) | Select-Object name -ExpandProperty name | Where-Object { $_ -eq 'ss' } ).count -eq 0 ) {
         # 2.5.1 и выше
