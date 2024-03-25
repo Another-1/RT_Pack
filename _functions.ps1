@@ -834,3 +834,45 @@ function Set-Comment ( $client, $torrent, $label ) {
 function Switch-Filtering ( $client, $enable = $true ) {
     Set-ClientSetting $client 'ip_filter_enabled' $enable
 }
+
+}
+
+function Get-DB_ColumnNames ($conn) {
+    if ( ( ( Invoke-SqliteQuery -Query ( "PRAGMA table_info('topics')" ) -SQLiteConnection $conn ) | Select-Object name -ExpandProperty name | Where-Object { $_ -eq 'ss' } ).count -eq 0 ) {
+        # 2.5.1 и выше
+        $table_names = @{
+            'id'                    = 'id'
+            'forum_id'              = 'forum_id'
+            'name'                  = 'name'
+            'info_hash'             = 'info_hash'
+            'seeders'               = 'seeders'
+            'size'                  = 'size'
+            'status'                = 'status'
+            'reg_time'              = 'reg_time'
+            'seeders_updates_today' = 'seeders_updates_today'
+            'seeders_updates_days'  = 'seeders_updates_days'
+            'keeping_priority'      = 'keeping_priority'
+            'poster'                = 'poster'
+            'seeder_last_seen'      = 'seeder_last_seen'
+        }
+    }
+    else {
+        # до 2.5.1
+        $table_names = @{
+            'id'                    = 'id'
+            'forum_id'              = 'ss'
+            'name'                  = 'na'
+            'info_hash'             = 'hs'
+            'seeders'               = 'se'
+            'size'                  = 'si'
+            'status'                = 'st'
+            'reg_time'              = 'rt'
+            'seeders_updates_today' = 'qt'
+            'seeders_updates_days'  = 'ds'
+            'keeping_priority'      = 'pt'
+            'poster'                = 'ps'
+            'seeder_last_seen'      = 'ls'
+        }
+    }
+    return $table_names
+}
