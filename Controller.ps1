@@ -100,7 +100,7 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
 
 # $i = 0
 $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' -and $_.topic_id -ne '6336688' } | ForEach-Object {
-    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; start_date = $( $null -ne $db_data[$_.topic_id] -and $db_data[$_.topic_id] -gt 0 ? $db_data[$_.topic_id] : 0 ) }
+    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; start_date = $( $null -ne $db_data[$_.topic_id] -and $db_data[$_.topic_id] -gt 0 ? $db_data[$_.topic_id] : $_.completion_on ) }
     if ( $_.state -eq 'pausedUP' ) {
         $paused_sort.Add( [PSCustomObject]@{ hash = $_.hash; client = $_.client_key; start_date = $( $null -ne $db_data[$_.topic_id] -and $db_data[$_.topic_id] -gt 0 ? $db_data[$_.topic_id] : 0 ) } ) | Out-Null
     }
