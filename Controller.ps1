@@ -82,6 +82,7 @@ $paused_sort = [System.Collections.ArrayList]::new()
 
 if ( !$tracker_torrents) {
     Write-Log 'Автономный запуск, надо сходить на трекер за актуальными сидами и ID'
+    $forum = Set-ForumDetails # чтобы подтянуть настройки прокси для следующего шага
     $tracker_torrents = Get-TrackerTorrents $sections -1 # без ограничения на количество сидов
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
