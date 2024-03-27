@@ -143,7 +143,7 @@ foreach ( $client in $clients.keys ) {
 
 Write-Log 'Ищем давно стоящие раздачи'
 
-$paused_sort = ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' } | Sort-Object -Property start_date ) | Select-Object -First $old_starts_per_run | Sort-Object -Property client
+$paused_sort = ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' } | Sort-Object -Property start_date ) | Select-Object -First $old_starts_per_run | Sort-Object -Property client -Stable
 
 if ( $paused_sort ) {
     Write-Log 'Запускаем давно стоящие раздачи'

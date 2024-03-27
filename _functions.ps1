@@ -94,7 +94,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'update_stats'          = @{ prompt = 'Запускать обновление БД TLO если добавлены или обновлены раздачи? (Y/N)'; default = 'Y'; type = 'YN' }
         'update_obsolete'       = @{ prompt = 'Запускать обновление БД TLO даже если найдены только неактуальные раздачи? (Y/N)'; default = 'Y'; type = 'YN' }
         'send_reports'          = @{ prompt = 'Вызывать отправку отчётов если что-то изменилось? (Y/N)'; default = 'Y'; type = 'YN' }
-        'php_path'              = @{ prompt = 'Путь к интерпретатору PHP'; default = ''; type = 'string' }
+        'php_path'              = @{ prompt = 'Путь к интерпретатору PHP (вместе с именем исполняемого файла)'; default = ''; type = 'string' }
         'report_stalled'        = @{ prompt = 'Отправлять боту призыв о помощи по некачашкам более месяца? (Y/N)'; default = 'N'; type = 'YN' }
         'report_obsolete'       = @{ prompt = 'Сообщать в Telegram о неактуальных раздачах? (Y/N)'; default = 'Y'; type = 'YN' }
         'max_rehash_qty'        = @{ prompt = 'Максимальное количество отправляемых в рехэш раздач за один прогон?'; default = 10; type = 'number' }
@@ -754,7 +754,8 @@ function Set-StartStop ( $keys ) {
     }
     if ( $existing_keys -and $existing_keys.count -gt 0 ) {
         try {
-            Invoke-SqliteQuery -Query "UPDATE start_dates SET start_date = @st_date WHERE id IN (@id)" -SqlParameters @{ id = ( $hash_to_id[$existing_keys] -join ',' ) ; st_date = $now_epoch } -SQLiteConnection $conn
+            $list = "('" + ( $hash_to_id[$existing_keys] -join "','" ) + "')"
+            Invoke-SqliteQuery -Query "UPDATE start_dates SET start_date = @st_date WHERE id IN $list" -SqlParameters @{ st_date = $now_epoch } -SQLiteConnection $conn
         }
         catch {
             Write-Log 'Что-то пошло не так при обновлении даты запуска/остановки в БД, этого не должно было случиться' -Red
