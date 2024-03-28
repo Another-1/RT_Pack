@@ -56,7 +56,7 @@ $db_data = @{}
 $database_path = $PSScriptRoot + $separator + 'starts.db'
 Write-Log 'Подключаемся к БД запусков'
 $conn = Open-Database $database_path
-Invoke-SqliteQuery -Query ( "PRAGMA journal_mode = MEMORY" ) -SQLiteConnection $conn | Out-Null
+# Invoke-SqliteQuery -Query ( "PRAGMA journal_mode = MEMORY" ) -SQLiteConnection $conn | Out-Null
 Invoke-SqliteQuery -Query 'CREATE TABLE IF NOT EXISTS start_dates (id VARCHAR PRIMARY KEY NOT NULL, start_date INT)' -SQLiteConnection $conn
 Write-Log 'Выгружаем из БД даты запусков'
 Invoke-SqliteQuery -Query 'SELECT * FROM start_dates' -SQLiteConnection $conn | ForEach-Object { $db_data[$_.id] = $_.start_date } 
