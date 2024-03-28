@@ -739,11 +739,11 @@ function Stop-Torrents( $hashes, $client) {
 
 function Set-StartStop ( $keys ) {
     $now_epoch = ( Get-Date -UFormat %s ).ToInt32($null)
-    $new_keys = $keys | Where-Object { $states[$_].start_date -eq 0 }
-    $existing_keys = $keys | Where-Object { $states[$_].start_date -ne 0 }
+    $new_keys = $keys | Where-Object { !$db_data[$hash_to_id[$_]] }
+    $existing_keys = $keys | Where-Object { $db_data[$hash_to_id[$_]] }
 
     if ( $new_keys -and $new_keys.count -gt 0 ) {
-        $sql_values = '(' + ( $hash_to_id[ $new_keys ] -join ", $now_epoch ), (") + ", $now_epoch )"
+        $sql_values = '(' + ( $hash_to_id[ $new_keys ] -join ", $now_epoch ), (") + ", $now_epoch)"
         try {
             Invoke-SqliteQuery -Query "INSERT INTO start_dates (id,start_date) VALUES $sql_values" -SQLiteConnection $conn
         }
