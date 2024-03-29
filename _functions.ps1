@@ -42,15 +42,17 @@ function Test-Version ( $name ) {
                     if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
                 }
                 if ( $auto_update -eq 'Y' -and $debug -ne 1 ) {
-                    Write-Log 'Я обновился, запускаю нового себя'
+                    Write-Log "$name обновился, сохраняю новую версию"
                     Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name ) -Force
+                    Write-Log "Снимаю блокировку с запуска $name"
                     Unblock-File -Path ( Join-Path $PSScriptRoot $name )
                     if ( $name -ne '_functions.ps1' ) {
+                        Write-Log "Запускаю новую версию $name в отдельном окне, а тут выхожу"
                         Start-Process pwsh ( Join-Path $PSScriptRoot $name )
                         exit
                     }
                     else { 
-                        Write-Log 'Обновляем _functions'
+                        Write-Log "Запускаем новую версию  $name"
                         . ( Join-Path $PSScriptRoot $name )
                     }
                 }
