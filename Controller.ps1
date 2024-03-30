@@ -5,7 +5,7 @@ function  Start-batch {
     Set-StartStop $start_keys
 }
 function  Stop-batch {
-    $spell = Get-Spell $start_keys.count
+    $spell = Get-Spell $stop_keys.count
     Write-Log ( "Тормозим $spell в клиенте " + $clients[$client].name )
     Stop-Torrents $stop_keys $clients[$client]
     Set-StartStop $stop_keys
