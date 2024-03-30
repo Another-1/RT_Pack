@@ -877,3 +877,16 @@ function Get-DB_ColumnNames ($conn) {
     }
     return $table_names
 }
+
+function Get-Spell( $qty ) {
+    switch ( $qty % 100 ) {
+        { $PSItem -in ( 10..19 )} { return "$qty раздач" }
+        Default {
+            switch ( $qty % 10 ) {
+                { $PSItem -eq 1 } { return "$qty раздачу" }
+                { $PSItem -in ( 2..4 ) } { return "$qty раздачи" }
+                Default { return "$qty раздач" }
+            }
+        }
+    }
+}

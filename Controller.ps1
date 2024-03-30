@@ -1,10 +1,12 @@
 function  Start-batch {
-    Write-Log 'Запускаем пачку'
+    $spell = Get-Spell $start_keys.count
+    Write-Log ( "Запускаем $spell в клиенте " + $clients[$client].name )
     Start-Torrents $start_keys $clients[$client]
     Set-StartStop $start_keys
 }
 function  Stop-batch {
-    Write-Log 'Тормозим пачку'
+    $spell = Get-Spell $start_keys.count
+    Write-Log ( "Тормозим $spell в клиенте " + $clients[$client].name )
     Stop-Torrents $stop_keys $clients[$client]
     Set-StartStop $stop_keys
 }
