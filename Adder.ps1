@@ -116,7 +116,8 @@ if ( $get_blacklist -eq 'N' ) {
     if ( !$blacklist -or $blacklist.Count -eq 0 ) {
         $oldblacklist = Get-OldBlacklist
     }
-    Write-Log ( 'Раздач в чёрных списках: ' + ( $blacklist.Count + $oldblacklist.Count ) )
+    $spell = Get-Spell ( $blacklist.Count + $oldblacklist.Count ) 1 'torrents'
+    Write-Log "В чёрных списках $spell"
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
@@ -149,12 +150,14 @@ $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
 Write-Log 'Ищем новые раздачи'
 
 $new_torrents_keys = $tracker_torrents.keys | Where-Object { $null -eq $hash_to_id[$_] }
-Write-Log ( 'Новых раздач: ' + $new_torrents_keys.count )
+$spell = Get-Spell $new_torrents_keys.count 1 'torrents'
+Write-Log ( "Новых: $spell" )
 
 if ( $max_seeds -ne -1 ) {
     Write-Log "Отсеиваем с количеством сидов больше $max_seeds"
     $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].seeders -le $max_seeds }
-    Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
+    $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
+    Write-Log ( "Осталось : $spell" )
 }
 
 if ( $get_hidden -and $get_hidden -eq 'N' ) {

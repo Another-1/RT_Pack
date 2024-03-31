@@ -1,11 +1,11 @@
 function  Start-batch {
-    $spell = Get-Spell $start_keys.count
+    $spell = Get-Spell $start_keys.count 2
     Write-Log ( "Запускаем $spell в клиенте " + $clients[$client].name )
     Start-Torrents $start_keys $clients[$client]
     Set-StartStop $start_keys
 }
 function  Stop-batch {
-    $spell = Get-Spell $stop_keys.count
+    $spell = Get-Spell $stop_keys.count 2
     Write-Log ( "Тормозим $spell в клиенте " + $clients[$client].name )
     Stop-Torrents $stop_keys $clients[$client]
     Set-StartStop $stop_keys
@@ -36,6 +36,8 @@ if ( !$ini_data ) {
 $hours_to_stop = Test-Setting 'hours_to_stop'
 $ok_to_stop = ( Get-Date -UFormat %s ).ToInt32($null) - ( $hours_to_stop * 60 * 60 )
 $old_starts_per_run = Test-Setting 'old_starts_per_run'
+$min_stop_to_start  = Test-Setting 'min_stop_to_start'
+$ok_to_start = ( Get-Date -UFormat %s ).ToInt32($null) - ( $min_stop_to_start * 24 * 60 * 60 )
 $auto_update = Test-Setting 'auto_update'
 
 $global_seeds = $ini_data['topics_control'].peers
@@ -143,11 +145,15 @@ foreach ( $client in $clients.keys ) {
     }
 }
 
-Write-Log 'Ищем давно стоящие раздачи'
+$lv_str = Get-Spell $min_stop_to_start 1 'days'
+Write-Log "Ищем раздачи, остановленные более $lv_str"
 
-$paused_sort = ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' } | Sort-Object -Property start_date ) | Select-Object -First $old_starts_per_run | Sort-Object -Property client -Stable
+$paused_sort = ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.start_date -le $ok_to_start } | Sort-Object -Property start_date ) | Select-Object -First $old_starts_per_run | Sort-Object -Property client -Stable
+$lv_str = Get-Spell $paused_sort.count 1 'torrents'
 
-if ( $paused_sort ) {
+Write-Log "Найдено $lv_str"
+
+if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
     Write-Log 'Запускаем давно стоящие раздачи'
     $counter = 0
     $start_keys = @()

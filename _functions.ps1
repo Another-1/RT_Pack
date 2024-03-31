@@ -110,7 +110,8 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'start_errored'         = @{ prompt = 'Запускать на докачку раздачи с ошибкой рехэша?'; default = 'Y'; type = 'YN' }
         'ipfilter_path'         = @{ prompt = 'Имя файла блокировок? В клиентах должно быть указано аналогично'; default = 'C:\ipfiler.dat'; type = 'string' }
         'hours_to_stop'         = @{ prompt = 'Сколько минимум часов держать раздачу запущенной?'; default = 3; type = 'number' }
-        'old_starts_per_run'    = @{ prompt = 'Количество запускаемых за раз давно стоящих раздач? '; default = 100; type = 'number' }
+        'old_starts_per_run'    = @{ prompt = 'Максимальное количество запускаемых за раз давно стоящих раздач? '; default = 100; type = 'number' }
+        'min_stop_to_start'     = @{ prompt = 'Через сколько дней простоя обязательно запускать раздачу? '; default = 21; type = 'number' }
         'report_nowork'         = @{ prompt = 'Сообщать в Telegam если ничего не пришлось делать?'; default = 'Y'; type = 'YN' }
         'auto_update'           = @{ prompt = 'Автоматически обновлять версии скриптов?'; default = 'N'; type = 'YN' }
         'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота в /about_me)'; type = 'string' }
@@ -878,14 +879,14 @@ function Get-DB_ColumnNames ($conn) {
     return $table_names
 }
 
-function Get-Spell( $qty ) {
+function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
     switch ( $qty % 100 ) {
-        { $PSItem -in ( 10..19 )} { return "$qty раздач" }
+        { $PSItem -in ( 5..20 )} { return ( $entity -eq 'torrents' ? "$qty раздач" : "$qty дней" ) }
         Default {
             switch ( $qty % 10 ) {
-                { $PSItem -eq 1 } { return "$qty раздачу" }
-                { $PSItem -in ( 2..4 ) } { return "$qty раздачи" }
-                Default { return "$qty раздач" }
+                { $PSItem -eq 1 } { if ( $spelling -eq 1 )  { return ( $entity -eq 'torrents' ? "$qty раздача" : "$qty день" ) } else { return ( $entity -eq 'torrents' ? "$qty раздачу" : "$qty день" ) } }
+                { $PSItem -in ( 2..4 ) } { return ( $entity -eq 'torrents' ? "$qty раздачи" : "$qty дня" ) }
+                Default { return ( $entity -eq 'torrents' ? "$qty раздач" : "$qty дней" ) }
             }
         }
     }
