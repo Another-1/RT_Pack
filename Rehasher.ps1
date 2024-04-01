@@ -6,8 +6,8 @@ $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Output $str } else { Write-Output ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
 . ( $PSScriptRoot + $separator + '_functions.ps1' )
 
-Test-Version ( $PSCommandPath | Split-Path -Leaf )
 Test-Version ( '_functions.ps1' )
+Test-Version ( $PSCommandPath | Split-Path -Leaf )
 Test-PSVersion
 
 $max_rehash_qty = Test-Setting 'max_rehash_qty'
@@ -126,11 +126,11 @@ foreach ( $torrent in $full_data_sorted ) {
         $prev_state = ( Get-ClientTorrents $clients[$torrent.client_key] '' $false $torrent.hash $null $false ).state
         if ( $prev_state -eq 'pausedUP') { Write-Log 'Раздача уже остановлена, так и запишем' } else { Write-Log 'Раздача запущена, предварительно остановим' }
         if ( $prev_state -ne 'pausedUP' ) {
-            Write-Log ( 'Останавливаем ' + $torrent.name + ' в клиенте ' + $clients[$torrent.client_key].Name )
+            Write-Log ( 'Останавливаем раздачу"' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
             Stop-Torrents $torrent.hash $clients[$torrent.client_key]
         }
     }
-    Write-Log ( 'Отправляем в рехэш ' + $torrent.name + ' в клиенте ' + $clients[$torrent.client_key].Name )
+    Write-Log ( 'Отправляем в рехэш "' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
     Start-Rehash $clients[$torrent.client_key] $torrent.hash
     if ( !$db_data[$torrent.hash] ) {
         Invoke-SqliteQuery -Query "INSERT INTO rehash_dates (hash, rehash_date) VALUES (@hash, @epoch )" -SqlParameters @{ hash = $torrent.hash; epoch = ( Get-Date -UFormat %s ) }-SQLiteConnection $conn
@@ -148,20 +148,20 @@ foreach ( $torrent in $full_data_sorted ) {
         }
         $percentage = ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).progress
         if ( $percentage -lt 1 ) {
-            Write-Log ( 'Раздача ' + $torrent.name + ' битая! Полнота: ' + $percentage )
+            Write-Log ( 'Раздача "' + $torrent.name + '" битая! Полнота: ' + $percentage )
             if ( $start_errored -eq 'Y' ) {
                 Start-Torrents $torrent.hash $clients[$torrent.client_key]
             }
             $torrent | Add-Member -NotePropertyName topic_id -NotePropertyValue $null
             $torrents_list = @( $torrent )
             Get-TopicIDs -client $clients[$torrent.client_key] -torrent_list $torrents_list
-            $message = 'Битая раздача ' + $torrent.name + ' в клиенте http://' + $clients[$torrent.client_key].IP + ':' + $clients[$torrent.client_key].Port + `
-                ', полнота: ' + [math]::Round($percentage * 100) + '%, ссылка: https://rutracker.org/forum/viewtopic.php?t=' + $torrent.topic_id 
+            $message = 'Битая раздача <b>' + $torrent.name + "`n</b>в клиенте <b>" + $clients[$torrent.client_key].name + '</b> http://' + $clients[$torrent.client_key].IP + ':' + $clients[$torrent.client_key].Port + `
+                "`nполнота: " + [math]::Round($percentage * 100) + "%`nссылка: https://rutracker.org/forum/viewtopic.php?t=" + $torrent.topic_id 
             Send-TGMessage $message $tg_token $tg_chat
             Set-Comment $clients[$torrent.client_key] $torrent 'Битая'
         }
         else {
-            Write-Log ( 'Раздача ' + $torrent.name + ' в порядке' ) -Green
+            Write-Log ( 'Раздача "' + $torrent.name + '" в порядке' ) -Green
             if ( $prev_state -ne 'pausedUP' ) { 
                 Write-Log 'Запускаем раздачу обратно'
                 Start-Torrents $torrent.hash $clients[$torrent.client_key]
