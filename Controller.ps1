@@ -148,7 +148,8 @@ foreach ( $client in $clients.keys ) {
 $lv_str = Get-Spell $min_stop_to_start 1 'days'
 Write-Log "Ищем раздачи, остановленные более $lv_str"
 
-$paused_sort = ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.start_date -le $ok_to_start } | Sort-Object -Property start_date ) | Select-Object -First $old_starts_per_run | Sort-Object -Property client -Stable
+$paused_sort = ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.start_date -le $ok_to_start } | Sort-Object -Property client  | Sort-Object -Property start_date -Stable ) | `
+    Select-Object -First $old_starts_per_run | Sort-Object -Property client -Stable 
 $lv_str = Get-Spell $paused_sort.count 1 'torrents'
 
 Write-Log "Найдено $lv_str"
