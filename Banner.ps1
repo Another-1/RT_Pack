@@ -13,8 +13,8 @@ if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date
 
 $ipfilter_path = Test-Setting 'ipfilter_path'
 
-Test-Version ( $PSCommandPath | Split-Path -Leaf )
-Test-Version ( '_functions.ps1' )
+Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Banner'
+Test-Version ( '_functions.ps1' ) 'Banner'
 
 if ( -not ( [bool](Get-InstalledModule -Name PsIni -ErrorAction SilentlyContinue) ) ) {
     Write-Log 'Не установлен модуль PSIni для чтения настроек Web-TLO, ставим...'
@@ -40,8 +40,8 @@ try {
             Switch-Filtering $clients[$client_key] $true
             Write-Log 'Готово'
         }
-        if ( $tg_toke -and $tg_token -ne '' ) {
-            Send-TGMessage 'Обновился файл блокировок.' $tg_token $tg_chat
+        if ( $tg_token -and $tg_token -ne '' ) {
+            Send-TGMessage 'Обновился файл блокировок.' $tg_token $tg_chat 'Banner'
         }
     }
     else {

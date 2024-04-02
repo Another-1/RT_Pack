@@ -28,7 +28,7 @@ function Get-Separator {
     return $separator
 }
 
-function Test-Version ( $name ) {
+function Test-Version ( $name, $mess_sender ) {
     try {
         $old_hash = ( Get-FileHash -Path ( Join-Path $PSScriptRoot $name ) ).Hash
         $new_file_path = ( Join-Path $PSScriptRoot $name.replace( '.ps1', '.new' ) )
@@ -39,7 +39,7 @@ function Test-Version ( $name ) {
                 if ( $auto_update -eq 'N' ) {
                     $text = "$name обновился! Рекомендуется скачать новую версию."
                     Write-Log $text -Red
-                    if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat }
+                    if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat $mess_sender }
                 }
                 if ( $auto_update -eq 'Y' -and $debug -ne 1 ) {
                     Write-Log "$name обновился, сохраняю новую версию"
@@ -635,8 +635,9 @@ function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles ) {
     }
 }
 
-function Send-TGMessage ( $message, $token, $chat_id ) {
+function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
     if ( $token -ne '' ) {
+        if ( $mention_script_tg -eq 'Y' -and $mess_sender -ne '' ) { $message = "<b>$mess_sender</b> имеет сообщить:`n`n" + $message }
         $payload = @{
             "chat_id"                  = $chat_id
             "parse_mode"               = 'html'
@@ -720,11 +721,11 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $token, $chat_id ) {
                 }
             }
         }
-        Send-TGMessage $message $token $chat_id
+        Send-TGMessage $message $token $chat_id 'Adder'
     }
     else {
         $message = 'Ничего делать не понадобилось'
-        Send-TGMessage $message $token $chat_id
+        Send-TGMessage $message $token $chat_id 'Adder'
     }
 }
 
@@ -881,10 +882,10 @@ function Get-DB_ColumnNames ($conn) {
 
 function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
     switch ( $qty % 100 ) {
-        { $PSItem -in ( 5..20 )} { return ( $entity -eq 'torrents' ? "$qty раздач" : "$qty дней" ) }
+        { $PSItem -in ( 5..20 ) } { return ( $entity -eq 'torrents' ? "$qty раздач" : "$qty дней" ) }
         Default {
             switch ( $qty % 10 ) {
-                { $PSItem -eq 1 } { if ( $spelling -eq 1 )  { return ( $entity -eq 'torrents' ? "$qty раздача" : "$qty день" ) } else { return ( $entity -eq 'torrents' ? "$qty раздачу" : "$qty день" ) } }
+                { $PSItem -eq 1 } { if ( $spelling -eq 1 ) { return ( $entity -eq 'torrents' ? "$qty раздача" : "$qty день" ) } else { return ( $entity -eq 'torrents' ? "$qty раздачу" : "$qty день" ) } }
                 { $PSItem -in ( 2..4 ) } { return ( $entity -eq 'torrents' ? "$qty раздачи" : "$qty дня" ) }
                 Default { return ( $entity -eq 'torrents' ? "$qty раздач" : "$qty дней" ) }
             }

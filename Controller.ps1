@@ -21,8 +21,8 @@ if ( !$ini_data ) {
     . "$PSScriptRoot\_functions.ps1"
 
     Write-Log 'Проверяем актуальность скриптов' 
-    Test-Version ( '_functions.ps1' ) -alert $alert_oldies
-    Test-Version ( $PSCommandPath | Split-Path -Leaf ) $alert_oldies
+    Test-Version '_functions.ps1' 'Controller'
+    Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Controller'
 
     if ( !$ini_data ) {
         Test-Module 'PsIni' 'для чтения настроек TLO'

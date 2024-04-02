@@ -6,8 +6,8 @@ $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Output $str } else { Write-Output ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
 . ( $PSScriptRoot + $separator + '_functions.ps1' )
 
-Test-Version ( '_functions.ps1' )
-Test-Version ( $PSCommandPath | Split-Path -Leaf )
+Test-Version '_functions.ps1' 'Rehasher'
+Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Rehasher'
 Test-PSVersion
 
 $max_rehash_qty = Test-Setting 'max_rehash_qty'
@@ -157,7 +157,7 @@ foreach ( $torrent in $full_data_sorted ) {
             Get-TopicIDs -client $clients[$torrent.client_key] -torrent_list $torrents_list
             $message = 'Битая раздача <b>' + $torrent.name + "`n</b>в клиенте <b>" + $clients[$torrent.client_key].name + '</b> http://' + $clients[$torrent.client_key].IP + ':' + $clients[$torrent.client_key].Port + `
                 "`nполнота: " + [math]::Round($percentage * 100) + "%`nссылка: https://rutracker.org/forum/viewtopic.php?t=" + $torrent.topic_id 
-            Send-TGMessage $message $tg_token $tg_chat
+            Send-TGMessage $message $tg_token $tg_chat "Rehasher"
             Set-Comment $clients[$torrent.client_key] $torrent 'Битая'
         }
         else {

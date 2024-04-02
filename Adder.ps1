@@ -13,8 +13,8 @@ Test-PSVersion
 Test-Module 'PsIni' 'для чтения настроек TLO'
 Test-Module 'PSSQLite' 'для работы с базой TLO'
 Write-Log 'Проверяем актуальность скриптов' 
-Test-Version ( '_functions.ps1' ) -alert $alert_oldies
-Test-Version ( $PSCommandPath | Split-Path -Leaf ) $alert_oldies
+Test-Version ( '_functions.ps1' ) 'Adder'
+Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Adder'
 
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
 Write-Log 'Проверяем наличие всех нужных настроек'
@@ -396,7 +396,7 @@ if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 -
     Send-TGReport $refreshed $added $obsolete $tg_token $tg_chat
 }
 elseif ( $report_nowork -eq 'Y' -and $tg_token -ne '' -and $tg_chat -ne '' ) { 
-    Send-TGMessage 'Adder отработал, ничего делать не пришлось.' $tg_token $tg_chat
+    Send-TGMessage ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Adder' ) + ' отработал, ничего делать не пришлось.' ) $tg_token $tg_chat 'Adder'
 }
 
 if ( $report_stalled -eq 'Y' ) {
@@ -430,7 +430,7 @@ If ( Test-Path -Path $report_flag_file ) {
     }
     else {
         # Update-Stats -check -send_reports:( $send_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона. Но с проверкой по чётному времени.
-        Update-Stats -send_reports:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # без паузы, так как это сработал флаг от предыдущего прогона.
+        Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # без паузы, так как это сработал флаг от предыдущего прогона.
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
 }
