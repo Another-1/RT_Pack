@@ -127,7 +127,7 @@ foreach ( $client in $clients.keys ) {
                 $start_keys += $_
                 $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
             }
-            elseif ( $states[$_].state -in @('uploading', 'stalledUP') -and $tracker_torrents[$_].seeders -gt ( $section_seeds[$tracker_torrents[$_].section] ) -and $states[$_].start_date -le $ok_to_stop ) {
+            elseif ( ( $states[$_].state -in @('uploading', 'stalledUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced )) -and $tracker_torrents[$_].seeders -gt ( $section_seeds[$tracker_torrents[$_].section] ) -and $states[$_].start_date -le $ok_to_stop ) {
                 if ( $stop_keys.count -eq $batch_size ) {
                     Stop-batch
                     $stop_keys = @()
