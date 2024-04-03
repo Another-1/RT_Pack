@@ -28,7 +28,7 @@ function Get-Separator {
     return $separator
 }
 
-function Test-Version ( $name, $mess_sender ) {
+function Test-Version ( $name, $mess_sender = '') {
     try {
         $old_hash = ( Get-FileHash -Path ( Join-Path $PSScriptRoot $name ) ).Hash
         $new_file_path = ( Join-Path $PSScriptRoot $name.replace( '.ps1', '.new' ) )
@@ -39,7 +39,7 @@ function Test-Version ( $name, $mess_sender ) {
                 if ( $auto_update -eq 'N' ) {
                     $text = "$name обновился! Рекомендуется скачать новую версию."
                     Write-Log $text -Red
-                    if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage $text $tg_token $tg_chat $mess_sender }
+                    if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage -message $text -token $tg_token -chat_id $tg_chat -mess_sender -mess_sender $mess_sender }
                 }
                 if ( $auto_update -eq 'Y' -and $debug -ne 1 ) {
                     Write-Log "$name обновился, сохраняю новую версию"
@@ -326,7 +326,7 @@ function Get-Clients ( [switch]$LocalOnly ) {
     return $clients
 }
 
-function Initialize-Client ($client, [switch]$verbose, [switch]$force ) {
+function Initialize-Client ( $client, $mess_sender = '', [switch]$verbose, [switch]$force ) {
     if ( !$client.sid -or $force ) {
         $logindata = @{ username = $client.login; password = $client.password }
         $loginheader = @{ Referer = 'http://' + $client.IP + ':' + $client.Port }
@@ -348,14 +348,14 @@ function Initialize-Client ($client, [switch]$verbose, [switch]$force ) {
         catch {
             Write-Log ( '[client] Не удалось авторизоваться в клиенте, прерываем. Ошибка: {0}.' -f $Error[0] ) -Red
             if ( $tg_token -ne '' ) {
-                Send-TGMessage ( 'Нет связи с клиентом ' + $client.Name + '. Процесс остановлен.' ) $tg_token $tg_chat
+                Send-TGMessage ( 'Нет связи с клиентом ' + $client.Name + '. Процесс остановлен.' ) $tg_token $tg_chat $mess_sender
             }
             Exit
         }
     }
 }
 
-function  Get-ClientTorrents ( $client, $disk = '', [switch]$completed, $hash, $client_key, [switch]$verbose ) {
+function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$completed, $hash, $client_key, [switch]$verbose ) {
     $Params = @{}
     if ( $completed ) {
         $Params.filter = 'completed'
@@ -375,14 +375,14 @@ function  Get-ClientTorrents ( $client, $disk = '', [switch]$completed, $hash, $
                 Where-Object { $_.save_path -match ('^' + $dsk ) }
         }
         catch {
-            Initialize-Client $client -force -verbose $verbose
+            Initialize-Client $client $mess_sender -force -verbose $verbose
             $i++
         }
         if ( $json_content -or $i -gt 3 ) { break }
     }
     if ( !$json_content ) {
         if ( $tg_token -ne '' ) { 
-            Send-TGMessage ( 'Не удалось получить список раздач от клиента ' + $client.Name. + ', Выполнение прервано.' ) $tg_token $tg_chat
+            Send-TGMessage -message ( 'Не удалось получить список раздач от клиента ' + $client.Name. + ', Выполнение прервано.' ) -token $tg_token -chat_id $tg_chat -mess_sender $mess_sender
         }
         Write-Log ( 'Не удалось получить список раздач от клиента ' + $client.Name )
     }
@@ -391,12 +391,12 @@ function  Get-ClientTorrents ( $client, $disk = '', [switch]$completed, $hash, $
     return $torrents_list
 }
 
-function Get-ClientsTorrents ($clients, [switch]$completed, [switch]$noIDs) {
+function Get-ClientsTorrents ($clients, $mess_sender = '', [switch]$completed, [switch]$noIDs) {
     $clients_torrents = @()
     foreach ($clientkey in $clients.Keys ) {
         $client = $clients[ $clientkey ]
-        Initialize-Client( $client ) -verbose
-        $client_torrents = Get-ClientTorrents -client $client -client_key $clientkey -verbose -completed:$completed
+        Initialize-Client $client $mess_sender -verbose
+        $client_torrents = Get-ClientTorrents -client $client -client_key $clientkey -verbose -completed:$completed -mess_sender $mess_sender
         if ( $noIDs.IsPresent -eq $false ) { Get-TopicIDs $client $client_torrents }
         $clients_torrents += $client_torrents
     }
@@ -427,7 +427,7 @@ function Get-TopicIDs ( $client, $torrent_list ) {
     }
 }
 
-function Add-ClientTorrent ( $Client, $File, $Path, $Category, [switch]$Skip_checking ) {
+function Add-ClientTorrent ( $Client, $File, $Path, $Category, $mess_sender = '', [switch]$Skip_checking ) {
     $Params = @{
         torrents      = Get-Item $File
         savepath      = $Path
@@ -456,7 +456,7 @@ function Add-ClientTorrent ( $Client, $File, $Path, $Category, [switch]$Skip_che
             }
             catch {
                 $i++
-                Initialize-Client $client -force
+                Initialize-Client $client $mress_sender -force
                 Start-Sleep -Seconds 1
             }
         }
@@ -611,7 +611,7 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
 
 function Send-Report () {
     Write-Log 'Шлём отчёт'
-    . $php_path "$tlo_path\cron\reports.php"
+    . $php_path ( Join-Path $tlo_path 'cron' 'reports.php' )
 }
 
 function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles ) {
@@ -648,7 +648,7 @@ function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
     Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
 }
 
-function Send-TGReport ( $refreshed, $added, $obsolete, $token, $chat_id ) {
+function Send-TGReport ( $refreshed, $added, $obsolete, $token, $chat_id, $mess_sender ) {
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 ) {
         if ( $brief_reports -ne 'Y') {
             # полная сводка в ТГ
@@ -721,11 +721,11 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $token, $chat_id ) {
                 }
             }
         }
-        Send-TGMessage $message $token $chat_id 'Adder'
+        Send-TGMessage -message $message -token $token -chat_id $chat_id -mess_sender $mess_sender
     }
     else {
         $message = 'Ничего делать не понадобилось'
-        Send-TGMessage $message $token $chat_id 'Adder'
+        Send-TGMessage -message $message -token $token -chat_id $chat_id -mess_sender $mess_sender
     }
 }
 

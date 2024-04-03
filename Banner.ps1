@@ -41,7 +41,7 @@ try {
             Write-Log 'Готово'
         }
         if ( $tg_token -and $tg_token -ne '' ) {
-            Send-TGMessage 'Обновился файл блокировок.' $tg_token $tg_chat 'Banner'
+            Send-TGMessage -message 'Обновился файл блокировок.' -token $tg_token $tg_chat 'Banner'
         }
     }
     else {

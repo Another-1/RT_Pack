@@ -36,7 +36,7 @@ if ( !$ini_data ) {
 $hours_to_stop = Test-Setting 'hours_to_stop'
 $ok_to_stop = ( Get-Date -UFormat %s ).ToInt32($null) - ( $hours_to_stop * 60 * 60 )
 $old_starts_per_run = Test-Setting 'old_starts_per_run'
-$min_stop_to_start  = Test-Setting 'min_stop_to_start'
+$min_stop_to_start = Test-Setting 'min_stop_to_start'
 $ok_to_start = ( Get-Date -UFormat %s ).ToInt32($null) - ( $min_stop_to_start * 24 * 60 * 60 )
 $auto_update = Test-Setting 'auto_update'
 
@@ -91,7 +91,7 @@ if ( !$tracker_torrents) {
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
-    $clients_torrents = Get-ClientsTorrents $clients
+    $clients_torrents = Get-ClientsTorrents $clients 'Controller'
     $hash_to_id = @{}
     $id_to_info = @{}
     
@@ -104,7 +104,7 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
 }
 
 # $i = 0
-$clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' -and $_.topic_id -ne '6336688' } | ForEach-Object {
+$clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
     $states[$_.hash] = @{ client = $_.client_key; state = $_.state; start_date = $( $null -ne $db_data[$_.topic_id] -and $db_data[$_.topic_id] -gt 0 ? $db_data[$_.topic_id] : $_.completion_on ) }
     if ( $_.state -eq 'pausedUP' ) {
         $paused_sort.Add( [PSCustomObject]@{ hash = $_.hash; client = $_.client_key; start_date = $( $null -ne $db_data[$_.topic_id] -and $db_data[$_.topic_id] -gt 0 ? $db_data[$_.topic_id] : 0 ) } ) | Out-Null
@@ -114,7 +114,8 @@ $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '3
 $batch_size = 400
 
 foreach ( $client in $clients.keys ) {
-    Write-Log ( 'Регулируем клиент ' + $clients[$client].Name )
+    Write-Log ( 'Регулируем клиент ' + $clients[$client].Name + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
+
     $start_keys = @()
     $stop_keys = @()
     $states.Keys | Where-Object { $states[$_].client -eq $client } | ForEach-Object {
@@ -149,7 +150,7 @@ $lv_str1 = Get-Spell $min_stop_to_start 1 'days'
 $lv_str2 = Get-Spell $old_starts_per_run 1 'torrents'
 Write-Log "Ищем раздачи, остановленные более $lv_str1 в количестве не более $lv_str2"
 
-$paused_sort = ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.start_date -le $ok_to_start } | Sort-Object -Property client  | Sort-Object -Property start_date -Stable ) | `
+$paused_sort = ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.start_date -le $ok_to_start } | Sort-Object -Property client | Sort-Object -Property start_date -Stable ) | `
     Select-Object -First $old_starts_per_run | Sort-Object -Property client
 $lv_str = Get-Spell $paused_sort.count 1 'torrents'
 

@@ -41,7 +41,7 @@ $ini_data = Get-IniContent $ini_path
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
-    $clients_torrents = Get-ClientsTorrents $clients -noIDs -completed
+    $clients_torrents = Get-ClientsTorrents $clients 'Rehasher' -noIDs -completed
 }
 
 Write-Log 'Исключаем уже хэшируемые и стояшие в очереди на рехэш'
@@ -123,7 +123,7 @@ foreach ( $torrent in $full_data_sorted ) {
     }    
     if ( $wait_finish -eq 'Y' ) {
         Write-Log ( 'Будем рехэшить раздачу "' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name + ' размером ' + ( to_kmg $torrent.size 1 ))
-        $prev_state = ( Get-ClientTorrents $clients[$torrent.client_key] '' $false $torrent.hash $null $false ).state
+        $prev_state = ( Get-ClientTorrents $clients[$torrent.client_key] -mess_sender 'Rehasher' -hash $torrent.hash ).state
         if ( $prev_state -eq 'pausedUP') { Write-Log 'Раздача уже остановлена, так и запишем' } else { Write-Log 'Раздача запущена, предварительно остановим' }
         if ( $prev_state -ne 'pausedUP' ) {
             Write-Log ( 'Останавливаем раздачу"' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
@@ -143,10 +143,10 @@ foreach ( $torrent in $full_data_sorted ) {
     if ( $wait_finish -eq 'Y' ) {
         Start-Sleep -Seconds $check_state_delay
         Write-Log 'Подождём окончания рехэша'
-        while ( ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).state -like 'checking*' ) {
+        while ( ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' ).state -like 'checking*' ) {
             Start-Sleep -Seconds $check_state_delay
         }
-        $percentage = ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash ).progress
+        $percentage = ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' ).progress
         if ( $percentage -lt 1 ) {
             Write-Log ( 'Раздача "' + $torrent.name + '" битая! Полнота: ' + $percentage )
             if ( $start_errored -eq 'Y' ) {

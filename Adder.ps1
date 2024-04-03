@@ -90,7 +90,7 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
             $db_return = ( Invoke-SqliteQuery -Query ( 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $_ + ' AND ' + $columnNames['name'] + ' NOT LIKE "%' + ( ($group_mask -replace ('\s', '%')) -join '%" AND ' + $columnNames['name'] + ' NOT LIKE "%' ) + '%"' ) -SQLiteConnection $conn )
             if ( $db_return ) {
                 $masks_db[$_] = $db_return.GetEnumerator() | ForEach-Object { @{$_.id.ToString() = 1 } }
-                Write-Output ( 'По разделу ' + $_ + ' найдено ' + $masks_db[$_].count + ' неподходящих раздач' )
+                Write-Log ( 'По разделу ' + $_ + ' найдено ' + $masks_db[$_].count + ' неподходящих раздач' )
             }
             $masks_like[$_] = $group_mask -replace ('^|$|\s', '*')
         }
@@ -126,7 +126,7 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torr
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
-    $clients_torrents = Get-ClientsTorrents $clients
+    $clients_torrents = Get-ClientsTorrents $clients 'Adder'
 }
 
 $hash_to_id = @{}
@@ -203,7 +203,7 @@ if ( $forced_sections_array ) {
     Write-Output ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
-if ( $masks_db ) {
+if ( $masks_db_plain ) {
     Write-Output 'Отфильтровываем раздачи по маскам'
     $new_torrents_keys = $new_torrents_keys | Where-Object { !$masks_db_plain[$tracker_torrents[$_].id] }
     Write-Output ( 'Осталось раздач: ' + $new_torrents_keys.count )
@@ -282,7 +282,7 @@ if ( $new_torrents_keys ) {
             # While ($true) {
             Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
             Start-Sleep -Seconds 5
-            $new_tracker_data.name = ( Get-ClientTorrents -client $client -hash $new_torrent_key ).name
+            $new_tracker_data.name = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder' ).name
             # # на случай, если в pvc были устаревшие данные, и по старому хшу раздача не находится, будем считать, что имя совпало.
             # if ( $null -eq $new_tracker_data.name ) { $new_tracker_data.name = $existing_torrent.name }
             # if ( $null -ne $new_tracker_data.name ) { break }
@@ -297,21 +297,21 @@ if ( $new_torrents_keys ) {
             Start-Sleep -Milliseconds 100 
         }
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( ( $new_tracker_data.reg_time -lt ( ( Get-Date -UFormat %s  ).ToInt32($nul) - $min_secs ) ) -or $new_tracker_data.status -eq 2 ) ) {
-            $is_ok = $true
-            if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.id] ) { $is_ok = $false }
+            # $mask_passed = $true
+            if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.id] ) { $mask_passed = $false }
             else {
                 if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
                     $new_tracker_data.name = ( Get-ForumTorrentInfo $new_tracker_data.id ).name
-                    $is_ok = $false
+                    $mask_passed = $false
                     $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
-                        if ( -not $is_ok -and $new_tracker_data.name -like $_ ) {
-                            $is_ok = $true
+                        if ( -not $mask_passed -and $new_tracker_data.name -like $_ ) {
+                            $mask_passed = $true
                         }
                     }
                 }
             }
-            if ( -not $is_ok ) {
-                Write-Log ( 'Раздача ' + $new_tracker_data.name + ' отброшена фильтрами' )
+            if ( $masks_db -and -not $mask_passed ) {
+                Write-Log ( 'Раздача ' + $new_tracker_data.name + ' отброшена масками' )
                 continue
             }
             if ( $new_tracker_data.section -in $skip_sections ) {
@@ -348,6 +348,11 @@ if ( $new_torrents_keys ) {
                 }
             }
             Add-ClientTorrent $client $new_torrent_file $save_path $section_details[$new_tracker_data.section].label
+            If ( $mask_passed -eq $true ) {
+                Start-Sleep -Seconds 1
+                $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder'
+                Set-Comment $client $client_torrent 'По маске'
+            }
         }
         elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( ( Get-Date -UFormat %s ).ToInt32($nul) - $min_days * 86400 ) ) {
             Write-Log ( 'Раздача ' + $new_tracker_data.id + ' слишком новая.' )
@@ -393,10 +398,10 @@ elseif ( $update_stats -ne 'Y' -or !$php_path ) {
 }
 
 if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 -or $notify_nowork -eq 'Y' ) -and $tg_token -ne '' -and $tg_chat -ne '' ) {
-    Send-TGReport $refreshed $added $obsolete $tg_token $tg_chat
+    Send-TGReport -refreshed $refreshed -added $added -obsolete $obsolete -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'
 }
 elseif ( $report_nowork -eq 'Y' -and $tg_token -ne '' -and $tg_chat -ne '' ) { 
-    Send-TGMessage ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Adder' ) + ' отработал, ничего делать не пришлось.' ) $tg_token $tg_chat 'Adder'
+    Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Adder' ) + ' отработал, ничего делать не пришлось.' ) -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'
 }
 
 if ( $report_stalled -eq 'Y' ) {
