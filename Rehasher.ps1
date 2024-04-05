@@ -157,7 +157,7 @@ foreach ( $torrent in $full_data_sorted ) {
             Get-TopicIDs -client $clients[$torrent.client_key] -torrent_list $torrents_list
             $message = 'Битая раздача <b>' + $torrent.name + "`n</b>в клиенте <b>" + $clients[$torrent.client_key].name + '</b> http://' + $clients[$torrent.client_key].IP + ':' + $clients[$torrent.client_key].Port + `
                 "`nполнота: " + [math]::Round($percentage * 100) + "%`nссылка: https://rutracker.org/forum/viewtopic.php?t=" + $torrent.topic_id 
-            Send-TGMessage $message $tg_token $tg_chat "Rehasher"
+            Send-TGMessage -message $message -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
             Set-Comment $clients[$torrent.client_key] $torrent 'Битая'
         }
         else {
@@ -182,6 +182,12 @@ foreach ( $torrent in $full_data_sorted ) {
 Write-Log 'Прогон завершён'
 Write-Log ( "Отправлено в рехэш: $sum_cnt раздач объёмом " + ( $sum_size -eq 0 ? 0 : ( to_kmg $sum_size 1 ) ) )
 Write-Log ( 'Осталось: ' + ( $was_count - $sum_cnt ) + ' раздач объёмом ' + ( ( $was_sum_size - $sum_size ) -eq 0 ? 0 : ( to_kmg( $was_sum_size - $sum_size ) 1 ) ) )
+
+if ( $report_rehasher -eq 'Y' ) {
+    $message = "Прогон завершён`nОтправлено в рехэш: $sum_cnt раздач объёмом " + ( $sum_size -eq 0 ? 0 : ( to_kmg $sum_size 1 ) ) + "`nОсталось: " + ( $was_count - $sum_cnt ) + ' раздач объёмом ' + ( ( $was_sum_size - $sum_size ) -eq 0 ? 0 : ( to_kmg( $was_sum_size - $sum_size ) 1 ) )
+    Send-TGMessage -message $message -mess_sender 'Rehasher' -chat_id $tg_chat -token $tg_token
+}
+
 
 $conn.Close()
 # Remove-Item -Path ( $PSScriptRoot + $separator + 'rehasher.lck') | Out-Null
