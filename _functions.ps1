@@ -900,6 +900,20 @@ function Get-APISeeding ( $id, $api_key, $seding_days ) {
     $seed_dates = @{}
     foreach ( $section in $sections ) {
         $url = "https://rep.rutracker.cc/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&only_reported_releases=1&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
+
+        if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
+            if ( $forum.proxyCred ) {
+                ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred ).Content | ConvertFrom-Json | Select-Object kept_releases -ExpandProperty kept_releases | ForEach-Object { $seed_dates[$_[0].ToString()] = $_[1] } 
+            }
+            else {
+                ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL ).Content | ConvertFrom-Json | Select-Object kept_releases -ExpandProperty kept_releases | ForEach-Object { $seed_dates[$_[0].ToString()] = $_[1] } 
+            }
+        }
+        else {
+                ( Invoke-WebRequest -Uri $url -Headers $headers  ).Content | ConvertFrom-Json | Select-Object kept_releases -ExpandProperty kept_releases | ForEach-Object { $seed_dates[$_[0].ToString()] = $_[1] } 
+        }
+
+
         ( Invoke-WebRequest -Uri $url -Headers $headers ).Content | ConvertFrom-Json | Select-Object kept_releases -ExpandProperty kept_releases | ForEach-Object { $seed_dates[$_[0].ToString()] = $_[1] }
     }
     return $seed_dates
