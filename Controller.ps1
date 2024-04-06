@@ -2,13 +2,13 @@ function  Start-batch {
     $spell = Get-Spell $start_keys.count 2
     Write-Log ( "Запускаем $spell в клиенте " + $clients[$client].name )
     Start-Torrents $start_keys $clients[$client]
-    Set-StartStop $start_keys
+    # Set-StartStop $start_keys
 }
 function  Stop-batch {
     $spell = Get-Spell $stop_keys.count 2
     Write-Log ( "Тормозим $spell в клиенте " + $clients[$client].name )
     Stop-Torrents $stop_keys $clients[$client]
-    Set-StartStop $stop_keys
+    # Set-StartStop $stop_keys
 }
 
 if ( !$ini_data ) {
@@ -34,52 +34,19 @@ if ( !$ini_data ) {
     }
 }
 $hours_to_stop = Test-Setting 'hours_to_stop'
-$ok_to_stop = ( Get-Date -UFormat %s ).ToInt32($null) - ( $hours_to_stop * 60 * 60 )
+$ok_to_stop = ( Get-Date ).AddHours( 0 - $hours_to_stop )
 $old_starts_per_run = Test-Setting 'old_starts_per_run'
 $min_stop_to_start = Test-Setting 'min_stop_to_start'
-$ok_to_start = ( Get-Date -UFormat %s ).ToInt32($null) - ( $min_stop_to_start * 24 * 60 * 60 )
+$ok_to_start = ( Get-Date ).AddDays( 0 - $min_stop_to_start )
 $auto_update = Test-Setting 'auto_update'
 
 $global_seeds = $ini_data['topics_control'].peers
 $section_seeds = @{}
-# if ( $nul -ne $single_seed_time ) {
-#     if ( ( $single_seed_time.start -lt $single_seed_time.end -and ( Get-Date -Format 'HH' ) -in ( $single_seed_time.start..$single_seed_time.end ) ) `
-#             -or ( $single_seed_time.start -gt $single_seed_time.end -and ( Get-Date -Format 'HH' ) -in ( $single_seed_time.end..$single_seed_time.start ) )
-#     ) {
-#         if ( ( Get-Date -Format 'dddd' ) -notin @( 'суббота', 'воскресенье') ) {
-#             Write-Log 'Аншлаг на раздачах, регулируем всё в 2'
-#         }
-#         else { Write-Log 'Выходной, регулируем всё по настройкам.' }    
-#     }
-#     else {
-#         Write-Log 'Не аншлаг на раздачах, регулируем всё по настройкам.'
-#     }
-# }
-
-$db_data = @{}
-$database_path = $PSScriptRoot + $separator + 'starts.db'
-Write-Log 'Подключаемся к БД запусков'
-$conn = Open-Database $database_path
-# Invoke-SqliteQuery -Query ( "PRAGMA journal_mode = MEMORY" ) -SQLiteConnection $conn | Out-Null
-Invoke-SqliteQuery -Query 'CREATE TABLE IF NOT EXISTS start_dates (id VARCHAR PRIMARY KEY NOT NULL, start_date INT)' -SQLiteConnection $conn
-Write-Log 'Выгружаем из БД даты запусков'
-Invoke-SqliteQuery -Query 'SELECT * FROM start_dates' -SQLiteConnection $conn | ForEach-Object { $db_data[$_.id] = $_.start_date } 
 
 Write-Log 'Строим таблицы'
 $sections = $ini_data.sections.subsections.split( ',' )
 $section_details = Get-IniSectionDetails $sections
-$sections | ForEach-Object {
-    $section_seeds[$_] = ( $section_details[$_].control_peers -ne '' ? $section_details[$_].control_peers : $global_seeds )
-    #     if (
-    #         $nul -ne $single_seed_time `
-    #             -and ( $single_seed_time.start -lt $single_seed_time.end -and ( Get-Date -Format 'HH' ) -in ( $single_seed_time.start..$single_seed_time.end ) `
-    #                 -or ( $single_seed_time.start -gt $single_seed_time.end -and ( Get-Date -Format 'HH' ) -in ( $single_seed_time.end..$single_seed_time.start ) ) ) `
-    #             -and $section_seeds[$_.ToInt32($nul)] -lt 4 `
-    #             -and ( ( Get-Date -Format 'dddd' ) -notin @( 'суббота', 'воскресенье') )
-    #     ) {
-    #         $section_seeds[$_.ToInt32($nul)] = 2 
-    #     }
-}
+$sections | ForEach-Object { $section_seeds[$_] = ( $section_details[$_].control_peers -ne '' ? $section_details[$_].control_peers : $global_seeds ) }
     
 $states = @{}
 $paused_sort = [System.Collections.ArrayList]::new()
@@ -87,7 +54,7 @@ $paused_sort = [System.Collections.ArrayList]::new()
 if ( !$tracker_torrents) {
     Write-Log 'Автономный запуск, надо сходить на трекер за актуальными сидами и ID'
     $forum = Set-ForumDetails # чтобы подтянуть настройки прокси для следующего шага
-    $tracker_torrents = Get-TrackerTorrents $sections -1 # без ограничения на количество сидов
+    $tracker_torrents = Get-TrackerTorrents $sections -1 # без ограничения на количество сидов. Нужно чтобы получить оттуда сидов.
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
@@ -103,11 +70,13 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     }
 }
 
+Write-Log 'Выгружаем даты запусков по хранимым раздачам'
+$api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
 # $i = 0
 $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
-    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; start_date = $( $null -ne $db_data[$_.topic_id] -and $db_data[$_.topic_id] -gt 0 ? $db_data[$_.topic_id] : $_.completion_on ) }
+    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; start_date = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : (([System.DateTimeOffset]::FromUnixTimeSeconds($_.completion_on)).DateTime) ) }
     if ( $_.state -eq 'pausedUP' ) {
-        $paused_sort.Add( [PSCustomObject]@{ hash = $_.hash; client = $_.client_key; start_date = $( $null -ne $db_data[$_.topic_id] -and $db_data[$_.topic_id] -gt 0 ? $db_data[$_.topic_id] : 0 ) } ) | Out-Null
+        $paused_sort.Add( [PSCustomObject]@{ hash = $_.hash; client = $_.client_key; start_date = $states[$_.hash].start_date } ) | Out-Null
     }
 }
 
@@ -179,11 +148,3 @@ if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
         Start-batch
     }
 }
-if ( $id_to_info ) {
-    Write-Log 'Очищаем БД запусков от неактуальных раздач'
-    $db_data.keys | Where-Object { !$id_to_info[$_] } | ForEach-Object {
-        Invoke-SqliteQuery -Query "DELETE FROM start_dates WHERE id = @id" -SqlParameters @{ id = $_ } -SQLiteConnection $conn | ForEach-Object { $db_data[$_.id] = $_.start_date }
-    }
-}
-$conn.Close()
-Remove-Variable -Name conn

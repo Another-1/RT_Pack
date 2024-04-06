@@ -892,3 +892,15 @@ function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
         }
     }
 }
+
+function Get-APISeeding ( $id, $api_key, $seding_days ) {
+    $headers = @{
+        # Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($ini_data.'torrent-tracker'.user_id + ':' + $ini_data.'torrent-tracker'.api_key ))
+        Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key ))
+    }
+    $url = "https://rep.rutracker.cc/krs/api/v1/keeper/10126551/reports?only_subforums_marked_as_kept=true&only_reported_releases=1&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time"
+
+    $seed_dates = @{}
+    (Invoke-WebRequest -Uri $url -Headers $headers).Content | ConvertFrom-Json | Select-Object kept_releases -ExpandProperty kept_releases | ForEach-Object { $seed_dates[$_[0].ToString()] = $_[1] }
+    return $seed_dates
+}
