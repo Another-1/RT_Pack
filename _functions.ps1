@@ -899,6 +899,7 @@ function Get-APISeeding ( $id, $api_key, $seding_days ) {
     }
     $seed_dates = @{}
     foreach ( $section in $sections ) {
+        Write-Log "Запрашиваем историю сидирования по разделу $section"
         $url = "https://rep.rutracker.cc/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&only_reported_releases=1&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
 
         if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
