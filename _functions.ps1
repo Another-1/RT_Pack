@@ -912,9 +912,6 @@ function Get-APISeeding ( $id, $api_key, $seding_days ) {
         else {
                 ( Invoke-WebRequest -Uri $url -Headers $headers  ).Content | ConvertFrom-Json | Select-Object kept_releases -ExpandProperty kept_releases | ForEach-Object { $seed_dates[$_[0].ToString()] = $_[1] } 
         }
-
-
-        ( Invoke-WebRequest -Uri $url -Headers $headers ).Content | ConvertFrom-Json | Select-Object kept_releases -ExpandProperty kept_releases | ForEach-Object { $seed_dates[$_[0].ToString()] = $_[1] }
     }
     return $seed_dates
 }
