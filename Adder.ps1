@@ -348,10 +348,10 @@ if ( $new_torrents_keys ) {
                 }
             }
             Add-ClientTorrent $client $new_torrent_file $save_path $section_details[$new_tracker_data.section].label
-            If ( $mask_passed -eq $true ) {
+            If ( $mask_passed -eq $true -and $null -ne $mask_label ) {
                 Start-Sleep -Seconds 1
                 $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder'
-                Set-Comment $client $client_torrent @( $null -ne $mask_label ? $mask_label : 'По маске' )
+                Set-Comment $client $client_torrent $mask_label
             }
         }
         elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( ( Get-Date -UFormat %s ).ToInt32($nul) - $min_days * 86400 ) ) {
