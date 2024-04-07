@@ -12,3 +12,4 @@ ipfilter.dat
 *.new
 *.was
 *.journal
+_masks.ps1

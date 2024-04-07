@@ -351,7 +351,7 @@ if ( $new_torrents_keys ) {
             If ( $mask_passed -eq $true ) {
                 Start-Sleep -Seconds 1
                 $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder'
-                Set-Comment $client $client_torrent 'По маске'
+                Set-Comment $client $client_torrent @( $null -ne $mask_label ? $mask_label : 'По маске' )
             }
         }
         elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( ( Get-Date -UFormat %s ).ToInt32($nul) - $min_days * 86400 ) ) {
