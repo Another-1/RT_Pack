@@ -100,8 +100,10 @@ foreach ( $client in $clients.keys ) {
             }
             elseif ( ( $states[$_].state -in @('uploading', 'stalledUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced )) `
                     -and $tracker_torrents[$_].seeders -gt ( $section_seeds[$tracker_torrents[$_].section] ) `
-                    -and $states[$_].completion_on -le $ok_to_stop `
-                    -and $states[$_].last_seen_date -gt $ok_to_start ) {
+                    -and $states[$_].last_seen_date -gt $ok_to_stop
+                    # -and $states[$_].completion_on -le $ok_to_stop `
+                    # -and $states[$_].last_seen_date -gt $ok_to_start `
+                    ) {
 
                 if ( $stop_keys.count -eq $batch_size ) {
                     Stop-batch
