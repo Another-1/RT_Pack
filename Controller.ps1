@@ -34,10 +34,10 @@ if ( !$ini_data ) {
     }
 }
 $hours_to_stop = Test-Setting 'hours_to_stop'
-$ok_to_stop = ( Get-Date ).AddHours( 0 - $hours_to_stop )
+$ok_to_stop = (Get-Date).ToUniversalTime().AddHours( 0 - $hours_to_stop )
 $old_starts_per_run = Test-Setting 'old_starts_per_run'
 $min_stop_to_start = Test-Setting 'min_stop_to_start'
-$ok_to_start = ( Get-Date ).AddDays( 0 - $min_stop_to_start )
+$ok_to_start = (Get-Date).ToUniversalTime().AddDays( 0 - $min_stop_to_start )
 $auto_update = Test-Setting 'auto_update'
 
 $global_seeds = $ini_data['topics_control'].peers
