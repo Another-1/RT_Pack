@@ -75,7 +75,7 @@ $api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $
 # $i = 0
 $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
     # $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : (([System.DateTimeOffset]::FromUnixTimeSeconds($_.completion_on)).DateTime) ) }
-    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) ); completion_on = $_.completion_on }
+    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) ) }
     if ( $_.state -eq 'pausedUP' ) {
         $paused_sort.Add( [PSCustomObject]@{ hash = $_.hash; client = $_.client_key; last_seen_date = $states[$_.hash].last_seen_date } ) | Out-Null
     }
@@ -126,8 +126,8 @@ $lv_str1 = Get-Spell $min_stop_to_start 1 'days'
 $lv_str2 = Get-Spell $old_starts_per_run 1 'torrents'
 Write-Log "Ищем раздачи, остановленные более $lv_str1 в количестве не более $lv_str2"
 
-$paused_sort = ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.last_seen_date -le $ok_to_start } | Sort-Object -Property client | Sort-Object -Property last_seen_date -Stable ) | `
-    Select-Object -First $old_starts_per_run | Sort-Object -Property client
+$paused_sort = @( ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.last_seen_date -le $ok_to_start } | Sort-Object -Property client | Sort-Object -Property last_seen_date -Stable ) | `
+    Select-Object -First $old_starts_per_run | Sort-Object -Property client )
 $lv_str = Get-Spell $paused_sort.count 1 'torrents'
 
 Write-Log "Найдено $lv_str"
