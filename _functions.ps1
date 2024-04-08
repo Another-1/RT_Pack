@@ -1,13 +1,15 @@
-function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [switch]$skip_timestamp ) {
+function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [switch]$skip_timestamp, [switch]$nologfile) {
     if ( $use_timestamp -ne 'Y' -or $skip_timestamp ) {
         if ( $Red ) { Write-Host $str -ForegroundColor Red -NoNewline:$NoNewLine }
         elseif ( $Green ) { Write-Host $str -ForegroundColor Green -NoNewline:$NoNewLine }
         else { Write-Host $str -NoNewline:$NoNewLine }
+        if ( $log_path -and -not $nologfile.IsPresent) { Write-Output $str.Replace('...','') | Out-File $log_path -Append | Out-Null }
     }
     else {
         if ( $Red ) { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -ForegroundColor Red -NoNewline:$NoNewLine }
         elseif ( $Green ) { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -ForegroundColor Green -NoNewline:$NoNewLine }
         else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -NoNewline:$NoNewLine } 
+        if ( $log_path -and -not $nologfile.IsPresent ) { Write-Output ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str.Replace('...','') ) | Out-File $log_path -Append | Out-Null }
     }
 }
  
@@ -252,7 +254,7 @@ function Get-SectionTorrents ( $forum, $section ) {
         }
         catch { Start-Sleep -Seconds 10; $i++; Write-Host "Попытка номер $i" -ForegroundColor Cyan }
     }
-    Write-Log ( 'Получено раздач: ' + $tmp_torrents.count ) -skip_timestamp
+    Write-Log ( 'Получено раздач: ' + $tmp_torrents.count ) -skip_timestamp -nologfile
     if ( !$tmp_torrents ) {
         Write-Host 'Не получилось' -ForegroundColor Red
         exit 
