@@ -3,7 +3,7 @@ function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [sw
         if ( $Red ) { Write-Host $str -ForegroundColor Red -NoNewline:$NoNewLine }
         elseif ( $Green ) { Write-Host $str -ForegroundColor Green -NoNewline:$NoNewLine }
         else { Write-Host $str -NoNewline:$NoNewLine }
-        if ( $log_path -and -not $nologfile.IsPresent) { Write-Output $str.Replace('...', '') | Out-File $log_path -Append | Out-Null }
+        if ( $log_path -and -not $nologfile.IsPresent) { Write-Output $str.Replace('...', '') | Out-File $log_path -Append -Encoding utf8 | Out-Null }
     }
     else {
         if ( $Red ) { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -ForegroundColor Red -NoNewline:$NoNewLine }
