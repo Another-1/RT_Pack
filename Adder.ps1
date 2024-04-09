@@ -121,7 +121,8 @@ if ( $get_blacklist -eq 'N' ) {
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
-    $tracker_torrents = Get-TrackerTorrents $sections
+    # $tracker_torrents = Get-TrackerTorrents $sections
+    $tracker_torrents = Get-APITorrents -sections $sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
@@ -162,38 +163,38 @@ if ( $max_seeds -ne -1 ) {
 
 if ( $get_hidden -and $get_hidden -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи из скрытых разделов'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].hidden_section -eq '0' }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $section_details[$tracker_torrents[$_].section].hide_topics -eq '0' }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
 if ( $get_shown -and $get_shown -eq 'N' ) { 
     Write-Log 'Отсеиваем раздачи из видимых разделов'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].hidden_section -eq '1' }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $section_details[$tracker_torrents[$_].section].hide_topics -eq '1' }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
 if ( $get_lows -and $get_lows.ToUpper() -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи с низким приоритетом'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].priority -ne '0' }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].keeping_priority -ne '0' }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
 if ( $get_mids -and $get_mids.ToUpper() -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи со средним приоритетом'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].priority -ne '1' }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].keeping_priority -ne '1' }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
 if ( $get_highs -and $get_highs.ToUpper() -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи с высоким приоритетом'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].priority -ne '2' }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].keeping_priority -ne '2' }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
 if ( $nul -ne $get_blacklist -and $get_blacklist.ToUpper() -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи из чёрного списка'
     if ( $blacklist.Count -ne 0 ) { $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $blacklist[$_] } }
-    if ( $oldblacklist -and $oldblacklist.Count -ne 0 ) { $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $oldblacklist[$tracker_torrents[$_].id] } }
+    if ( $oldblacklist -and $oldblacklist.Count -ne 0 ) { $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $oldblacklist[$tracker_torrents[$_].topic_id] } }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
@@ -205,7 +206,7 @@ if ( $forced_sections_array ) {
 
 if ( $masks_db_plain ) {
     Write-Output 'Отфильтровываем раздачи по маскам'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { !$masks_db_plain[$tracker_torrents[$_].id] }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { !$masks_db_plain[$tracker_torrents[$_].topic_id] }
     Write-Output ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
@@ -217,10 +218,10 @@ if ( $new_torrents_keys ) {
     foreach ( $new_torrent_key in $new_torrents_keys ) {
         $new_tracker_data = $tracker_torrents[$new_torrent_key]
         $subfolder_kind = $section_details[$new_tracker_data.section].data_subfolder
-        $existing_torrent = $id_to_info[ $new_tracker_data.id ]
+        $existing_torrent = $id_to_info[ $new_tracker_data.topic_id ]
         if ( $existing_torrent ) {
             $client = $clients[$existing_torrent.client_key]
-            Write-Log ( "Раздача " + $new_tracker_data.id + ' обнаружена в клиенте ' + $client.Name )
+            Write-Log ( "Раздача " + $new_tracker_data.topic_id + ' обнаружена в клиенте ' + $client.Name )
         }
         else {
             $client = $clients[$section_details[$new_tracker_data.section].client]
@@ -229,7 +230,7 @@ if ( $new_torrents_keys ) {
             }
         }
         
-        if ( $new_tracker_data.releaser -in $priority_releasers.keys ) {
+        if ( $new_tracker_data.topic_poster -in $priority_releasers.keys ) {
             $min_secs = $priority_releasers[$new_tracker_data.releaser] * 86400
         }
         else {
@@ -237,33 +238,33 @@ if ( $new_torrents_keys ) {
         }
         if ( $existing_torrent ) {
             if ( !$forum.sid ) { Initialize-Forum $forum }
-            $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.id
+            $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
-            $new_tracker_data.name = ( Get-ForumTorrentInfo $new_tracker_data.id ).name
-            $text = "Обновляем раздачу " + $new_tracker_data.id + " " + $new_tracker_data.name + ' в клиенте ' + $client.Name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.size 1 ) + ')'
+            $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title
+            $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.Name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
                 if ( !$refreshed[ $client.Name ] ) { $refreshed[ $client.Name] = @{} }
                 if ( !$refreshed[ $client.Name ][ $new_tracker_data.section] ) { $refreshed[ $client.Name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
                 if ( $ssd ) {
                     $refreshed[ $client.Name][ $new_tracker_data.section ] += [PSCustomObject]@{
-                        id       = $new_tracker_data.id
+                        id       = $new_tracker_data.topic_id
                         comment  = ( $on_ssd ? ' SSD' : ' HDD' ) + ' ' + $existing_torrent.save_path[0]
-                        name     = $new_tracker_data.name
+                        name     = $new_tracker_data.topic_title
                         old_size = $existing_torrent.size
-                        new_size = $new_tracker_data.size
+                        new_size = $new_tracker_data.tor_size_bytes
                     }
                 }
                 else {
                     $refreshed[ $client.Name][ $new_tracker_data.section ] += [PSCustomObject]@{
-                        id       = $new_tracker_data.id
+                        id       = $new_tracker_data.topic_id
                         comment  = ''
-                        name     = $new_tracker_data.name
+                        name     = $new_tracker_data.topic_title
                         old_size = $existing_torrent.size
-                        new_size = $new_tracker_data.size
+                        new_size = $new_tracker_data.tor_size_bytes
                     }
                 }
-                $refreshed_ids += $new_tracker_data.id
+                $refreshed_ids += $new_tracker_data.topic_id
             }
             # подмена временного каталога если раздача хранится на SSD.
             if ( $ssd ) {
@@ -282,55 +283,55 @@ if ( $new_torrents_keys ) {
             # While ($true) {
             Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
             Start-Sleep -Seconds 5
-            $new_tracker_data.name = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder' ).name
+            $new_tracker_data.topic_title = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder' ).name
             # # на случай, если в pvc были устаревшие данные, и по старому хшу раздача не находится, будем считать, что имя совпало.
             # if ( $null -eq $new_tracker_data.name ) { $new_tracker_data.name = $existing_torrent.name }
             # if ( $null -ne $new_tracker_data.name ) { break }
 
             # }
-            if ( $null -ne $new_tracker_data.name -and $new_tracker_data.name -eq $existing_torrent.name -and $subfolder_kind -le '2') {
+            if ( $null -ne $new_tracker_data.topic_title -and $new_tracker_data.topic_title -eq $existing_torrent.name -and $subfolder_kind -le '2') {
                 Remove-ClientTorrent $client $existing_torrent.hash
             }
-            elseif ($null -ne $new_tracker_data.name ) {
+            elseif ($null -ne $new_tracker_data.topic_title ) {
                 Remove-ClientTorrent $client $existing_torrent.hash -deleteFiles
             }
             Start-Sleep -Milliseconds 100 
         }
-        elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( ( $new_tracker_data.reg_time -lt ( ( Get-Date -UFormat %s  ).ToInt32($nul) - $min_secs ) ) -or $new_tracker_data.status -eq 2 ) ) {
+        elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( ( $new_tracker_data.reg_time -lt ( ( Get-Date -UFormat %s  ).ToInt32($nul) - $min_secs ) ) -or $new_tracker_data.tor_status -eq 2 ) ) {
             # $mask_passed = $true
-            if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.id] ) { $mask_passed = $false }
+            if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.topic_id] ) { $mask_passed = $false }
             else {
                 if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
-                    $new_tracker_data.name = ( Get-ForumTorrentInfo $new_tracker_data.id ).name
+                    $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title
                     $mask_passed = $false
                     $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
-                        if ( -not $mask_passed -and $new_tracker_data.name -like $_ ) {
+                        if ( -not $mask_passed -and $new_tracker_data.topic_title -like $_ ) {
                             $mask_passed = $true
                         }
                     }
                 }
             }
             if ( $masks_db -and -not $mask_passed ) {
-                Write-Log ( 'Раздача ' + $new_tracker_data.name + ' отброшена масками' )
+                Write-Log ( 'Раздача ' + $new_tracker_data.topic_title + ' отброшена масками' )
                 continue
             }
             if ( $new_tracker_data.section -in $skip_sections ) {
-                # Write-Log ( 'Раздача ' + $new_tracker_data.id + ' из необновляемого раздела' )
+                # Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' из необновляемого раздела' )
                 continue
             }
             if ( !$forum.sid ) { Initialize-Forum $forum }
-            $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.id
-            if ( $null -eq $new_tracker_data.name ) { $new_tracker_data.name = ( Get-ForumTorrentInfo $new_tracker_data.id ).name }
-            $text = "Добавляем раздачу " + $new_tracker_data.id + " " + $new_tracker_data.name + ' в клиент ' + $client.Name + ' (' + ( to_kmg $new_tracker_data.size 1 ) + ')'
+            $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
+            if ( $null -eq $new_tracker_data.topic_title ) { $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title }
+            $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиент ' + $client.Name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
                 if ( !$added[ $client.Name ] ) { $added[ $client.Name ] = @{} }
                 if ( !$added[ $client.Name ][ $new_tracker_data.section ] ) { $added[ $client.Name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
-                $added[ $client.Name][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.id; name = $new_tracker_data.name; size = $new_tracker_data.size }
+                $added[ $client.Name][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
             }
             $save_path = $section_details[$new_tracker_data.section].data_folder
             if ( $subfolder_kind -eq '1' ) {
-                $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_tracker_data.id # добавляем ID к имени папки для сохранения
+                $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_tracker_data.topic_id # добавляем ID к имени папки для сохранения
             }       
             elseif ( $subfolder_kind -eq '2' ) {
                 $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_torrent_key  # добавляем hash к имени папки для сохранения
@@ -355,13 +356,13 @@ if ( $new_torrents_keys ) {
             }
         }
         elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( ( Get-Date -UFormat %s ).ToInt32($nul) - $min_days * 86400 ) ) {
-            Write-Log ( 'Раздача ' + $new_tracker_data.id + ' слишком новая.' )
+            Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' слишком новая.' )
         }
         elseif ( $get_news -ne 'Y') {
             # раздача новая, но выбрано не добавлять новые. Значит ничего и не делаем.
         }
         else {
-            Write-Log ( 'Случилось что-то странное на раздаче ' + $new_tracker_data.id + ' лучше остановимся' ) -Red
+            Write-Log ( 'Случилось что-то странное на раздаче ' + $new_tracker_data.topic_id + ' лучше остановимся' ) -Red
             exit
         }
     }
@@ -371,7 +372,7 @@ Remove-Variable -Name obsolete -ErrorAction SilentlyContinue
 if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report_obsolete -eq 'Y' ) {
     Write-Log 'Ищем неактуальные раздачи.'
     $obsolete_keys = $hash_to_id.Keys | Where-Object { !$tracker_torrents[$_] } | Where-Object { $refreshed_ids -notcontains $hash_to_id[$_] } | `
-        Where-Object { $tracker_torrents.Values.id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] }
+        Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] }
     if ( $skip_obsolete ) {
         $obsolete_keys = $obsolete_keys | Where-Object { $clients[$id_to_info[$hash_to_id[$_]].client_key].Name -notin $skip_obsolete }
     }
@@ -430,11 +431,9 @@ if ( $report_stalled -eq 'Y' ) {
 If ( Test-Path -Path $report_flag_file ) {
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
         # что-то добавилось, стоит подождать.
-        # Update-Stats -wait -check -send_report:( $send_reports -eq 'Y' ) # с паузой и проверкой условия по чётному времени.
         Update-Stats -wait -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # с паузой.
     }
     else {
-        # Update-Stats -check -send_reports:( $send_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона. Но с проверкой по чётному времени.
         Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # без паузы, так как это сработал флаг от предыдущего прогона.
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue

@@ -20,11 +20,11 @@ if ( !$ini_data ) {
     if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
     . "$PSScriptRoot\_functions.ps1"
 
-    Write-Log 'Проверяем актуальность скриптов' 
-    Test-Version '_functions.ps1' 'Controller'
+    Write-Log 'Проверяем актуальность Controller' 
     Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Controller'
 
     if ( !$ini_data ) {
+        Test-Version '_functions.ps1' 'Controller'
         Test-Module 'PsIni' 'для чтения настроек TLO'
         Test-Module 'PSSQLite' 'для работы с базой TLO'
         $tlo_path = Test-Setting 'tlo_path' -required
@@ -54,7 +54,8 @@ $paused_sort = [System.Collections.ArrayList]::new()
 if ( !$tracker_torrents) {
     Write-Log 'Автономный запуск, надо сходить на трекер за актуальными сидами и ID'
     $forum = Set-ForumDetails # чтобы подтянуть настройки прокси для следующего шага
-    $tracker_torrents = Get-TrackerTorrents $sections -1 # без ограничения на количество сидов. Нужно чтобы получить оттуда сидов.
+    # $tracker_torrents = Get-TrackerTorrents $sections -1 # без ограничения на количество сидов. Нужно чтобы получить оттуда сидов.
+    $tracker_torrents = Get-APITorrents -sections $sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
