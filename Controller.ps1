@@ -76,7 +76,7 @@ $api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $
 # $i = 0
 $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
     # $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : (([System.DateTimeOffset]::FromUnixTimeSeconds($_.completion_on)).DateTime) ) }
-    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) ) }
+    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id.ToString()] -and $api_seeding[$_.topic_id.ToString()] -gt 0 ? $api_seeding[$_.topic_id.ToString()] : ( $ok_to_start ).AddDays( -1 ) ) }
     if ( $_.state -eq 'pausedUP' ) {
         $paused_sort.Add( [PSCustomObject]@{ hash = $_.hash; client = $_.client_key; last_seen_date = $states[$_.hash].last_seen_date } ) | Out-Null
     }

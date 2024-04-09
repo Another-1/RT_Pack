@@ -231,10 +231,10 @@ if ( $new_torrents_keys ) {
         }
         
         if ( $new_tracker_data.topic_poster -in $priority_releasers.keys ) {
-            $min_secs = $priority_releasers[$new_tracker_data.releaser] * 86400
+            $min_delay = $priority_releasers[$new_tracker_data.releaser]
         }
         else {
-            $min_secs = $min_days * 86400
+            $min_delay = $min_days
         }
         if ( $existing_torrent ) {
             if ( !$forum.sid ) { Initialize-Forum $forum }
@@ -297,7 +297,7 @@ if ( $new_torrents_keys ) {
             }
             Start-Sleep -Milliseconds 100 
         }
-        elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( ( $new_tracker_data.reg_time -lt ( ( Get-Date -UFormat %s  ).ToInt32($nul) - $min_secs ) ) -or $new_tracker_data.tor_status -eq 2 ) ) {
+        elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) ) {
             # $mask_passed = $true
             if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.topic_id] ) { $mask_passed = $false }
             else {
