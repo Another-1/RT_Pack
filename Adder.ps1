@@ -231,7 +231,7 @@ if ( $new_torrents_keys ) {
         }
         
         if ( $new_tracker_data.topic_poster -in $priority_releasers.keys ) {
-            $min_delay = $priority_releasers[$new_tracker_data.releaser]
+            $min_delay = $priority_releasers[$new_tracker_data.topic_poster]
         }
         else {
             $min_delay = $min_days
