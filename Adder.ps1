@@ -138,8 +138,8 @@ $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
     if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
     $hash_to_id[$_.infohash_v1] = $_.topic_id
 
-    $id_to_info[$_.topic_id.ToInt64($null)] = @{
-        client_key = $_.client_key
+    $id_to_info[$_.topic_id] = @{
+        client_key = $_.client_key # string
         save_path  = $_.save_path
         category   = $_.category
         name       = $_.name
@@ -355,7 +355,7 @@ if ( $new_torrents_keys ) {
                 Set-Comment $client $client_torrent $mask_label
             }
         }
-        elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( ( Get-Date -UFormat %s ).ToInt32($nul) - $min_days * 86400 ) ) {
+        elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( (Get-Date).ToUniversalTime().AddDays( 0 - $min_days ) ) ) {
             Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' слишком новая.' )
         }
         elseif ( $get_news -ne 'Y') {

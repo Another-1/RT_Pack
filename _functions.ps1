@@ -345,7 +345,7 @@ function Get-TopicIDs ( $client, $torrent_list ) {
     Write-Log 'Ищем ID раздач по хэшам от клиента в данных от трекера'
     if ( $torrent_list.count -gt 0 ) {
         $torrent_list | ForEach-Object {
-            if ( $null -ne $tracker_torrents ) { $_.topic_id = $tracker_torrents[$_.hash.toUpper()].topic_id }
+            if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int64]$tracker_torrents[$_.hash.toUpper()].topic_id }
             if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
                 # Write-Log ( 'Не нашлось информации по ID для раздачи ' + $_.hash.toUpper() + ', попробуем достать из клиента')
                 $Params = @{ hash = $_.hash }
@@ -354,10 +354,7 @@ function Get-TopicIDs ( $client, $torrent_list ) {
                     Start-Sleep -Milliseconds 10
                 }
                 catch { }
-                $_.topic_id = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
-                # if ( $_.topic_id -ne '' -and $null -ne $_.topic_id ) {
-                #     Write-Log 'из клиента добыть ID получилось'
-                # }
+                $_.topic_id = ( Select-String "\d*$" -InputObject $comment ).Matches.Value.ToInt64($null)
             }
         }
         $success = ( $torrent_list | Where-Object { $_.topic_id } ).count
@@ -672,32 +669,32 @@ function Stop-Torrents( $hashes, $client) {
     Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
 }
 
-function Set-StartStop ( $keys ) {
-    $now_epoch = ( Get-Date -UFormat %s ).ToInt32($null)
-    $new_keys = $keys | Where-Object { !$db_data[$hash_to_id[$_]] }
-    $existing_keys = $keys | Where-Object { $db_data[$hash_to_id[$_]] }
+# function Set-StartStop ( $keys ) {
+#     $now_epoch = ( Get-Date -UFormat %s ).ToInt32($null)
+#     $new_keys = $keys | Where-Object { !$db_data[$hash_to_id[$_]] }
+#     $existing_keys = $keys | Where-Object { $db_data[$hash_to_id[$_]] }
 
-    if ( $new_keys -and $new_keys.count -gt 0 ) {
-        $sql_values = '(' + ( $hash_to_id[ $new_keys ] -join ", $now_epoch ), (") + ", $now_epoch)"
-        try {
-            Invoke-SqliteQuery -Query "INSERT INTO start_dates (id,start_date) VALUES $sql_values" -SQLiteConnection $conn
-        }
-        catch { 
-            Write-Log 'Что-то пошло не так при записи даты запуска/остановки в БД, этого не должно было случиться' -Red
-            Pause
-        }
-    }
-    if ( $existing_keys -and $existing_keys.count -gt 0 ) {
-        try {
-            $list = "('" + ( $hash_to_id[$existing_keys] -join "','" ) + "')"
-            Invoke-SqliteQuery -Query "UPDATE start_dates SET start_date = @st_date WHERE id IN $list" -SqlParameters @{ st_date = $now_epoch } -SQLiteConnection $conn
-        }
-        catch {
-            Write-Log 'Что-то пошло не так при обновлении даты запуска/остановки в БД, этого не должно было случиться' -Red
-            Pause
-        }
-    }
-}
+#     if ( $new_keys -and $new_keys.count -gt 0 ) {
+#         $sql_values = '(' + ( $hash_to_id[ $new_keys ] -join ", $now_epoch ), (") + ", $now_epoch)"
+#         try {
+#             Invoke-SqliteQuery -Query "INSERT INTO start_dates (id,start_date) VALUES $sql_values" -SQLiteConnection $conn
+#         }
+#         catch { 
+#             Write-Log 'Что-то пошло не так при записи даты запуска/остановки в БД, этого не должно было случиться' -Red
+#             Pause
+#         }
+#     }
+#     if ( $existing_keys -and $existing_keys.count -gt 0 ) {
+#         try {
+#             $list = "('" + ( $hash_to_id[$existing_keys] -join "','" ) + "')"
+#             Invoke-SqliteQuery -Query "UPDATE start_dates SET start_date = @st_date WHERE id IN $list" -SqlParameters @{ st_date = $now_epoch } -SQLiteConnection $conn
+#         }
+#         catch {
+#             Write-Log 'Что-то пошло не так при обновлении даты запуска/остановки в БД, этого не должно было случиться' -Red
+#             Pause
+#         }
+#     }
+# }
 
 function Get-IniSections ( [switch]$useForced ) {
     $result = @()
