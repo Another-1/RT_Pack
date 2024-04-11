@@ -354,7 +354,8 @@ function Get-TopicIDs ( $client, $torrent_list ) {
                     Start-Sleep -Milliseconds 10
                 }
                 catch { }
-                $_.topic_id = ( Select-String "\d*$" -InputObject $comment ).Matches.Value.ToInt64($null)
+                $ending = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
+                $_.topic_id = $( $ending -ne '' ? $ending.ToInt64($null) : $null )
             }
         }
         $success = ( $torrent_list | Where-Object { $_.topic_id } ).count

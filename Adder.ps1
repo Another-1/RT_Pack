@@ -89,7 +89,7 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
         ( $_.Key -replace ( '\s*', '')).split(',') | ForEach-Object {
             $db_return = ( Invoke-SqliteQuery -Query ( 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $_ + ' AND ' + $columnNames['name'] + ' NOT LIKE "%' + ( ($group_mask -replace ('\s', '%')) -join '%" AND ' + $columnNames['name'] + ' NOT LIKE "%' ) + '%"' ) -SQLiteConnection $conn )
             if ( $db_return ) {
-                $masks_db[$_] = $db_return.GetEnumerator() | ForEach-Object { @{$_.id.ToString() = 1 } }
+                $masks_db[$_] = $db_return.GetEnumerator() | ForEach-Object { @{$_.id.ToInt64($null) = 1 } } # Список всех неподходящих раздач по этому разделу
                 Write-Log ( 'По разделу ' + $_ + ' найдено ' + $masks_db[$_].count + ' неподходящих раздач' )
             }
             $masks_like[$_] = $group_mask -replace ('^|$|\s', '*')
