@@ -13,8 +13,9 @@ if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date
 
 $ipfilter_path = Test-Setting 'ipfilter_path'
 
-Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Banner'
+Write-Log 'Проверяем версии скриптов'
 Test-Version ( '_functions.ps1' ) 'Banner'
+Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Banner'
 
 if ( -not ( [bool](Get-InstalledModule -Name PsIni -ErrorAction SilentlyContinue) ) ) {
     Write-Log 'Не установлен модуль PSIni для чтения настроек Web-TLO, ставим...'

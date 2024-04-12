@@ -876,7 +876,7 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states) {
                 $line | Add-Member -MemberType NoteProperty -Name $_ -Value $null
             }
             $line | Add-Member -MemberType NoteProperty -Name section -Value $section
-            $line | Add-Member -MemberType NoteProperty -Name topic_title -Value $null
+            # $line | Add-Member -MemberType NoteProperty -Name topic_title -Value $null
             $lines = @{}
             $hash_column = $columns.keys | Where-Object { $columns[$_] -eq 'info_hash' }
             $status_column = $columns.keys | Where-Object { $columns[$_] -eq 'tor_status' }
@@ -901,64 +901,64 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states) {
 }
 
 
-function Get-TrackerTorrents ( $sections ) {
-    Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
-    $i = 1
-    do {
-        try {
-            if ($i -gt 1 ) { Write-Log "Попытка номер $i" }
-            $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_status_titles'
-            $titles = ($content | ConvertFrom-Json -AsHashtable ).result
-            if ( $titles ) { break }
-        }
-        catch { Start-Sleep -Seconds 10; $i++ }
-    }
-    until ( $i -ge 5 )
-    if (!$titles) {
-        Write-Log 'Нет связи с API трекера, выходим' -Red
-        exit
-    }
-    $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
-    $tracker_torrents = @{}
-    foreach ( $section in $sections ) {
+# function Get-TrackerTorrents ( $sections ) {
+#     Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
+#     $i = 1
+#     do {
+#         try {
+#             if ($i -gt 1 ) { Write-Log "Попытка номер $i" }
+#             $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_status_titles'
+#             $titles = ($content | ConvertFrom-Json -AsHashtable ).result
+#             if ( $titles ) { break }
+#         }
+#         catch { Start-Sleep -Seconds 10; $i++ }
+#     }
+#     until ( $i -ge 5 )
+#     if (!$titles) {
+#         Write-Log 'Нет связи с API трекера, выходим' -Red
+#         exit
+#     }
+#     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
+#     $tracker_torrents = @{}
+#     foreach ( $section in $sections ) {
  
-        $section_torrents = Get-SectionTorrents $forum $section
-        $section_torrents.Keys | Where-Object { $section_torrents[$_][0] -in $ok_states } | ForEach-Object {
-            $tracker_torrents[$section_torrents[$_][7]] = @{
-                id             = $_
-                section        = $section
-                status         = $section_torrents[$_][0]
-                name           = $null
-                reg_time       = $section_torrents[$_][2]
-                size           = $section_torrents[$_][3]
-                priority       = $section_torrents[$_][4]
-                seeders        = $section_torrents[$_][1]
-                hidden_section = $section_details[$section].hide_topics
-                releaser       = $section_torrents[$_][8].ToInt32($null)
-            }
-        }
-    }
-    return $tracker_torrents
-}
+#         $section_torrents = Get-SectionTorrents $forum $section
+#         $section_torrents.Keys | Where-Object { $section_torrents[$_][0] -in $ok_states } | ForEach-Object {
+#             $tracker_torrents[$section_torrents[$_][7]] = @{
+#                 id             = $_
+#                 section        = $section
+#                 status         = $section_torrents[$_][0]
+#                 name           = $null
+#                 reg_time       = $section_torrents[$_][2]
+#                 size           = $section_torrents[$_][3]
+#                 priority       = $section_torrents[$_][4]
+#                 seeders        = $section_torrents[$_][1]
+#                 hidden_section = $section_details[$section].hide_topics
+#                 releaser       = $section_torrents[$_][8].ToInt32($null)
+#             }
+#         }
+#     }
+#     return $tracker_torrents
+# }
 
-function Get-SectionTorrents ( $forum, $section ) {
-    $i = 1
-    Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
-    while ( $true) {
-        try {
-            $content = Get-HTTP "https://api.rutracker.cc/v1/static/pvc/f/$section"
-            $tmp_torrents = ( $content | ConvertFrom-Json -AsHashtable ).result
-            break
-        }
-        catch { Start-Sleep -Seconds 10; $i++; Write-Host "Попытка номер $i" -ForegroundColor Cyan }
-    }
-    Write-Log ( 'Получено раздач: ' + $tmp_torrents.count ) -skip_timestamp -nologfile
-    if ( !$tmp_torrents ) {
-        Write-Host 'Не получилось' -ForegroundColor Red
-        exit 
-    }
-    return $tmp_torrents
-}
+# function Get-SectionTorrents ( $forum, $section ) {
+#     $i = 1
+#     Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
+#     while ( $true) {
+#         try {
+#             $content = Get-HTTP "https://api.rutracker.cc/v1/static/pvc/f/$section"
+#             $tmp_torrents = ( $content | ConvertFrom-Json -AsHashtable ).result
+#             break
+#         }
+#         catch { Start-Sleep -Seconds 10; $i++; Write-Host "Попытка номер $i" -ForegroundColor Cyan }
+#     }
+#     Write-Log ( 'Получено раздач: ' + $tmp_torrents.count ) -skip_timestamp -nologfile
+#     if ( !$tmp_torrents ) {
+#         Write-Host 'Не получилось' -ForegroundColor Red
+#         exit 
+#     }
+#     return $tmp_torrents
+# }
 
 
 
