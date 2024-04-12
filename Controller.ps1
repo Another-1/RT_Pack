@@ -76,9 +76,9 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
 # $i = 0
  $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
     # $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id.ToString()] -and $api_seeding[$_.topic_id.ToString()] -gt 0 ? $api_seeding[$_.topic_id.ToString()] : ( $ok_to_start ).AddDays( -1 ) ) }
-    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; seeder_last_seen = $tracker_torrents[$_].seeder_last_seen }
+    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; seeder_last_seen = $tracker_torrents[$_.infohash_v1].seeder_last_seen }
     if ( $_.state -eq 'pausedUP' ) {
-        $paused_sort.Add( [PSCustomObject]@{ hash = $_.hash; client = $_.client_key; seeder_last_seen = $states[$_.hash].seeder_last_seen } ) | Out-Null
+        $paused_sort.Add( [PSCustomObject]@{ hash = $_.infohash_v1; client = $_.client_key; seeder_last_seen = $states[$_.infohash_v1].seeder_last_seen } ) | Out-Null
     }
 }
 
