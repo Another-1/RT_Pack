@@ -71,14 +71,14 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     }
 }
 
-Write-Log 'Выгружаем даты запусков по хранимым раздачам'
-$api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
+# Write-Log 'Выгружаем даты запусков по хранимым раздачам'
+# $api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
 # $i = 0
-$clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
-    # $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : (([System.DateTimeOffset]::FromUnixTimeSeconds($_.completion_on)).DateTime) ) }
-    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id.ToString()] -and $api_seeding[$_.topic_id.ToString()] -gt 0 ? $api_seeding[$_.topic_id.ToString()] : ( $ok_to_start ).AddDays( -1 ) ) }
+ $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
+    # $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id.ToString()] -and $api_seeding[$_.topic_id.ToString()] -gt 0 ? $api_seeding[$_.topic_id.ToString()] : ( $ok_to_start ).AddDays( -1 ) ) }
+    $states[$_.hash] = @{ client = $_.client_key; state = $_.state; seeder_last_seen = $tracker_torrents[$_].seeder_last_seen }
     if ( $_.state -eq 'pausedUP' ) {
-        $paused_sort.Add( [PSCustomObject]@{ hash = $_.hash; client = $_.client_key; last_seen_date = $states[$_.hash].last_seen_date } ) | Out-Null
+        $paused_sort.Add( [PSCustomObject]@{ hash = $_.hash; client = $_.client_key; seeder_last_seen = $states[$_.hash].seeder_last_seen } ) | Out-Null
     }
 }
 
@@ -101,9 +101,7 @@ foreach ( $client in $clients.keys ) {
             }
             elseif ( ( $states[$_].state -in @('uploading', 'stalledUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced )) `
                     -and $tracker_torrents[$_].seeders -gt ( $section_seeds[$tracker_torrents[$_].section] ) `
-                    -and $states[$_].last_seen_date -gt $ok_to_stop
-                    # -and $states[$_].completion_on -le $ok_to_stop `
-                    # -and $states[$_].last_seen_date -gt $ok_to_start `
+                    -and $states[$_].seeder_last_seen -gt $ok_to_stop
                     ) {
 
                 if ( $stop_keys.count -eq $batch_size ) {
@@ -127,7 +125,7 @@ $lv_str1 = Get-Spell $min_stop_to_start 1 'days'
 $lv_str2 = Get-Spell $old_starts_per_run 1 'torrents'
 Write-Log "Ищем раздачи, остановленные более $lv_str1 в количестве не более $lv_str2"
 
-$paused_sort = @( ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.last_seen_date -le $ok_to_start } | Sort-Object -Property client | Sort-Object -Property last_seen_date -Stable ) | `
+$paused_sort = @( ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.seeder_last_seen -le $ok_to_start } | Sort-Object -Property client | Sort-Object -Property seeder_last_seen -Stable ) | `
     Select-Object -First $old_starts_per_run | Sort-Object -Property client )
 $lv_str = Get-Spell $paused_sort.count 1 'torrents'
 

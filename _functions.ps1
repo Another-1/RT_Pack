@@ -867,7 +867,7 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states) {
     Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
     while ( $true) {
         try {
-            $json = Get-HTTP "https://rep.rutracker.cc/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeders" -headers $headers | ConvertFrom-Json
+            $json = Get-HTTP "https://rep.rutracker.cc/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeders,seeder_last_seen" -headers $headers | ConvertFrom-Json
             $columns = @{}
             $i = 0
             $json.columns | ForEach-Object { $columns[$i] = $_; $i++ }
