@@ -9,12 +9,14 @@ $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
 . ( Join-Path $PSScriptRoot _functions.ps1 )
 
-Test-PSVersion
-Test-Module 'PsIni' 'для чтения настроек TLO'
-Test-Module 'PSSQLite' 'для работы с базой TLO'
-Write-Log 'Проверяем актуальность скриптов' 
-Test-Version ( '_functions.ps1' ) 'Adder'
-Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Adder'
+if ( !$debug ) {
+    Test-PSVersion
+    Test-Module 'PsIni' 'для чтения настроек TLO'
+    Test-Module 'PSSQLite' 'для работы с базой TLO'
+    Write-Log 'Проверяем актуальность скриптов' 
+    Test-Version ( '_functions.ps1' ) 'Adder'
+    Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Adder'
+}
 
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
 Write-Log 'Проверяем наличие всех нужных настроек'
@@ -156,7 +158,7 @@ Write-Log ( "Новых: $spell" )
 
 if ( $max_seeds -ne -1 ) {
     Write-Log "Отсеиваем с количеством сидов больше $max_seeds"
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].seeders -le $max_seeds }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds }
     $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
     Write-Log ( "Осталось : $spell" )
 }
@@ -283,7 +285,8 @@ if ( $new_torrents_keys ) {
             # While ($true) {
             Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
             Start-Sleep -Seconds 5
-            $new_topic_title = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder' ).name
+            $new_topic_info = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder' )
+            $new_topic_title = $new_topic_info.name
             # # на случай, если в pvc были устаревшие данные, и по старому хшу раздача не находится, будем считать, что имя совпало.
             # if ( $null -eq $new_tracker_data.name ) { $new_tracker_data.name = $existing_torrent.name }
             # if ( $null -ne $new_tracker_data.name ) { break }
@@ -296,6 +299,11 @@ if ( $new_torrents_keys ) {
                 Remove-ClientTorrent $client $existing_torrent.hash -deleteFiles
             }
             Start-Sleep -Milliseconds 100 
+            $torrent_to_tag = [PSCustomObject]@{
+                hash = $new_torrent_key
+                topic_id = $new_tracker_data.topic_id
+            }
+            Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label
         }
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) ) {
             # $mask_passed = $true

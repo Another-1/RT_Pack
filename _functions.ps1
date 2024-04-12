@@ -865,32 +865,51 @@ function Get-APITorrents ( $sections, $id, $api_key ) {
 function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states) {
     $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }        
     Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
+    $use_avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' )
+    $avg_days = $ini_data.sections.avg_seeders_period
+    $try_count = 1
+    $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
     while ( $true) {
         try {
-            $json = Get-HTTP "https://rep.rutracker.cc/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeders,seeder_last_seen" -headers $headers | ConvertFrom-Json
+            $url = "https://rep.rutracker.cc/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders$subst"
+            $content = ( Get-HTTP -url $url -headers $headers )
+            # if ( $use_avg_seeds -eq 'Y' ) { $content = $content.replace( 'average_seeds_sum','seeders' ) }
+            $json = $content | ConvertFrom-Json
             $columns = @{}
             $i = 0
             $json.columns | ForEach-Object { $columns[$i] = $_; $i++ }
-            $line = [PSCustomObject]@{}
-            $json.columns | Where-Object { $_ -ne 'info_hash' } | ForEach-Object {
-                $line | Add-Member -MemberType NoteProperty -Name $_ -Value $null
-            }
-            $line | Add-Member -MemberType NoteProperty -Name section -Value $section
-            # $line | Add-Member -MemberType NoteProperty -Name topic_title -Value $null
+            # $line = [PSCustomObject]@{}
+            $line = @{}
+            # $json.columns | Where-Object { $_ -ne 'info_hash' } | ForEach-Object {
+            #     $line | Add-Member -MemberType NoteProperty -Name $_ -Value $null
+            # }
+            # $line | Add-Member -MemberType NoteProperty -Name section -Value $section
+            $line.section = $section
+            # if ( $use_avg_seeds -eq 'Y' ) { $line | Add-Member -MemberType NoteProperty -Name seeders -Value 0.0 }
             $lines = @{}
             $hash_column = $columns.keys | Where-Object { $columns[$_] -eq 'info_hash' }
             $status_column = $columns.keys | Where-Object { $columns[$_] -eq 'tor_status' }
             foreach ( $release in $json.releases | Where-Object { $_[$status_column] -in $ok_states } ) {
-                $i = 0
+                $j = 0
                 foreach ( $field in $release ) {
-                    if ( $i -ne $hash_column) { $line.( $columns[$i] ) = $field }
-                    $i++
+                    if ( $j -ne $hash_column) { $line[$columns[$j]] = $field }
+                    $j++
                 }
+                try {
+                    if ( $use_avg_seeds -eq 'Y' ) {
+                        $line.avg_seeders = ( $line.average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $line.average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
+                    }
+                    else {
+                        $line.avg_sseders = $line.seeders
+                    }
+                }
+                catch { $line.seeders = 0 }
                 $lines[$release[$hash_column]] = $line | Select-Object *
+                # $lines[$release[$hash_column]] = $line
             }
             break
         }
-        catch { Start-Sleep -Seconds 10; $i++; Write-Host "Попытка номер $i" -ForegroundColor Cyan }
+        catch { Start-Sleep -Seconds 10; $try_count++; Write-Host "Попытка номер $try_count" -ForegroundColor Cyan }
     }
     Write-Log ( 'Получено раздач: ' + $lines.count ) -skip_timestamp -nologfile
     if ( !$lines.count ) {
