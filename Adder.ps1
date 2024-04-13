@@ -321,6 +321,7 @@ if ( $new_torrents_keys ) {
                 }
             }
             if ( $masks_db -and -not $mask_passed ) {
+                $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title
                 Write-Log ( 'Раздача ' + $new_topic_title + ' отброшена масками' )
                 continue
             }
