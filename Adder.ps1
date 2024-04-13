@@ -69,6 +69,7 @@ if ( $update_stats -eq 'Y') {
 
 # $sections = Get-IniSections -useForced
 $sections = $ini_data.sections.subsections.split( ',' )
+$all_sections = $sections
 Write-Log "Разделов в TLO: $( $sections.count )"
 if ( $forced_sections ) {
     Write-Log 'Обнаружена настройка forced_sections, отбрасывем лишние разделы'
@@ -78,11 +79,15 @@ if ( $forced_sections ) {
     $sections = $sections | Where-Object { $_ -in $forced_sections_array }
     Write-Log "Осталось разделов: $( $sections.count )"
 }
+if ( $sections.count -eq 0 ) {
+    Write-Log 'Значит и делать ничего не надо, выходим.'
+    exit
+}
 
 Test-ForumWorkingHours -verbose
 
 If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
-    Write-Output 'Подтягиваем из БД TLO названия раздач из маскированных разделов по хранимым раздачам'
+    Write-Log 'Подтягиваем из БД TLO названия раздач из маскированных разделов по хранимым раздачам'
     . "$PSScriptRoot\_masks.ps1"
     $masks_db = @{}
     # $masks_db_plain = @{}
@@ -91,11 +96,14 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
     $columnNames = Get-DB_ColumnNames $conn
     $masks.GetEnumerator() | ForEach-Object {
         $group_mask = $_.Value
-        ( $_.Key -replace ( '\s*', '')).split(',') | ForEach-Object {
-            $db_return = ( Invoke-SqliteQuery -Query ( 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $_ + ' AND ' + $columnNames['name'] + ' NOT LIKE "%' + ( ($group_mask -replace ('\s', '%')) -join '%" AND ' + $columnNames['name'] + ' NOT LIKE "%' ) + '%"' ) -SQLiteConnection $conn )
+        foreach ( $section in ( $_.Key -replace ( '\s*', '')).split(',') ) {
+            $db_return = ( Invoke-SqliteQuery -Query ( 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $section + ' AND ' + $columnNames['name'] + ' NOT LIKE "%' + ( ($group_mask -replace ('\s', '%')) -join '%" AND ' + $columnNames['name'] + ' NOT LIKE "%' ) + '%"' ) -SQLiteConnection $conn )
             if ( $db_return ) {
-                $masks_db[$_] = $db_return.GetEnumerator() | ForEach-Object { @{$_.id.ToInt64($null) = 1 } } # Список всех неподходящих раздач по этому разделу
-                Write-Log ( 'По разделу ' + $_ + ' найдено ' + $masks_db[$_].count + ' неподходящих раздач' )
+                $db_return.id.GetEnumerator() | ForEach-Object {
+                    if ( !$masks_db[$section]) { $masks_db[$section] = @{} }
+                    $masks_db[$section][$_.ToInt64($null)] = 1
+                } # Список всех неподходящих раздач по этому разделу
+                Write-Log ( 'По разделу ' + $section + ' отброшено масками ' + ( Get-Spell -qty $masks_db[$section].count -spelling 1 -entity 'torrents' ) )
             }
             $masks_like[$_] = $group_mask -replace ('^|$|\s', '*')
         }
@@ -127,7 +135,7 @@ if ( $get_blacklist -eq 'N' ) {
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
     # $tracker_torrents = Get-TrackerTorrents $sections
-    $tracker_torrents = Get-APITorrents -sections $sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
+    $tracker_torrents = Get-APITorrents -sections $all_sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
@@ -204,14 +212,14 @@ if ( $nul -ne $get_blacklist -and $get_blacklist.ToUpper() -eq 'N' ) {
 }
 
 if ( $masks_db ) {
-    Write-Output 'Отфильтровываем уже известные раздачи по маскам'
+    Write-Log 'Отфильтровываем уже известные раздачи по маскам'
     # $new_torrents_keys = $new_torrents_keys | Where-Object { !$masks_db_plain[$tracker_torrents[$_].topic_id] }
     # $new_torrents_keys_tmp = @()
     # foreach ( $key in $new_torrents_keys ) {
     $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $masks_db[$tracker_torrents[$_].section] -or $null -eq $masks_db[$tracker_torrents[$_].section][$tracker_torrents[$_].topic_id] }
     # }
     # }
-    Write-Output ( 'Осталось раздач: ' + $new_torrents_keys.count )
+    Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
 $added = @{}
