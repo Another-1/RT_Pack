@@ -6,6 +6,7 @@ $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Output $str } else { Write-Output ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
 . ( $PSScriptRoot + $separator + '_functions.ps1' )
 
+Write-Log 'Проверяем версии скриптов на актуальность'
 Test-Version '_functions.ps1' 'Rehasher'
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Rehasher'
 Test-PSVersion
