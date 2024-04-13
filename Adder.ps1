@@ -69,20 +69,23 @@ if ( $update_stats -eq 'Y') {
 
 # $sections = Get-IniSections -useForced
 $sections = $ini_data.sections.subsections.split( ',' )
+Write-Log "Разделов в TLO: $( $sections.count )"
 if ( $forced_sections ) {
-    Write-Output 'Анализируем forced_sections'
+    Write-Log 'Обнаружена настройка forced_sections, отбрасывем лишние разделы'
     $forced_sections = $forced_sections.Replace(' ', '')
     $forced_sections_array = @()
     $forced_sections.split(',') | ForEach-Object { $forced_sections_array += $_ }
+    $sections = $sections | Where-Object { $_ -in $forced_sections_array }
+    Write-Log "Осталось разделов: $( $sections.count )"
 }
 
 Test-ForumWorkingHours -verbose
 
 If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
-    Write-Output 'Подтягиваем названия раздач из маскированных разделов'
+    Write-Output 'Подтягиваем из БД TLO названия раздач из маскированных разделов по хранимым раздачам'
     . "$PSScriptRoot\_masks.ps1"
     $masks_db = @{}
-    $masks_db_plain = @{}
+    # $masks_db_plain = @{}
     $masks_like = @{}
     $conn = Open-TLODatabase
     $columnNames = Get-DB_ColumnNames $conn
@@ -97,11 +100,11 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
             $masks_like[$_] = $group_mask -replace ('^|$|\s', '*')
         }
     }
-    $masks_db.Keys | ForEach-Object {
-        $masks_db[$_].Keys | ForEach-Object {
-            $masks_db_plain[$_] = 1
-        }
-    }
+    # $masks_db.Keys | ForEach-Object {
+    #     $masks_db[$_].Keys | ForEach-Object {
+    #         $masks_db_plain[$_] = 1
+    #     }
+    # }
     $conn.Close()
 }
 else {
@@ -109,7 +112,7 @@ else {
     Remove-Variable -Name masks_db -ErrorAction SilentlyContinue
 }
 
-Write-Log 'Достаём из TLO данные о разделах'
+Write-Log 'Достаём из TLO подробности о разделах'
 $section_details = Get-IniSectionDetails $sections
 $forum = Set-ForumDetails
 
@@ -200,15 +203,14 @@ if ( $nul -ne $get_blacklist -and $get_blacklist.ToUpper() -eq 'N' ) {
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
-if ( $forced_sections_array ) {
-    Write-Output 'Применяем forced_sections'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].section.ToString() -in $forced_sections_array }
-    Write-Output ( 'Осталось раздач: ' + $new_torrents_keys.count )
-}
-
-if ( $masks_db_plain ) {
-    Write-Output 'Отфильтровываем раздачи по маскам'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { !$masks_db_plain[$tracker_torrents[$_].topic_id] }
+if ( $masks_db ) {
+    Write-Output 'Отфильтровываем уже известные раздачи по маскам'
+    # $new_torrents_keys = $new_torrents_keys | Where-Object { !$masks_db_plain[$tracker_torrents[$_].topic_id] }
+    # $new_torrents_keys_tmp = @()
+    # foreach ( $key in $new_torrents_keys ) {
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $masks_db[$tracker_torrents[$_].section] -or $null -eq $masks_db[$tracker_torrents[$_].section][$tracker_torrents[$_].topic_id] }
+    # }
+    # }
     Write-Output ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
@@ -218,7 +220,7 @@ $refreshed = @{}
 if ( $new_torrents_keys ) {
     $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
     foreach ( $new_torrent_key in $new_torrents_keys ) {
-        Remove-Variable -name new_topic_title -ErrorAction SilentlyContinue
+        Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
         $new_tracker_data = $tracker_torrents[$new_torrent_key]
         $subfolder_kind = $section_details[$new_tracker_data.section].data_subfolder
         $existing_torrent = $id_to_info[ $new_tracker_data.topic_id ]
@@ -301,14 +303,16 @@ if ( $new_torrents_keys ) {
             }
             Start-Sleep -Milliseconds 100 
             $torrent_to_tag = [PSCustomObject]@{
-                hash = $new_torrent_key
+                hash     = $new_torrent_key
                 topic_id = $new_tracker_data.topic_id
             }
             Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label
         }
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) ) {
             # $mask_passed = $true
+            # сначала проверяем по базе неподходящих раздач в БД TLO
             if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.topic_id] ) { $mask_passed = $false }
+
             else {
                 if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
                     $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title
@@ -319,10 +323,11 @@ if ( $new_torrents_keys ) {
                         }
                     }
                 }
+                else { $mask_passed = $true }
             }
-            if ( $masks_db -and -not $mask_passed ) {
+            if ( $masks_like -and -not $mask_passed ) {
                 $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title
-                Write-Log ( 'Раздача ' + $new_topic_title + ' отброшена масками' )
+                Write-Log ( 'Новая раздача ' + $new_topic_title + ' отброшена масками' )
                 continue
             }
             if ( $new_tracker_data.section -in $skip_sections ) {
