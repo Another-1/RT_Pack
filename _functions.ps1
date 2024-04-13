@@ -566,7 +566,7 @@ function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles ) {
 
 function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
     if ( $token -ne '' ) {
-        if ( $mention_script_tg -eq 'Y' -and $mess_sender -ne '' ) { $message = "<b>$mess_sender</b> имеет сообщить:`n`n" + $message }
+        if ( $mention_script_tg -eq 'Y' -and $mess_sender -ne '' ) { $message = "<b>$mess_sender</b>" + $( $RT_Pack_name ? " $RT_Pack_name" : '' ) + " имеет сообщить:`n`n" + $message }
         $payload = @{
             "chat_id"                  = $chat_id
             "parse_mode"               = 'html'

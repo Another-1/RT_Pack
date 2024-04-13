@@ -32,7 +32,7 @@ Test-Module 'PsIni' 'для чтения настроек TLO'
 Test-Module 'PSSQLite' 'для работы с базой TLO'
 
 $min_repeat_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $frequency * 24 * 60 * 60 ) # количество секунд между повторными рехэшами одной раздачи
-$min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay * 24 * 60 * 60 ) # количество секунд между повторными рехэшами одной раздачи
+$min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay * 24 * 60 * 60 ) # количество секунд до первого рехэша новых раздач
 
 Write-Log 'Читаем настройки Web-TLO'
 
@@ -52,7 +52,11 @@ Write-Log ( 'Исключено раздач: ' + ( $before - $clients_torrents.
 if ( $rehash_freshes -ne 'Y') {
     $before = $clients_torrents.count
     Write-Log 'Исключаем свежескачанные раздачи'
-    $clients_torrents = $clients_torrents | Where-Object { $_.completion_on -le $min_freshes_epoch }
+    $too_fresh = $clients_torrents.completion_on | Where-Object { $_ -gt $min_freshes_epoch }
+    if ( $too_fresh.count -gt 0 ) {
+        $closest_new = ( $too_fresh | Sort-Object | Select-Object -First 1 ) + ( $freshes_delay * 24 * 60 * 60 )
+    }
+    $clients_torrents = $clients_torrents | Where-Object { $_.completion_on -lt $min_freshes_epoch }
     Write-Log ( 'Исключено раздач: ' + ( $before - $clients_torrents.count ) )
 }
 
@@ -62,7 +66,7 @@ Write-Log 'Подключаемся к БД'
 $conn = Open-Database $database_path
 Invoke-SqliteQuery -Query 'CREATE TABLE IF NOT EXISTS rehash_dates (hash VARCHAR PRIMARY KEY NOT NULL, rehash_date INT)' -SQLiteConnection $conn
 Write-Log 'Выгружаем из БД даты рехэшей'
-Invoke-SqliteQuery -Query 'SELECT * FROM rehash_dates' -SQLiteConnection $conn | ForEach-Object { $db_data[$_.hash] = $_.rehash_date } 
+Invoke-SqliteQuery -Query 'SELECT * FROM rehash_dates' -SQLiteConnection $conn | ForEach-Object { $db_data[$_.hash] = $_.rehash_date }
 
 $full_data_sorted = [System.Collections.ArrayList]::new()
 Write-Log 'Ищем раздачи из клиентов в БД рехэшей'
@@ -72,6 +76,10 @@ $clients_torrents | ForEach-Object {
         $full_data_sorted.Add( [PSCustomObject]@{ hash = $_.infohash_v1; rehash_date = $( $null -ne $db_data[$_.infohash_v1] -and $db_data[$_.infohash_v1] -gt 0 ? $db_data[$_.infohash_v1] : 0 ); client_key = $_.client_key; size = $_.size; name = $_.name } ) | Out-Null
     }
 }
+
+$closest_rehash = ( $full_data_sorted.rehash_date | Where-Object { $_ -gt $min_repeat_epoch } | Sort-Object | Select-Object -First 1 ) + ( $frequency * 24 * 60 * 60 )
+if ( !$closest_new ) { $closest_new = $closest_rehash }
+$closest_overall = [System.TimeZoneInfo]::ConvertTimeFromUtc(([System.DateTimeOffset]::FromUnixTimeSeconds(( $closest_new -lt $closest_rehash ? $closest_new : $closest_rehash)).DateTime ), $(Get-TimeZone))
 
 Write-Log 'Исключаем раздачи, которые рано рехэшить'
 $before = $full_data_sorted.count
@@ -189,7 +197,7 @@ if ( $report_rehasher -eq 'Y' ) {
         Send-TGMessage -message $message -mess_sender 'Rehasher' -chat_id $tg_chat -token $tg_token
     }
     else {
-        Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Rehasher' ) + ' отработал, ничего делать не пришлось.' ) -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
+        Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Rehasher' ) + " отработал, ничего делать не пришлось.`nБлижайший рехэш $closest_overall" ) -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
     }
 }
 
