@@ -194,6 +194,9 @@ Write-Log ( 'Осталось: ' + ( $was_count - $sum_cnt ) + ' раздач о
 if ( $report_rehasher -eq 'Y' ) {
     if ( $sum_cnt -gt 0 ) {
         $message = "Прогон завершён`nОтправлено в рехэш: $sum_cnt раздач объёмом " + ( $sum_size -eq 0 ? 0 : ( to_kmg $sum_size 1 ) ) + "`nОсталось: " + ( $was_count - $sum_cnt ) + ' раздач объёмом ' + ( ( $was_sum_size - $sum_size ) -eq 0 ? 0 : ( to_kmg( $was_sum_size - $sum_size ) 1 ) )
+        if ( $sum_cnt -eq $was_count ) {
+            $message = $message + `nБлижайший рехэш $closest_overall"
+        }
         Send-TGMessage -message $message -mess_sender 'Rehasher' -chat_id $tg_chat -token $tg_token
     }
     else {
