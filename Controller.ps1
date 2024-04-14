@@ -1,12 +1,12 @@
 function  Start-batch {
     $spell = Get-Spell $start_keys.count 2
-    Write-Log ( "Запускаем $spell в клиенте " + $clients[$client].name )
+    # Write-Log ( "Запускаем $spell в клиенте " + $clients[$client].name )
     Start-Torrents $start_keys $clients[$client]
     # Set-StartStop $start_keys
 }
 function  Stop-batch {
     $spell = Get-Spell $stop_keys.count 2
-    Write-Log ( "Тормозим $spell в клиенте " + $clients[$client].name )
+    # Write-Log ( "Тормозим $spell в клиенте " + $clients[$client].name )
     Stop-Torrents $stop_keys $clients[$client]
     # Set-StartStop $stop_keys
 }
@@ -85,6 +85,8 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
 
 $batch_size = 400
 
+$started = 0
+$stopped = 0
 foreach ( $client in $clients.keys ) {
     Write-Log ( 'Регулируем клиент ' + $clients[$client].Name + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
 
@@ -96,6 +98,7 @@ foreach ( $client in $clients.keys ) {
                 if ( $start_keys.count -eq $batch_size ) {
                     Start-batch
                     $start_keys = @()
+                    $started += $start_keys.count
                 }
                 $start_keys += $_
                 $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
@@ -108,6 +111,7 @@ foreach ( $client in $clients.keys ) {
                 if ( $stop_keys.count -eq $batch_size ) {
                     Stop-batch
                     $stop_keys = @()
+                    $stopped += $stop_keys.count
                 }
                 $stop_keys += $_
             }
@@ -116,15 +120,17 @@ foreach ( $client in $clients.keys ) {
     }
     if ( $start_keys.count -gt 0) {
         Start-batch
+        $started += $start_keys.count
     }
     if ( $stop_keys.count -gt 0) {
         Stop-batch
+        $stopped += $stop_keys.count
     }
 }
 
 $lv_str1 = Get-Spell $min_stop_to_start 1 'days'
 $lv_str2 = Get-Spell $old_starts_per_run 1 'torrents'
-Write-Log "Ищем раздачи, остановленные более $lv_str1 в количестве не более $lv_str2"
+Write-Log "Ищем раздачи, остановленные более чем $lv_str1 в количестве не более $lv_str2"
 
 $paused_sort = @( ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.seeder_last_seen -le $ok_to_start } | Sort-Object -Property client | Sort-Object -Property seeder_last_seen -Stable ) | `
     Select-Object -First $old_starts_per_run | Sort-Object -Property client )
@@ -147,11 +153,18 @@ if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
             Start-batch
             $client = $state.client
             $start_keys = @()
+            $started += $start_keys.count
         }
         $start_keys += $state.hash
         $counter++
     }
     if ( $start_keys.count -gt 0 ) {
         Start-batch
+        $started += $start_keys.count
     }
 }
+$lv_str1 = "Запущено: $( Get-Spell -qty $started -spelling 1 -entity 'torrents' ). "
+$lv_str2 = "Остановлено: $( Get-Spell -qty $stopped -spelling 1 -entity 'torrents' )."
+$lv_str = "$lv_str1`n$lv_str2"
+Write-Log ( $lv_str1 + $lv_str2 )
+if ( $report_controller -eq 'Y') { Send-TGMessage -message $lv_str -token $tg_token -chat_id $tg_chat -mess_sender 'Controller' }
