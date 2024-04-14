@@ -183,7 +183,7 @@ function Test-ForumWorkingHours ( [switch]$verbose ) {
 Function Set-ForumDetails ( $forum ) {
     $forum = @{}
     If ( $ini_data.proxy.activate_forum -eq '1' -or $ini_data.proxy.activate_api -eq '1' ) {
-        Write-Host ( 'Используем ' + $ini_data.proxy.type.Replace('socks5h', 'socks5') + ' прокси ' + $ini_data.proxy.hostname + ':' + $ini_data.proxy.port )
+        Write-Log ( 'Используем ' + $ini_data.proxy.type.Replace('socks5h', 'socks5') + ' прокси ' + $ini_data.proxy.hostname + ':' + $ini_data.proxy.port )
         $forum.ProxyIP = $ini_data.proxy.hostname
         $forum.ProxyPort = $ini_data.proxy.port
         $forum.ProxyURL = 'socks5://' + $ini_data.proxy.hostname + ':' + $ini_data.proxy.port
@@ -462,7 +462,7 @@ function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
                 break
             }
         }
-        catch { Start-Sleep -Seconds 10; $i++; Write-Host "Попытка номер $i" -ForegroundColor Cyan }
+        catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
     }
     if ( $nul -eq $save_path ) { return Get-Item $Path }
 }
@@ -494,7 +494,7 @@ function Get-ForumTorrentInfo ( $id ) {
             break
         }
         catch {
-            Start-Sleep -Seconds 10; $i++; Write-Host "Попытка номер $i" -ForegroundColor Cyan
+            Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
             If ( $i -gt 5 ) { break }
         }
     }
@@ -533,7 +533,7 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
             }
         }
         else {
-            Write-Host "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -ForegroundColor Red
+            Write-Log "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -ForegroundColor Red
         }
     }
 }
@@ -547,11 +547,11 @@ function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles ) {
     try {
         if ( $deleteFiles -eq $true ) {
             $text = 'Удаляем из клиента ' + $client.Name + ' раздачу ' + $hash + ' вместе с файлами'
-            Write-Host $text
+            Write-Log $text
         }
         else {
             $text = 'Удаляем из клиента ' + $client.Name + ' раздачу ' + $hash + ' без удаления файлов'
-            Write-Host $text
+            Write-Log $text
         }
         $request_delete = @{
             hashes      = $hash
@@ -560,7 +560,7 @@ function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles ) {
         Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/delete' ) -WebSession $client.sid -Body $request_delete -Method POST | Out-Null
     }
     catch {
-        Write-Host ( '[delete] Почему-то не получилось удалить раздачу {0}.' -f $torrent_id )
+        Write-Log "[delete] Почему-то не получилось удалить раздачу $torrent_id." -Red
     }
 }
 
@@ -909,11 +909,11 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states) {
             }
             break
         }
-        catch { Start-Sleep -Seconds 10; $try_count++; Write-Host "Попытка номер $try_count" -ForegroundColor Cyan }
+        catch { Start-Sleep -Seconds 10; $try_count++; Write-Log "Попытка номер $try_count" }
     }
     Write-Log ( 'Получено раздач: ' + $lines.count ) -skip_timestamp -nologfile
     if ( !$lines.count ) {
-        Write-Host 'Не получилось' -ForegroundColor Red
+        Write-Log 'Не получилось' -Red
         exit 
     }
     return $lines
