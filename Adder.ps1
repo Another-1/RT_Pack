@@ -319,6 +319,7 @@ if ( $new_torrents_keys ) {
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) ) {
             # $mask_passed = $true
             # сначала проверяем по базе неподходящих раздач в БД TLO
+            Remove-Variable $mask_passed
             if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.topic_id] ) { $mask_passed = $false }
 
             else {
@@ -331,7 +332,7 @@ if ( $new_torrents_keys ) {
                         }
                     }
                 }
-                else { $mask_passed = $true }
+                else { $mask_passed = 'N/A' }
             }
             if ( $masks_like -and -not $mask_passed ) {
                 $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title
