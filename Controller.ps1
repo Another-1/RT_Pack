@@ -11,28 +11,24 @@ function  Stop-batch {
     # Set-StartStop $stop_keys
 }
 
-if ( !$ini_data ) {
-    Write-Output 'Подгружаем настройки'
-    $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
-    . ( $PSScriptRoot + $separator + '_settings.ps1' )
+Write-Output 'Подгружаем настройки'
+$separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
+. ( $PSScriptRoot + $separator + '_settings.ps1' )
 
-    $str = 'Подгружаем функции'
-    if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
-    . "$PSScriptRoot\_functions.ps1"
+$str = 'Подгружаем функции'
+if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
+. "$PSScriptRoot\_functions.ps1"
 
-    Write-Log 'Проверяем актуальность Controller' 
-    Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Controller'
+Write-Log 'Проверяем актуальность Controller' 
+Test-Version '_functions.ps1' 'Controller'
+Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Controller'
+Test-Module 'PsIni' 'для чтения настроек TLO'
+Test-Module 'PSSQLite' 'для работы с базой TLO'
+$tlo_path = Test-Setting 'tlo_path' -required
+$ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
+Write-Log 'Читаем настройки Web-TLO'
+$ini_data = Get-IniContent $ini_path
 
-    if ( !$ini_data ) {
-        Test-Version '_functions.ps1' 'Controller'
-        Test-Module 'PsIni' 'для чтения настроек TLO'
-        Test-Module 'PSSQLite' 'для работы с базой TLO'
-        $tlo_path = Test-Setting 'tlo_path' -required
-        $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
-        Write-Log 'Читаем настройки Web-TLO'
-        $ini_data = Get-IniContent $ini_path
-    }
-}
 # $hours_to_stop = Test-Setting 'hours_to_stop'
 # $ok_to_stop = (Get-Date).ToUniversalTime().AddHours( 0 - $hours_to_stop )
 $ok_to_stop = (Get-Date).ToUniversalTime().AddDays( -1 )
@@ -51,6 +47,8 @@ $sections | ForEach-Object { $section_seeds[$_] = ( $section_details[$_].control
     
 $states = @{}
 $paused_sort = [System.Collections.ArrayList]::new()
+
+$ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
 
 if ( !$tracker_torrents) {
     Write-Log 'Автономный запуск, надо сходить на трекер за актуальными сидами и ID'
@@ -75,7 +73,7 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
 # Write-Log 'Выгружаем даты запусков по хранимым раздачам'
 # $api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
 # $i = 0
- $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
+$clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
     # $states[$_.hash] = @{ client = $_.client_key; state = $_.state; last_seen_date = $( $null -ne $api_seeding[$_.topic_id.ToString()] -and $api_seeding[$_.topic_id.ToString()] -gt 0 ? $api_seeding[$_.topic_id.ToString()] : ( $ok_to_start ).AddDays( -1 ) ) }
     $states[$_.hash] = @{ client = $_.client_key; state = $_.state; seeder_last_seen = $tracker_torrents[$_.infohash_v1].seeder_last_seen }
     if ( $_.state -eq 'pausedUP' ) {
@@ -106,7 +104,7 @@ foreach ( $client in $clients.keys ) {
             elseif ( ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced )) `
                     -and $tracker_torrents[$_].seeders -gt ( $section_seeds[$tracker_torrents[$_].section] ) `
                     -and $states[$_].seeder_last_seen -gt $ok_to_stop
-                    ) {
+            ) {
 
                 if ( $stop_keys.count -eq $batch_size ) {
                     Stop-batch
@@ -133,7 +131,7 @@ $lv_str2 = Get-Spell $old_starts_per_run 1 'torrents'
 Write-Log "Ищем раздачи, остановленные более чем $lv_str1 в количестве не более $lv_str2"
 
 $paused_sort = @( ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.seeder_last_seen -le $ok_to_start } | Sort-Object -Property client | Sort-Object -Property seeder_last_seen -Stable ) | `
-    Select-Object -First $old_starts_per_run | Sort-Object -Property client )
+        Select-Object -First $old_starts_per_run | Sort-Object -Property client )
 $lv_str = Get-Spell $paused_sort.count 1 'torrents'
 
 Write-Log "Найдено $lv_str"
