@@ -33,8 +33,9 @@ if ( !$ini_data ) {
         $ini_data = Get-IniContent $ini_path
     }
 }
-$hours_to_stop = Test-Setting 'hours_to_stop'
-$ok_to_stop = (Get-Date).ToUniversalTime().AddHours( 0 - $hours_to_stop )
+# $hours_to_stop = Test-Setting 'hours_to_stop'
+# $ok_to_stop = (Get-Date).ToUniversalTime().AddHours( 0 - $hours_to_stop )
+$ok_to_stop = (Get-Date).ToUniversalTime().AddDays( -1 )
 $old_starts_per_run = Test-Setting 'old_starts_per_run'
 $min_stop_to_start = Test-Setting 'min_stop_to_start'
 $ok_to_start = (Get-Date).ToUniversalTime().AddDays( 0 - $min_stop_to_start )
@@ -90,6 +91,7 @@ foreach ( $client in $clients.keys ) {
     $start_keys = @()
     $stop_keys = @()
     $states.Keys | Where-Object { $states[$_].client -eq $client } | ForEach-Object {
+        if ( $_ -eq '0081b87be52d65250e04f598daccde35e8dcf63b') {pause}
         try { 
             if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $section_seeds[$tracker_torrents[$_].section] ) {
                 if ( $start_keys.count -eq $batch_size ) {
@@ -99,7 +101,7 @@ foreach ( $client in $clients.keys ) {
                 $start_keys += $_
                 $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
             }
-            elseif ( ( $states[$_].state -in @('uploading', 'stalledUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced )) `
+            elseif ( ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced )) `
                     -and $tracker_torrents[$_].seeders -gt ( $section_seeds[$tracker_torrents[$_].section] ) `
                     -and $states[$_].seeder_last_seen -gt $ok_to_stop
                     ) {

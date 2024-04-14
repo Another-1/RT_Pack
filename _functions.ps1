@@ -111,7 +111,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'check_state_delay'     = @{ prompt = 'Задержка в секундах перед опросом состояния после отправки в рехэш. Должнать быть больше или равна интервалу обновления интерфейса кубита.'; default = 5; type = 'number' }
         'start_errored'         = @{ prompt = 'Запускать на докачку раздачи с ошибкой рехэша?'; default = 'Y'; type = 'YN' }
         'ipfilter_path'         = @{ prompt = 'Имя файла блокировок? В клиентах должно быть указано аналогично'; default = 'C:\ipfiler.dat'; type = 'string' }
-        'hours_to_stop'         = @{ prompt = 'Сколько минимум часов держать раздачу запущенной?'; default = 3; type = 'number' }
+        # 'hours_to_stop'         = @{ prompt = 'Сколько минимум часов держать раздачу запущенной?'; default = 3; type = 'number' }
         'old_starts_per_run'    = @{ prompt = 'Максимальное количество запускаемых за раз давно стоящих раздач? '; default = 100; type = 'number' }
         'min_stop_to_start'     = @{ prompt = 'Через сколько дней простоя обязательно запускать раздачу? '; default = 21; type = 'number' }
         'report_nowork'         = @{ prompt = 'Сообщать в Telegam если ничего не пришлось делать?'; default = 'Y'; type = 'YN' }
