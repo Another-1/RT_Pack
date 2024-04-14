@@ -91,7 +91,6 @@ foreach ( $client in $clients.keys ) {
     $start_keys = @()
     $stop_keys = @()
     $states.Keys | Where-Object { $states[$_].client -eq $client } | ForEach-Object {
-        if ( $_ -eq '0081b87be52d65250e04f598daccde35e8dcf63b') {pause}
         try { 
             if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $section_seeds[$tracker_torrents[$_].section] ) {
                 if ( $start_keys.count -eq $batch_size ) {
