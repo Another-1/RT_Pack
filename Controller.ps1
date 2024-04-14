@@ -1,17 +1,18 @@
-function  Start-batch {
-    $spell = Get-Spell $start_keys.count 2
-    # Write-Log ( "Запускаем $spell в клиенте " + $clients[$client].name )
-    Start-Torrents $start_keys $clients[$client]
-    # Set-StartStop $start_keys
-}
-function  Stop-batch {
-    $spell = Get-Spell $stop_keys.count 2
-    # Write-Log ( "Тормозим $spell в клиенте " + $clients[$client].name )
-    Stop-Torrents $stop_keys $clients[$client]
-    # Set-StartStop $stop_keys
-}
+# function  Start-batch {
+#     $spell = Get-Spell $start_keys.count 2
+#     Write-Log ( "Запускаем $spell в клиенте " + $clients[$client].name )
+#     Start-Torrents $start_keys $clients[$client]
+#     # Set-StartStop $start_keys
+# }
+# function  Stop-batch {
+#     $spell = Get-Spell $stop_keys.count 2
+#     Write-Log ( "Тормозим $spell в клиенте " + $clients[$client].name )
+#     Stop-Torrents $stop_keys $clients[$client]
+#     # Set-StartStop $stop_keys
+# }
 
-Write-Output 'Подгружаем настройки'
+if ( !$tracker_torrents) { Write-Output 'Подгружаем настройки' }
+
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
 . ( $PSScriptRoot + $separator + '_settings.ps1' )
 
@@ -94,7 +95,8 @@ foreach ( $client in $clients.keys ) {
         try { 
             if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $section_seeds[$tracker_torrents[$_].section] ) {
                 if ( $start_keys.count -eq $batch_size ) {
-                    Start-batch
+                    # Start-batch
+                    Start-Torrents $start_keys $clients[$client]
                     $start_keys = @()
                     $started += $start_keys.count
                 }
@@ -107,7 +109,8 @@ foreach ( $client in $clients.keys ) {
             ) {
 
                 if ( $stop_keys.count -eq $batch_size ) {
-                    Stop-batch
+                    # Stop-batch
+                    Stop-Torrents $stop_keys $clients[$client]
                     $stop_keys = @()
                     $stopped += $stop_keys.count
                 }
@@ -117,11 +120,13 @@ foreach ( $client in $clients.keys ) {
         catch { } # на случай поглощённых раздач.
     }
     if ( $start_keys.count -gt 0) {
-        Start-batch
+        # Start-batch
+        Start-Torrents $start_keys $clients[$client]
         $started += $start_keys.count
     }
     if ( $stop_keys.count -gt 0) {
-        Stop-batch
+        # Stop-batch
+        Stop-Torrents $stop_keys $clients[$client]
         $stopped += $stop_keys.count
     }
 }
@@ -148,7 +153,8 @@ if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
         }
         # if ($counter -gt 625 ) { break }
         if ( $start_keys.count -eq $batch_size -or $state.client -ne $client ) {
-            Start-batch
+            # Start-batch
+            Start-Torrents $start_keys $clients[$client]
             $client = $state.client
             $start_keys = @()
             $started += $start_keys.count
@@ -157,7 +163,8 @@ if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
         $counter++
     }
     if ( $start_keys.count -gt 0 ) {
-        Start-batch
+        # Start-batch
+        Start-Torrents $start_keys $clients[$client]
         $started += $start_keys.count
     }
 }
