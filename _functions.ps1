@@ -822,18 +822,19 @@ function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
     }
 }
 
-# function Get-APISeeding ( $id, $api_key, $seding_days ) {
-#     $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }
-#     $seed_dates = @{}
-#     foreach ( $section in $sections ) {
-#         Write-Log "Запрашиваем историю сидирования по разделу $section"
-#         $url = "https://rep.rutracker.cc/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&only_reported_releases=1&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
+function Get-APISeeding ( $id, $api_key, $seding_days ) {
+    $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }
+    $seed_dates = @{}
+    foreach ( $section in $sections ) {
+        Write-Log "Запрашиваем историю сидирования по разделу $section"
+        $url = "https://rep.rutracker.cc/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&only_reported_releases=1&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
 
-#         $content = Get-HTTP $url -headers $headers
-#         $content | ConvertFrom-Json | Select-Object kept_releases -ExpandProperty kept_releases | ForEach-Object { $seed_dates[$_[0].ToString()] = $_[1] } 
-#     }
-#     return $seed_dates
-# }
+        ( ( Get-HTTP -url $url -headers $headers ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
+            $seed_dates[$_[0]] = $_[1]
+        } 
+    }
+    return $seed_dates
+}
 
 function Get-APITorrents ( $sections, $id, $api_key ) {
     Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
