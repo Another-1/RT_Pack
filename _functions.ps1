@@ -606,7 +606,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
                 }
             }
 
-            if ( $message -ne '' ) { $message += "`n" }
+            if ( $message -ne '' -and $obsolete ) { $message += "`n" }
             $first = $true
             foreach ( $client in $obsolete.Keys ) {
                 if ( !$first ) { $message += "`n" }
@@ -620,7 +620,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
                 }
             }
 
-            if ( $message -ne '' ) { $message += "`n" }
+            if ( $message -ne '' -and $broken ) { $message += "`n" }
             $first = $true
             foreach ( $client in $broken.Keys ) {
                 if ( !$first ) { $message += "`n" }
