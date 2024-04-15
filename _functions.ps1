@@ -578,7 +578,7 @@ function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
 }
 
 function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_id, $mess_sender ) {
-    if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 ) {
+    if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 -or $broken.Count -gt 0 ) {
         if ( $brief_reports -ne 'Y') {
             # полная сводка в ТГ
             $message = ''
