@@ -123,6 +123,7 @@ if ( $mix_clients -eq 'Y') {
 
 $sum_cnt = 0
 $sum_size = 0
+Write-Log "Найдено $($full_data_sorted.count) раздач, которые пора рехэшить"
 foreach ( $torrent in $full_data_sorted ) {
     if ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
         Write-Log 'Выполняется Adder или Controller, подождём...' -Red
@@ -135,11 +136,13 @@ foreach ( $torrent in $full_data_sorted ) {
         $prev_state = ( Get-ClientTorrents $clients[$torrent.client_key] -mess_sender 'Rehasher' -hash $torrent.hash ).state
         if ( $prev_state -eq 'pausedUP') { Write-Log 'Раздача уже остановлена, так и запишем' } else { Write-Log 'Раздача запущена, предварительно остановим' }
         if ( $prev_state -ne 'pausedUP' ) {
-            Write-Log ( 'Останавливаем раздачу"' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
+            # Write-Log ( 'Останавливаем раздачу"' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
+            Write-Log 'Останавливаем раздачу'
             Stop-Torrents $torrent.hash $clients[$torrent.client_key]
         }
     }
-    Write-Log ( 'Отправляем в рехэш "' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
+    # Write-Log ( 'Отправляем в рехэш "' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
+    Write-Log 'Отправляем в рехэш'
     Start-Rehash $clients[$torrent.client_key] $torrent.hash
     if ( !$db_data[$torrent.hash] ) {
         Invoke-SqliteQuery -Query "INSERT INTO rehash_dates (hash, rehash_date) VALUES (@hash, @epoch )" -SqlParameters @{ hash = $torrent.hash; epoch = ( Get-Date -UFormat %s ) }-SQLiteConnection $conn
