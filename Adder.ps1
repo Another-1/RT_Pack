@@ -409,6 +409,17 @@ if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report
     }
 }
 
+if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_broken -and $report_broken -eq 'Y' ) {
+    Remove-Variable broken -ErrorAction SilentlyContinue
+    Write-Log 'Ищем повреждённые раздачи.'
+    $clients_torrents | Where-Object { $_.state -eq 'missingFiles' } | ForEach-Object {
+        if ( !$broken ) { $broken = @{ } }
+        Write-Log ( "Повреждённая раздача " + $_.topic_id + ' в клиенте ' + $clients[$_.client_key].Name )
+        if ( !$broken[$clients[$_.client_key].Name] ) { $broken[ $clients[$_.client_key].Name] = [System.Collections.ArrayList]::new() }
+        $broken[$clients[$_.client_key].Name] += ( $_.topic_id )
+    }
+}
+
 if ( $control -eq 'Y' ) {
     Write-Log 'Запускаем встроенную регулировку'
     . "$PSScriptRoot\Controller.ps1"
@@ -422,8 +433,8 @@ elseif ( $update_stats -ne 'Y' -or !$php_path ) {
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
 }
 
-if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 -or $notify_nowork -eq 'Y' ) -and $tg_token -ne '' -and $tg_chat -ne '' ) {
-    Send-TGReport -refreshed $refreshed -added $added -obsolete $obsolete -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'
+if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or ( $obsolete.Count -gt 0 -and $report_obsolete -eq 'Y' ) -or ( $broken.count -gt 0 -and $report_broken -eq 'Y' ) -or $notify_nowork -eq 'Y' ) -and $tg_token -ne '' -and $tg_chat -ne '' ) {
+    Send-TGReport -refreshed $refreshed -added $added -obsolete $obsolete -broken $broken -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'
 }
 elseif ( $report_nowork -eq 'Y' -and $tg_token -ne '' -and $tg_chat -ne '' ) { 
     Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Adder' ) + ' отработал, ничего делать не пришлось.' ) -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'

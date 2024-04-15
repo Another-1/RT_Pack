@@ -577,7 +577,7 @@ function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
     Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
 }
 
-function Send-TGReport ( $refreshed, $added, $obsolete, $token, $chat_id, $mess_sender ) {
+function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_id, $mess_sender ) {
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 ) {
         if ( $brief_reports -ne 'Y') {
             # полная сводка в ТГ
@@ -613,6 +613,20 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $token, $chat_id, $mess_
                 $first = $false
                 $message += "Лишние в клиенте $client :`n"
                 $obsolete[$client] | ForEach-Object {
+                    $message += "https://rutracker.org/forum/viewtopic.php?t=$_`n"
+                    if ( $id_to_info[$_].name ) {
+                        $message += ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
+                    }
+                }
+            }
+
+            if ( $message -ne '' ) { $message += "`n" }
+            $first = $true
+            foreach ( $client in $broken.Keys ) {
+                if ( !$first ) { $message += "`n" }
+                $first = $false
+                $message += "Повреждённые в клиенте $client :`n"
+                $broken[$client] | ForEach-Object {
                     $message += "https://rutracker.org/forum/viewtopic.php?t=$_`n"
                     if ( $id_to_info[$_].name ) {
                         $message += ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
