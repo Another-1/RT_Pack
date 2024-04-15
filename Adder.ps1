@@ -412,7 +412,7 @@ if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report
 if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_broken -and $report_broken -eq 'Y' ) {
     Remove-Variable broken -ErrorAction SilentlyContinue
     Write-Log 'Ищем повреждённые раздачи.'
-    $clients_torrents | Where-Object { $_.state -eq 'missingFiles' } | ForEach-Object {
+    $clients_torrents | Where-Object { $_.state -in ( 'missingFiles', 'error' ) } | ForEach-Object {
         if ( !$broken ) { $broken = @{ } }
         Write-Log ( "Повреждённая раздача " + $_.topic_id + ' в клиенте ' + $clients[$_.client_key].Name )
         if ( !$broken[$clients[$_.client_key].Name] ) { $broken[ $clients[$_.client_key].Name] = [System.Collections.ArrayList]::new() }

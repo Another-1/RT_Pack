@@ -625,7 +625,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
             foreach ( $client in $broken.Keys ) {
                 if ( !$first ) { $message += "`n" }
                 $first = $false
-                $message += "Повреждённые в клиенте $client :`n"
+                $message += "Проблемные в клиенте $client :`n"
                 $broken[$client] | ForEach-Object {
                     $message += "https://rutracker.org/forum/viewtopic.php?t=$_`n"
                     if ( $id_to_info[$_].name ) {
