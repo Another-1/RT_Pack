@@ -983,9 +983,17 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states) {
 
 
 function Get-HTTP ( $url, $body, $headers ) {
-    if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
-        if ( $forum.proxyCred ) { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred -Body $body ).Content }
-        else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -Body $body ).Content }
+    $retry_cnt = 1
+    try {
+        if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
+            if ( $forum.proxyCred ) { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred -Body $body ).Content }
+            else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -Body $body ).Content }
+        }
+        else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body ).Content }
     }
-    else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body ).Content }
+    catch {
+        Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
+        If ( $i -gt 10 ) { break }
+    }
+    Write-Log 'Не удалось получить данные, выходи досрочно' -Red
 }

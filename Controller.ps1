@@ -23,13 +23,14 @@ if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date
 Write-Log 'Проверяем актуальность Controller' 
 Test-Version '_functions.ps1' 'Controller'
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Controller'
-Test-Module 'PsIni' 'для чтения настроек TLO'
-Test-Module 'PSSQLite' 'для работы с базой TLO'
+If ( !$ini_data) {
+    Test-Module 'PsIni' 'для чтения настроек TLO'
+# Test-Module 'PSSQLite' 'для работы с базой TLO'
 $tlo_path = Test-Setting 'tlo_path' -required
 $ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
 Write-Log 'Читаем настройки Web-TLO'
 $ini_data = Get-IniContent $ini_path
-
+}
 # $hours_to_stop = Test-Setting 'hours_to_stop'
 # $ok_to_stop = (Get-Date).ToUniversalTime().AddHours( 0 - $hours_to_stop )
 $ok_to_stop = (Get-Date).ToUniversalTime().AddDays( -1 )
@@ -79,7 +80,7 @@ $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '3
     $states[$_.hash] = @{
         client = $_.client_key;
         state = $_.state;
-        seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id.ToString()] -and $api_seeding[$_.topic_id.ToString()] -gt 0 ? $api_seeding[$_.topic_id.ToString()] : ( $ok_to_start ).AddDays( -1 ) )
+        seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
     }
     # $states[$_.hash] = @{ client = $_.client_key; state = $_.state; seeder_last_seen = $tracker_torrents[$_.infohash_v1].seeder_last_seen }
     if ( $_.state -eq 'pausedUP' ) {
