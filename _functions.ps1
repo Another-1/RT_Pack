@@ -1007,7 +1007,7 @@ function Get-HTTP ( $url, $body, $headers ) {
     }
     catch {
         Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
-        If ( $i -gt 10 ) { break }
+        If ( $retry_cnt -gt 10 ) { break }
     }
-    Write-Log 'Не удалось получить данные, выходи досрочно' -Red
+    Write-Log 'Не удалось получить данные, выходим досрочно' -Red
 }
