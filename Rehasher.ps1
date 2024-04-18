@@ -132,7 +132,7 @@ foreach ( $torrent in $full_data_sorted ) {
         }
     }    
     if ( $wait_finish -eq 'Y' ) {
-        Write-Log ( 'Будем рехэшить раздачу "' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name + ' размером ' + ( to_kmg $torrent.size 1 ))
+        Write-Log ( 'Будем рехэшить раздачу "' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name + ' размером ' + ( to_kmg $torrent.size 2 ))
         $prev_state = ( Get-ClientTorrents $clients[$torrent.client_key] -mess_sender 'Rehasher' -hash $torrent.hash ).state
         if ( $prev_state -eq 'pausedUP') { Write-Log 'Раздача уже остановлена, так и запишем' } else { Write-Log 'Раздача запущена, предварительно остановим' }
         if ( $prev_state -ne 'pausedUP' ) {

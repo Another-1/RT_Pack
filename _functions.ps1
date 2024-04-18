@@ -479,25 +479,17 @@ function to_kmg ($bytes, [int]$precision = 0) {
     }
 }
 
-function Get-ForumTorrentInfo ( $id ) {
+function Get-ForumTorrentInfo ( $id, $call_from ) {
     $params = @{ 
         by  = 'topic_id'
         val = $id 
     }
 
-    while ( $true ) {
-        try {
-            $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_topic_data' -Body $params
-            $torinfo = ( $content | ConvertFrom-Json ).result.$id 
-            $name = $torinfo.topic_title
-            $size = $torinfo.size
-            break
-        }
-        catch {
-            Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
-            If ( $i -gt 5 ) { break }
-        }
-    }
+    $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_topic_data' -Body $params -call_from $call_from
+    $torinfo = ( $content | ConvertFrom-Json ).result.$id 
+    $name = $torinfo.topic_title
+    $size = $torinfo.size
+
     if (!$name) {
         Write-Log 'Нет связи с API трекера, выходим' -Red
         exit
@@ -836,34 +828,27 @@ function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
     }
 }
 
-function Get-APISeeding ( $id, $api_key, $seding_days ) {
+function Get-APISeeding ( $id, $api_key, $seding_days, $call_from ) {
     $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }
     $seed_dates = @{}
     foreach ( $section in $sections ) {
         Write-Log "Запрашиваем историю сидирования по разделу $section"
         $url = "https://rep.rutracker.cc/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&only_reported_releases=1&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
 
-        ( ( Get-HTTP -url $url -headers $headers ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
+        ( ( Get-HTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
             $seed_dates[$_[0]] = $_[1]
         } 
     }
     return $seed_dates
 }
 
-function Get-APITorrents ( $sections, $id, $api_key ) {
+function Get-APITorrents ( $sections, $id, $api_key, $call_from ) {
     Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
     $tracker_torrents = @{}
-    $i = 1
-    do {
-        try {
-            if ($i -gt 1 ) { Write-Log "Попытка номер $i" }
-            $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_status_titles'
-            $titles = ($content | ConvertFrom-Json -AsHashtable ).result
-            if ( $titles ) { break }
-        }
-        catch { Start-Sleep -Seconds 10; $i++ }
-    }
-    until ( $i -ge 5 )
+    if ($i -gt 1 ) { Write-Log "Попытка номер $i" }
+    $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_status_titles' -call_from $call_from
+    $titles = ($content | ConvertFrom-Json -AsHashtable ).result
+
     if (!$titles) {
         Write-Log 'Нет связи с API трекера, выходим' -Red
         exit
@@ -871,61 +856,56 @@ function Get-APITorrents ( $sections, $id, $api_key ) {
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
 
     foreach ( $section in $sections ) {
-        $section_torrents = Get-APISectionTorrents $forum $section $id $api_key $ok_states
+        $section_torrents = Get-APISectionTorrents -forum $forum -section $section -id $id -api_key $api_key -ok_states $ok_states -call_from $call_from
         $tracker_torrents += $section_torrents
 
     }
     return $tracker_torrents
 }
-function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states) {
+function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states, $call_from ) {
     $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }        
     Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
     $use_avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' )
     $avg_days = $ini_data.sections.avg_seeders_period
     $try_count = 1
     $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
-    while ( $true) {
-        try {
-            $url = "https://rep.rutracker.cc/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders$subst"
-            $content = ( Get-HTTP -url $url -headers $headers )
-            # if ( $use_avg_seeds -eq 'Y' ) { $content = $content.replace( 'average_seeds_sum','seeders' ) }
-            $json = $content | ConvertFrom-Json
-            $columns = @{}
-            $i = 0
-            $json.columns | ForEach-Object { $columns[$i] = $_; $i++ }
-            # $line = [PSCustomObject]@{}
-            $line = @{}
-            # $json.columns | Where-Object { $_ -ne 'info_hash' } | ForEach-Object {
-            #     $line | Add-Member -MemberType NoteProperty -Name $_ -Value $null
-            # }
-            # $line | Add-Member -MemberType NoteProperty -Name section -Value $section
-            $line.section = $section
-            # if ( $use_avg_seeds -eq 'Y' ) { $line | Add-Member -MemberType NoteProperty -Name seeders -Value 0.0 }
-            $lines = @{}
-            $hash_column = $columns.keys | Where-Object { $columns[$_] -eq 'info_hash' }
-            $status_column = $columns.keys | Where-Object { $columns[$_] -eq 'tor_status' }
-            foreach ( $release in $json.releases | Where-Object { $_[$status_column] -in $ok_states } ) {
-                $j = 0
-                foreach ( $field in $release ) {
-                    if ( $j -ne $hash_column) { $line[$columns[$j]] = $field }
-                    $j++
-                }
-                try {
-                    if ( $use_avg_seeds -eq 'Y' ) {
-                        $line.avg_seeders = ( $line.average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $line.average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
-                    }
-                    else {
-                        $line.avg_sseders = $line.seeders
-                    }
-                }
-                catch { $line.seeders = 0 }
-                $lines[$release[$hash_column]] = $line | Select-Object *
-                # $lines[$release[$hash_column]] = $line
-            }
-            break
+    $url = "https://rep.rutracker.cc/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders$subst"
+    $content = ( Get-HTTP -url $url -headers $headers -call_from $call_from )
+    # if ( $use_avg_seeds -eq 'Y' ) { $content = $content.replace( 'average_seeds_sum','seeders' ) }
+    $json = $content | ConvertFrom-Json
+    $columns = @{}
+    $i = 0
+    $json.columns | ForEach-Object { $columns[$i] = $_; $i++ }
+    # $line = [PSCustomObject]@{}
+    $line = @{}
+    # $json.columns | Where-Object { $_ -ne 'info_hash' } | ForEach-Object {
+    #     $line | Add-Member -MemberType NoteProperty -Name $_ -Value $null
+    # }
+    # $line | Add-Member -MemberType NoteProperty -Name section -Value $section
+    $line.section = $section
+    # if ( $use_avg_seeds -eq 'Y' ) { $line | Add-Member -MemberType NoteProperty -Name seeders -Value 0.0 }
+    $lines = @{}
+    $hash_column = $columns.keys | Where-Object { $columns[$_] -eq 'info_hash' }
+    $status_column = $columns.keys | Where-Object { $columns[$_] -eq 'tor_status' }
+    foreach ( $release in $json.releases | Where-Object { $_[$status_column] -in $ok_states } ) {
+        $j = 0
+        foreach ( $field in $release ) {
+            if ( $j -ne $hash_column) { $line[$columns[$j]] = $field }
+            $j++
         }
-        catch { Start-Sleep -Seconds 10; $try_count++; Write-Log "Попытка номер $try_count" }
+        try {
+            if ( $use_avg_seeds -eq 'Y' ) {
+                $line.avg_seeders = ( $line.average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $line.average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
+            }
+            else {
+                $line.avg_sseders = $line.seeders
+            }
+        }
+        catch { $line.seeders = 0 }
+        $lines[$release[$hash_column]] = $line | Select-Object *
+        # $lines[$release[$hash_column]] = $line
     }
+    
     Write-Log ( 'Получено раздач: ' + $lines.count ) -skip_timestamp -nologfile
     if ( !$lines.count ) {
         Write-Log 'Не получилось' -Red
@@ -996,18 +976,20 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states) {
 
 
 
-function Get-HTTP ( $url, $body, $headers ) {
+function Get-HTTP ( $url, $body, $headers, $call_from ) {
     $retry_cnt = 1
-    try {
-        if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
-            if ( $forum.proxyCred ) { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred -Body $body ).Content }
-            else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -Body $body ).Content }
+    while ( $true ) {
+        try {
+            if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
+                if ( $forum.proxyCred ) { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)").Content }
+                else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
+            }
+            else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
         }
-        else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body ).Content }
-    }
-    catch {
-        Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
-        If ( $retry_cnt -gt 10 ) { break }
+        catch {
+            Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
+            If ( $retry_cnt -gt 10 ) { break }
+        }
     }
     Write-Log 'Не удалось получить данные, выходим досрочно' -Red
 }

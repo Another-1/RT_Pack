@@ -2,7 +2,9 @@ $ProgressPreference = 'SilentlyContinue'
 Write-Output 'Подгружаем настройки'
 
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
-try { . ( Join-Path $PSScriptRoot _settings.ps1 ) }
+try {
+    . ( Join-Path $PSScriptRoot _settings.ps1 )
+}
 catch { Write-Host 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' }
 
 $str = 'Подгружаем функции'
@@ -135,7 +137,7 @@ if ( $get_blacklist -eq 'N' ) {
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
     # $tracker_torrents = Get-TrackerTorrents $sections
-    $tracker_torrents = Get-APITorrents -sections $all_sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
+    $tracker_torrents = Get-APITorrents -sections $all_sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Adder'
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
@@ -253,7 +255,7 @@ if ( $new_torrents_keys ) {
             if ( !$forum.sid ) { Initialize-Forum $forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
-            $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title
+            $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from 'Adder' ).topic_title
             $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_topic_title + ' в клиенте ' + $client.Name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
@@ -324,7 +326,7 @@ if ( $new_torrents_keys ) {
 
             else {
                 if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
-                    $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title
+                    $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from 'Adder' ).topic_title
                     $mask_passed = $false
                     $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
                         if ( -not $mask_passed -and $new_topic_title -like $_ ) {
@@ -335,7 +337,7 @@ if ( $new_torrents_keys ) {
                 else { $mask_passed = 'N/A' }
             }
             if ( $masks_like -and -not $mask_passed ) {
-                $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title
+                $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from 'Adder' ).topic_title
                 Write-Log ( 'Новая раздача ' + $new_topic_title + ' отброшена масками' )
                 continue
             }
@@ -345,7 +347,7 @@ if ( $new_torrents_keys ) {
             }
             if ( !$forum.sid ) { Initialize-Forum $forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
-            if ( $null -eq $new_topic_title ) { $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id ).topic_title }
+            if ( $null -eq $new_topic_title ) { $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from 'Adder' ).topic_title }
             $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_topic_title + ' в клиент ' + $client.Name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
@@ -422,7 +424,7 @@ if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_broken -and $report_b
 
 if ( $control -eq 'Y' ) {
     Write-Log 'Запускаем встроенную регулировку'
-    . "$PSScriptRoot\Controller.ps1"
+    . ( Join-Path $PSScriptRoot Controller.ps1 )
 }
 
 $report_flag_file = "$PSScriptRoot\report_needed.flg"

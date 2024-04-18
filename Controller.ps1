@@ -11,25 +11,27 @@
 #     # Set-StartStop $stop_keys
 # }
 
-if ( !$tracker_torrents) { Write-Output 'Подгружаем настройки' }
+if ( !$tracker_torrents) {
+    Write-Output 'Подгружаем настройки'
 
-$separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
-. ( $PSScriptRoot + $separator + '_settings.ps1' )
+    # $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
+    . ( Join-Path $PSScriptRoot '_settings.ps1' )
 
-$str = 'Подгружаем функции'
-if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
-. "$PSScriptRoot\_functions.ps1"
+    $str = 'Подгружаем функции'
+    if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
+    . ( Join-Path $PSScriptRoot '_functions.ps1' )
+}
 
 Write-Log 'Проверяем актуальность Controller' 
 Test-Version '_functions.ps1' 'Controller'
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Controller'
 If ( !$ini_data) {
     Test-Module 'PsIni' 'для чтения настроек TLO'
-# Test-Module 'PSSQLite' 'для работы с базой TLO'
-$tlo_path = Test-Setting 'tlo_path' -required
-$ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
-Write-Log 'Читаем настройки Web-TLO'
-$ini_data = Get-IniContent $ini_path
+    # Test-Module 'PSSQLite' 'для работы с базой TLO'
+    $tlo_path = Test-Setting 'tlo_path' -required
+    $ini_path = Join-Path $tlo_path 'data' 'config.ini'
+    Write-Log 'Читаем настройки Web-TLO'
+    $ini_data = Get-IniContent $ini_path
 }
 # $hours_to_stop = Test-Setting 'hours_to_stop'
 # $ok_to_stop = (Get-Date).ToUniversalTime().AddHours( 0 - $hours_to_stop )
@@ -46,7 +48,17 @@ Write-Log 'Строим таблицы'
 $sections = $ini_data.sections.subsections.split( ',' )
 $section_details = Get-IniSectionDetails $sections
 $sections | ForEach-Object { $section_seeds[$_] = ( $section_details[$_].control_peers -ne '' ? $section_details[$_].control_peers : $global_seeds ) }
-    
+if ( $control_override -and (Get-Date).hour -in $control_override.hours ) { 
+    foreach ( $section in @($section_seeds.Keys) ) {
+        if ( $control_override.client[$clients[$section_details[$section].client].Name] ) {
+            $section_seeds[$section] = $control_override.client[$clients[$section_details[$section].client].Name]
+        }
+        elseif ( $control_override.global ) {
+            $section_seeds[$section] = $control_override.global
+        }
+
+    }
+}
 $states = @{}
 $paused_sort = [System.Collections.ArrayList]::new()
 
@@ -56,7 +68,7 @@ if ( !$tracker_torrents) {
     Write-Log 'Автономный запуск, надо сходить на трекер за актуальными сидами и ID'
     $forum = Set-ForumDetails # чтобы подтянуть настройки прокси для следующего шага
     # $tracker_torrents = Get-TrackerTorrents $sections -1 # без ограничения на количество сидов. Нужно чтобы получить оттуда сидов.
-    $tracker_torrents = Get-APITorrents -sections $sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
+    $tracker_torrents = Get-APITorrents -sections $sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Controller'
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
@@ -73,13 +85,13 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
 }
 
 # Write-Log 'Выгружаем даты запусков по хранимым раздачам'
-$api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key
+$api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Controller'
 # $i = 0
 Write-Log 'Осмысливаем полученное'
 $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
     $states[$_.hash] = @{
-        client = $_.client_key;
-        state = $_.state;
+        client           = $_.client_key
+        state            = $_.state
         seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
     }
     # $states[$_.hash] = @{ client = $_.client_key; state = $_.state; seeder_last_seen = $tracker_torrents[$_.infohash_v1].seeder_last_seen }
