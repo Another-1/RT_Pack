@@ -293,7 +293,7 @@ if ( $new_torrents_keys ) {
                         Write-Log 'Фиксируем факт обновления в БД обновлений'
                         $current_cnt = Invoke-SqliteQuery -Query "SELECT cnt FROM updates WHERE id = $($new_tracker_data.topic_id)" -SQLiteConnection $up_conn
                         if ( !$current_cnt ) {
-                            Invoke-SqliteQuery -Query "INSERT INTO updates (id, count) VALUES ( $($new_tracker_data.topic_id), 1 )" -SQLiteConnection $up_conn | Out-Null
+                            Invoke-SqliteQuery -Query "INSERT INTO updates (id, cnt) VALUES ( $($new_tracker_data.topic_id), 1 )" -SQLiteConnection $up_conn | Out-Null
                         }
                         else {
                             $current_cnt = $current_cnt + 1
