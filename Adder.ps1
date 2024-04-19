@@ -296,9 +296,9 @@ if ( $new_torrents_keys ) {
                             Invoke-SqliteQuery -Query "INSERT INTO updates (id, count) VALUES ( $($new_tracker_data.topic_id), 1 )" -SQLiteConnection $up_conn | Out-Null
                         }
                         else {
+                            $current_cnt = $current_cnt + 1
                             Invoke-SqliteQuery -Query "UPDATE updates SET cnt = $current_cnt WHERE id = $($new_tracker_data.topic_id) " -SQLiteConnection $up_conn | Out-Null
                         }
-                        $current_cnt = ( $current_cnt ? $current_cnt + 1 : 1 )
                         if ( $current_cnt -ge $update_trigger) {
                             Send-TGMessage -message "Рекомендуется перенести в клиенте <b>$($client.Name)</b> на SSD раздачу $($new_tracker_data.topic_id) $($existing_torrent.name)" -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'
                         }
