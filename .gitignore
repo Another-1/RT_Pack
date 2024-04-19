@@ -2,14 +2,12 @@ _settings.ps1
 README.md
 test.ps1
 _client_ssd.ps1
-starts.db
 in_progress.lck
 report_needed.flg
-starts.db
-rehashes.db
 ipfilter.dat
 *.torrent
 *.new
 *.was
 *.journal
 _masks.ps1
+*.db

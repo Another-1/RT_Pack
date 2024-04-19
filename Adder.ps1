@@ -69,6 +69,13 @@ if ( $update_stats -eq 'Y') {
     }
 }
 
+if ( $update_trigger -and $psversionTable.Platform.ToLower() -like '*win*') {
+    $database_path = $PSScriptRoot + $separator + 'updates.db'
+    Write-Log 'Подключаемся к БД обновлений раздач'
+    $up_conn = Open-Database $database_path
+    Invoke-SqliteQuery -Query 'CREATE TABLE IF NOT EXISTS updates (id INT PRIMARY KEY NOT NULL, cnt INT)' -SQLiteConnection $up_conn
+}
+
 # $sections = Get-IniSections -useForced
 $sections = $ini_data.sections.subsections.split( ',' )
 $all_sections = $sections
@@ -280,6 +287,18 @@ if ( $new_torrents_keys ) {
                     }
                 }
                 $refreshed_ids += $new_tracker_data.topic_id
+                if ( $update_trigger ) {
+                    if ( !$disk_types ) { $disk_types = Get-DiskTypes }
+                    if ( $disk_types -and $disk_types[ $existing_torrent.save_path[0] ] -eq 'HDD' ) {
+                        Write-Log 'Фиксируем факт обновления в БД обновлений'
+                        $current_cnt = Invoke-SqliteQuery -Query "SELECT cnt FROM updates WHERE id = $($new_tracker_data.topic_id)" -SQLiteConnection $up_conn
+                        $current_cnt = ( $current_cnt ? $current_cnt + 1 : 1 )
+                        if ( $current_cnt -ge $update_trigger) {
+                            Send-TGMessage -message "Рекомендуется перенести в клиенте <b>$($client.Name)</b> на SSD раздачу $($new_tracker_data.topic_id) $($existing_torrent.name)" -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'
+                        }
+                        Invoke-SqliteQuery -Query "UPDATE updates SET cnt = $current_cnt WHERE id = $($new_tracker_data.topic_id) " -SQLiteConnection $up_conn | Out-Null
+                    }
+                }
             }
             # подмена временного каталога если раздача хранится на SSD.
             if ( $ssd ) {
@@ -440,6 +459,10 @@ if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or ( $obsolete.Count -gt 0
 }
 elseif ( $report_nowork -eq 'Y' -and $tg_token -ne '' -and $tg_chat -ne '' ) { 
     Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Adder' ) + ' отработал, ничего делать не пришлось.' ) -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'
+}
+
+if ( $update_trigger ) {
+    $up_conn.Close()
 }
 
 if ( $report_stalled -eq 'Y' ) {

@@ -993,3 +993,15 @@ function Get-HTTP ( $url, $body, $headers, $call_from ) {
     }
     Write-Log 'Не удалось получить данные, выходим досрочно' -Red
 }
+
+function Get-DiskTypes {
+    Write-Log 'Получаем типы физических накопителей'
+    $disk_hash = @{}
+    Get-PhysicalDisk | ForEach-Object {
+        $physicalDisk = $_
+        $physicalDisk | Get-Disk | Get-Partition | Where-Object DriveLetter | ForEach-Object {
+            $disk_hash[$_.DriveLetter] = $physicalDisk.MediaType
+        }
+    }
+    return $disk_hash
+}
