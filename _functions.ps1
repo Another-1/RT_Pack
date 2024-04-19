@@ -82,7 +82,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
     $settings = @{
         'tg_token'              = @{ prompt = 'Токен бота Telegram, если нужна отправка событий в Telegram. Если не нужно, оставить пустым'; default = ''; type = 'string' }
         'tg_chat'               = @{ prompt = 'Номер чата для отправки сообщений Telegram'; default = ''; type = 'string' }
-        'alert_oldies'          = @{ prompt = 'Уведомлять о новых версиях скриптов в Telegram?'; default = 'Y'; type = 'YN' }
+        'alert_oldies'          = @{ prompt = 'Уведомлять о новых версиях скриптов в Telegram? (нужен свой бот ТГ!)'; default = 'Y'; type = 'YN' }
         'use_timestamp'         = @{ prompt = 'Выводить дату-время в окне лога Adder?'; default = 'N'; type = 'YN' }
         'tlo_path'              = @{ prompt = 'Путь к папке Web-TLO'; default = 'C:\OpenServer\domains\webtlo.local'; type = 'string' }
         'get_blacklist'         = @{ prompt = 'Скачивать раздачи из чёрного списка Web-TLO?'; default = 'N'; type = 'YN' }
@@ -100,7 +100,7 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'send_reports'          = @{ prompt = 'Вызывать отправку отчётов если что-то изменилось? (Y/N)'; default = 'Y'; type = 'YN' }
         'php_path'              = @{ prompt = 'Путь к интерпретатору PHP (вместе с именем исполняемого файла)'; default = ''; type = 'string' }
         'report_stalled'        = @{ prompt = 'Отправлять боту призыв о помощи по некачашкам более месяца? (Y/N)'; default = 'N'; type = 'YN' }
-        'report_obsolete'       = @{ prompt = 'Сообщать в Telegram о неактуальных раздачах? (Y/N)'; default = 'Y'; type = 'YN' }
+        'report_obsolete'       = @{ prompt = 'Сообщать в Telegram о неактуальных раздачах? (Y/N) (нужен свой бот ТГ!)'; default = 'Y'; type = 'YN' }
         'max_rehash_qty'        = @{ prompt = 'Максимальное количество отправляемых в рехэш раздач за один прогон?'; default = 10; type = 'number' }
         'max_rehash_size_bytes' = @{ prompt = 'максимальный объём отправляемых в рехэш раздач за один прогон в байтах?'; default = 10 * 1024 * 1024 * 1024; type = 'number' }
         'frequency'             = @{ prompt = 'Минимальное кол-во дней между рехэшами одной раздачи в днях?'; default = 365; type = 'number' }
@@ -114,9 +114,9 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         # 'hours_to_stop'         = @{ prompt = 'Сколько минимум часов держать раздачу запущенной?'; default = 3; type = 'number' }
         'old_starts_per_run'    = @{ prompt = 'Максимальное количество запускаемых за раз давно стоящих раздач? '; default = 100; type = 'number' }
         'min_stop_to_start'     = @{ prompt = 'Через сколько дней простоя обязательно запускать раздачу? '; default = 21; type = 'number' }
-        'report_nowork'         = @{ prompt = 'Сообщать в Telegam если ничего не пришлось делать?'; default = 'Y'; type = 'YN' }
+        'report_nowork'         = @{ prompt = 'Сообщать в Telegam если ничего не пришлось делать? (нужен свой бот ТГ!)'; default = 'Y'; type = 'YN' }
         'auto_update'           = @{ prompt = 'Автоматически обновлять версии скриптов?'; default = 'N'; type = 'YN' }
-        'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота в /about_me)'; type = 'string' }
+        'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота Кузи в /about_me)'; type = 'string' }
     }
     $changed = $false
     $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
@@ -833,7 +833,7 @@ function Get-APISeeding ( $id, $api_key, $seding_days, $call_from ) {
     $seed_dates = @{}
     foreach ( $section in $sections ) {
         Write-Log "Запрашиваем историю сидирования по разделу $section"
-        $url = "https://rep.rutracker.cc/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&only_reported_releases=1&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
+        $url = "https://rep.rutracker.cc/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
 
         ( ( Get-HTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
             $seed_dates[$_[0]] = $_[1]

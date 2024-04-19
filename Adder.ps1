@@ -5,7 +5,7 @@ $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
 try {
     . ( Join-Path $PSScriptRoot _settings.ps1 )
 }
-catch { Write-Host 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' }
+catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
 
 $str = 'Подгружаем функции'
 if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
@@ -25,9 +25,11 @@ Write-Log 'Проверяем наличие всех нужных настро�
 $tg_token = Test-Setting 'tg_token'
 if ( $tg_token -ne '') {
     $tg_chat = Test-Setting 'tg_chat' -required
+    $alert_oldies = Test-Setting 'alert_oldies'
+    $report_nowork = Test-Setting 'report_nowork'
+    $report_obsolete = Test-Setting 'report_obsolete'
 }
 
-$alert_oldies = Test-Setting 'alert_oldies'
 $use_timestamp = Test-Setting 'use_timestamp'
 $tlo_path = Test-Setting 'tlo_path' -required
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
@@ -45,14 +47,10 @@ $get_mids = Test-Setting 'get_mids'
 $get_highs = Test-Setting 'get_highs'
 $control = Test-Setting 'control'
 $auto_update = Test-Setting 'auto_update'
-if ( $tg_token -ne '') {
-    $report_obsolete = Test-Setting 'report_obsolete'
-}
 $report_stalled = Test-Setting 'report_stalled'
 if ( $report_stalled -eq 'Y' ) {
     $stalled_pwd = Test-Setting 'stalled_pwd' -required
 }
-$report_nowork = Test-Setting 'report_nowork'
 $update_stats = Test-Setting 'update_stats'
 if ( $update_stats -eq 'Y' ) {
     $update_obsolete = Test-Setting 'update_obsolete'
@@ -291,7 +289,7 @@ if ( $new_torrents_keys ) {
                     if ( !$disk_types ) { $disk_types = Get-DiskTypes }
                     if ( $disk_types -and $disk_types[ $existing_torrent.save_path[0] ] -eq 'HDD' ) {
                         Write-Log 'Фиксируем факт обновления в БД обновлений'
-                        $current_cnt = Invoke-SqliteQuery -Query "SELECT cnt FROM updates WHERE id = $($new_tracker_data.topic_id)" -SQLiteConnection $up_conn
+                        $current_cnt = ( Invoke-SqliteQuery -Query "SELECT cnt FROM updates WHERE id = $($new_tracker_data.topic_id)" -SQLiteConnection $up_conn ).cnt
                         if ( !$current_cnt ) {
                             Invoke-SqliteQuery -Query "INSERT INTO updates (id, cnt) VALUES ( $($new_tracker_data.topic_id), 1 )" -SQLiteConnection $up_conn | Out-Null
                         }
