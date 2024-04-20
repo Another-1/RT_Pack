@@ -1011,26 +1011,26 @@ function  Get-SpokenInterval ( $start_date, $end_date ) {
     $Duration = New-TimeSpan -Start $start_date -End $end_date
     
     $Day = switch ($Duration.Days) {
-        0 { $null; break }
+        # 0 { $null; break }
         # 1 { "{0} д," -f $Duration.Days; break }
-        Default {"{0} д," -f $Duration.Days}
+        Default {"<b>{0}</b> д." -f $Duration.Days}
     }
     
-    $Hour = switch ($Duration.Hours) {
-        #0 { $null; break }
-        Default { "{0} ч," -f $Duration.Hours }
-    }
+    # $Hour = switch ($Duration.Hours) {
+    #     #0 { $null; break }
+    #     Default { "{0} ч," -f $Duration.Hours }
+    # }
     
-    $Minute = switch ($Duration.Minutes) {
-        #0 { $null; break }
-        # 1 { "{0} Minute," -f $Duration.Minutes; break }
-        Default { "{0} мин," -f $Duration.Minutes }
-    }
+    # $Minute = switch ($Duration.Minutes) {
+    #     #0 { $null; break }
+    #     # 1 { "{0} Minute," -f $Duration.Minutes; break }
+    #     Default { "{0} мин," -f $Duration.Minutes }
+    # }
     
-    $Second = switch ($Duration.Seconds) {
-        #0 { $null; break }
-        # 1 { "{0} Second" -f $Duration.Seconds; break }
-        Default { "{0} сек." -f $Duration.Seconds }
-    }
-    return "$Day $Hour $Minute $Second"    
+    # $Second = switch ($Duration.Seconds) {
+    #     #0 { $null; break }
+    #     # 1 { "{0} Second" -f $Duration.Seconds; break }
+    #     Default { "{0} сек." -f $Duration.Seconds }
+    # }
+    return "$Day" # $Hour $Minute $Second"    
 }
