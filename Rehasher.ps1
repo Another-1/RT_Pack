@@ -34,6 +34,9 @@ Test-Module 'PSSQLite' 'для работы с базой TLO'
 
 $min_repeat_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $frequency * 24 * 60 * 60 ) # количество секунд между повторными рехэшами одной раздачи
 $min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay * 24 * 60 * 60 ) # количество секунд до первого рехэша новых раздач
+# $repeat_min = ( Get-Date -UFormat %s ).ToInt32($null) + ( $frequency * 24 * 60 * 60 )
+# $fresh_min = ( Get-Date -UFormat %s ).ToInt32($null) + ( $freshes_delay * 24 * 60 * 60 )
+$now = ( Get-Date -UFormat %s ).ToInt32($null)
 
 Write-Log 'Читаем настройки Web-TLO'
 
@@ -50,17 +53,6 @@ $before = $clients_torrents.count
 $clients_torrents = $clients_torrents | Where-Object { $_.state -ne 'checkingUP' }
 Write-Log ( 'Исключено раздач: ' + ( $before - $clients_torrents.count ) )
 
-if ( $rehash_freshes -ne 'Y') {
-    $before = $clients_torrents.count
-    Write-Log 'Исключаем свежескачанные раздачи'
-    $too_fresh = $clients_torrents.completion_on | Where-Object { $_ -gt $min_freshes_epoch }
-    if ( $too_fresh.count -gt 0 ) {
-        $closest_new = ( $too_fresh | Sort-Object | Select-Object -First 1 ) + ( $freshes_delay * 24 * 60 * 60 )
-    }
-    $clients_torrents = $clients_torrents | Where-Object { $_.completion_on -lt $min_freshes_epoch }
-    Write-Log ( 'Исключено раздач: ' + ( $before - $clients_torrents.count ) )
-}
-
 $db_data = @{}
 $database_path = $PSScriptRoot + $separator + 'rehashes.db'
 Write-Log 'Подключаемся к БД'
@@ -74,13 +66,29 @@ Write-Log 'Ищем раздачи из клиентов в БД рехэшей'
 $clients_torrents | ForEach-Object {
     if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
     if ($_.infohash_v1 -and ( $nul -ne $_.infohash_v1 ) -and ( $_.infohash_v1 -ne '' ) ) {
-        $full_data_sorted.Add( [PSCustomObject]@{ hash = $_.infohash_v1; rehash_date = $( $null -ne $db_data[$_.infohash_v1] -and $db_data[$_.infohash_v1] -gt 0 ? $db_data[$_.infohash_v1] : 0 ); client_key = $_.client_key; size = $_.size; name = $_.name } ) | Out-Null
+        $full_data_sorted.Add( [PSCustomObject]@{ hash = $_.infohash_v1; rehash_date = $( $null -ne $db_data[$_.infohash_v1] -and $db_data[$_.infohash_v1] -gt 0 ? $db_data[$_.infohash_v1] : 0 ); client_key = $_.client_key; size = $_.size; name = $_.name; completion_on = $_.completion_on } ) | Out-Null
     }
 }
 
-$closest_rehash = ( $full_data_sorted.rehash_date | Where-Object { $_ -gt $min_repeat_epoch } | Sort-Object | Select-Object -First 1 ) + ( $frequency * 24 * 60 * 60 )
-if ( !$closest_new ) { $closest_new = $closest_rehash }
-$closest_overall = [System.TimeZoneInfo]::ConvertTimeFromUtc(([System.DateTimeOffset]::FromUnixTimeSeconds(( $closest_new -lt $closest_rehash ? $closest_new : $closest_rehash)).DateTime ), $(Get-TimeZone))
+Write-Log 'Ищем время ближайшего следующего рехэша'
+$closest_rehash = (Get-Date -UFormat %s).ToInt32($null) + 3 * 365 * 24 * 60 * 60
+$full_data_sorted | ForEach-Object {
+    if ( $_.completion_on -gt $min_freshes_epoch -and ( $_.rehash_date -gt $min_repeat_epoch -or $_.rehash_date -eq 0 ) ) {
+        $closest_rehash = (@( $closest_rehash; (@( ( $rehash_freshes -eq 'Y' ? 0 : $_.completion_on + $freshes_delay *24*60*60 ); $_.rehash_date + $frequency*24*60*60) | Measure-Object -Maximum).Maximum ) | Measure-Object -Minimum).Minimum
+        # $closest_rehash = (@( $closest_rehash; $_.completion_on + $freshes_delay *24*60*60; $_.rehash_date + $frequency*24*60*60 ) | Measure-Object -Minimum).Minimum
+    }
+}
+
+$closest_datetime = [System.TimeZoneInfo]::ConvertTimeFromUtc(([System.DateTimeOffset]::FromUnixTimeSeconds( $closest_rehash ).DateTime ), $(Get-TimeZone))
+
+if ( $rehash_freshes -ne 'Y') {
+    $before = $full_data_sorted.count
+    Write-Log 'Исключаем свежескачанные раздачи'
+    $full_data_sorted = $full_data_sorted | Where-Object { $_.completion_on -lt $min_freshes_epoch }
+    Write-Log ( 'Исключено раздач: ' + ( $before - $full_data_sorted.count ) )
+}
+
+
 
 Write-Log 'Исключаем раздачи, которые рано рехэшить'
 $before = $full_data_sorted.count
@@ -196,15 +204,16 @@ Write-Log ( "Отправлено в рехэш: $sum_cnt раздач объё�
 Write-Log ( 'Осталось: ' + ( $was_count - $sum_cnt ) + ' раздач объёмом ' + ( ( $was_sum_size - $sum_size ) -eq 0 ? 0 : ( to_kmg( $was_sum_size - $sum_size ) 1 ) ) )
 
 if ( $report_rehasher -eq 'Y' ) {
+    $closest_span = Get-SpokenInterval (Get-Date) $closest_datetime 
     if ( $sum_cnt -gt 0 ) {
         $message = "Прогон завершён`nОтправлено в рехэш: $sum_cnt раздач объёмом " + ( $sum_size -eq 0 ? 0 : ( to_kmg $sum_size 1 ) ) + "`nОсталось: " + ( $was_count - $sum_cnt ) + ' раздач объёмом ' + ( ( $was_sum_size - $sum_size ) -eq 0 ? 0 : ( to_kmg( $was_sum_size - $sum_size ) 1 ) )
-        if ( $sum_cnt -eq $was_count ) {
-            $message = $message + "`nБлижайший рехэш $closest_overall"
+        if ( $sum_cnt -eq $was_count -and $closest_datetime -gt ( Get-Date ) ) {
+            $message = $message + "`nБлижайший рехэш через $closest_span"
         }
         Send-TGMessage -message $message -mess_sender 'Rehasher' -chat_id $tg_chat -token $tg_token
     }
     else {
-        Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Rehasher' ) + " отработал, ничего делать не пришлось.`nБлижайший рехэш $closest_overall" ) -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
+        Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Rehasher' ) + " отработал, ничего делать не пришлось.`nБлижайший рехэш через $closest_span" ) -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
     }
 }
 
