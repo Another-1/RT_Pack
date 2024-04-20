@@ -22,9 +22,13 @@ if ( !$tracker_torrents) {
     . ( Join-Path $PSScriptRoot '_functions.ps1' )
 }
 
-Write-Log 'Проверяем актуальность Controller' 
-Test-Version '_functions.ps1' 'Controller'
+Write-Log 'Проверяем актуальность Controller и _functions' 
+if ( ( Test-Version '_functions.ps1' 'Controller' ) -eq $true ) {
+    Write-Log 'Запускаем новую версию  _functions.ps1'
+    . ( Join-Path $PSScriptRoot '_functions.ps1' )
+}
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Controller'
+
 If ( !$ini_data) {
     Test-Module 'PsIni' 'для чтения настроек TLO'
     # Test-Module 'PSSQLite' 'для работы с базой TLO'

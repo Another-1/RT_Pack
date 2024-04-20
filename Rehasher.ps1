@@ -7,7 +7,12 @@ if ( $use_timestamp -ne 'Y' ) { Write-Output $str } else { Write-Output ( ( Get-
 . ( $PSScriptRoot + $separator + '_functions.ps1' )
 
 Write-Log 'Проверяем версии скриптов на актуальность'
-Test-Version '_functions.ps1' 'Rehasher'
+# Test-Version '_functions.ps1' 'Rehasher'
+if ( ( Test-Version '_functions.ps1' 'Rehasher' ) -eq $true ) {
+    Write-Log 'Запускаем новую версию  _functions.ps1'
+    . ( Join-Path $PSScriptRoot '_functions.ps1' )
+}
+
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Rehasher'
 Test-PSVersion
 

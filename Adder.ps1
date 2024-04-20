@@ -16,7 +16,11 @@ if ( !$debug ) {
     Test-Module 'PsIni' 'для чтения настроек TLO'
     Test-Module 'PSSQLite' 'для работы с базой TLO'
     Write-Log 'Проверяем актуальность скриптов' 
-    Test-Version ( '_functions.ps1' ) 'Adder'
+    # Test-Version ( '_functions.ps1' ) 'Adder'
+    if ( ( Test-Version '_functions.ps1' 'Adder' ) -eq $true ) {
+        Write-Log 'Запускаем новую версию  _functions.ps1'
+        . ( Join-Path $PSScriptRoot '_functions.ps1' )
+    }
     Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Adder'
 }
 

@@ -54,10 +54,12 @@ function Test-Version ( $name, $mess_sender = '') {
                         exit
                     }
                     else { 
-                        Write-Log 'Ждём 1 секунду, на всякий случай'
-                        Start-Sleep -Seconds 1
-                        Write-Log "Запускаем новую версию  $name"
-                        . ( Join-Path $PSScriptRoot $name )
+                        Remove-Item $new_file_path -Force -ErrorAction SilentlyContinue
+                        return $true
+                        # Write-Log 'Ждём 1 секунду, на всякий случай'
+                        # Start-Sleep -Seconds 1
+                        # Write-Log "Запускаем новую версию  $name"
+                        # . ( Join-Path $PSScriptRoot $name )
                     }
                 }
             }
