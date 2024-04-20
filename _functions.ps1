@@ -48,13 +48,13 @@ function Test-Version ( $name, $mess_sender = '') {
                     Copy-Item -Path $new_file_pGjath -Destination ( Join-Path $PSScriptRoot $name ) -Force
                     Write-Log "Снимаю блокировку с запуска $name"
                     Unblock-File -Path ( Join-Path $PSScriptRoot $name )
+                    Remove-Item $new_file_path -Force -ErrorAction SilentlyContinue
                     if ( $name -ne '_functions.ps1' ) {
                         Write-Log "Запускаю новую версию $name в отдельном окне, а тут выхожу"
                         Start-Process pwsh ( Join-Path $PSScriptRoot $name )
                         exit
                     }
                     else { 
-                        Remove-Item $new_file_path -Force -ErrorAction SilentlyContinue
                         return $true
                         # Write-Log 'Ждём 1 секунду, на всякий случай'
                         # Start-Sleep -Seconds 1
@@ -63,7 +63,6 @@ function Test-Version ( $name, $mess_sender = '') {
                     }
                 }
             }
-            Remove-Item $new_file_path -Force -ErrorAction SilentlyContinue
         } 
     }
     catch {}
@@ -1017,7 +1016,7 @@ function  Get-SpokenInterval ( $start_date, $end_date ) {
     $Day = switch ($Duration.Days) {
         # 0 { $null; break }
         # 1 { "{0} д," -f $Duration.Days; break }
-        Default {"<b>{0}</b> д." -f $Duration.Days}
+        Default { "<b>{0}</b> д." -f $Duration.Days }
     }
     
     # $Hour = switch ($Duration.Hours) {
