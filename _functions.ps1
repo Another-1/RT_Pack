@@ -48,14 +48,15 @@ function Test-Version ( $name, $mess_sender = '') {
                     Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name ) -Force
                     Write-Log "Снимаю блокировку с запуска $name"
                     Unblock-File -Path ( Join-Path $PSScriptRoot $name )
-                    Remove-Item $new_file_path -Force -ErrorAction SilentlyContinue
                     if ( $name -ne '_functions.ps1' ) {
                         Write-Log "Запускаю новую версию $name в отдельном окне, а тут выхожу"
                         Start-Process pwsh ( Join-Path $PSScriptRoot $name )
+                        Remove-Item $new_file_path -Force -ErrorAction SilentlyContinue
                         exit
                     }
                     else { 
                         return $true
+                        Remove-Item $new_file_path -Force -ErrorAction SilentlyContinue
                         # Write-Log 'Ждём 1 секунду, на всякий случай'
                         # Start-Sleep -Seconds 1
                         # Write-Log "Запускаем новую версию  $name"
