@@ -22,6 +22,7 @@ if ( !$debug ) {
         . ( Join-Path $PSScriptRoot '_functions.ps1' )
     }
     Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Adder'
+    Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
 }
 
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }

@@ -28,6 +28,7 @@ if ( ( Test-Version '_functions.ps1' 'Controller' ) -eq $true ) {
     . ( Join-Path $PSScriptRoot '_functions.ps1' )
 }
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Controller'
+Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
 
 If ( !$ini_data) {
     Test-Module 'PsIni' 'для чтения настроек TLO'

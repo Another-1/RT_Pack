@@ -14,6 +14,7 @@ if ( ( Test-Version '_functions.ps1' 'Rehasher' ) -eq $true ) {
 }
 
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Rehasher'
+Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
 Test-PSVersion
 
 $max_rehash_qty = Test-Setting 'max_rehash_qty'
