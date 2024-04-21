@@ -342,7 +342,7 @@ if ( $new_torrents_keys ) {
                 hash     = $new_torrent_key
                 topic_id = $new_tracker_data.topic_id
             }
-            Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label
+            If $refreshed_label { Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label }
         }
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) ) {
             # $mask_passed = $true
