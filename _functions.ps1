@@ -454,7 +454,8 @@ function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
     $get_url = 'https://' + $forum.url + '/forum/dl.php?t=' + $Id
     if ( $null -eq $save_path ) { $Path = Join-Path $PSScriptRoot ( $Id.ToString() + '.torrent' ) } else { $path = Join-Path $save_path ( $Id.ToString() + '.torrent' ) }
     $i = 1
-    while ( $i -le 30 ) {
+    Write-Log 'Скачиваем torrent-файл с форума'
+    while ( $i -le 10 ) {
         try { 
             if ( [bool]$forum.ProxyURL ) {
                 if ( $forum.proxycred ) { Invoke-WebRequest -Uri $get_url -WebSession $forum.sid -OutFile $Path -Proxy $forum.ProxyURL -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $forum.proxyCred }
@@ -468,7 +469,7 @@ function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
         }
         catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
     }
-    if ( $nul -eq $save_path ) { return Get-Item $Path }
+    if ( $null -eq $save_path ) { return Get-Item $Path }
 }
 
 function to_kmg ($bytes, [int]$precision = 0) {
@@ -752,9 +753,9 @@ Function DeGZip-File {
         $outfile = ($infile -replace '\.gz$', '')
     )
 
-    $input = New-Object System.IO.FileStream $inFile, ([IO.FileMode]::Open), ([IO.FileAccess]::Read), ([IO.FileShare]::Read)
+    $inp = New-Object System.IO.FileStream $inFile, ([IO.FileMode]::Open), ([IO.FileAccess]::Read), ([IO.FileShare]::Read)
     $output = New-Object System.IO.FileStream $outFile, ([IO.FileMode]::Create), ([IO.FileAccess]::Write), ([IO.FileShare]::None)
-    $gzipStream = New-Object System.IO.Compression.GzipStream $input, ([IO.Compression.CompressionMode]::Decompress)
+    $gzipStream = New-Object System.IO.Compression.GzipStream $inp, ([IO.Compression.CompressionMode]::Decompress)
 
     $buffer = New-Object byte[](1024)
     while ($true) {
@@ -765,7 +766,7 @@ Function DeGZip-File {
 
     $gzipStream.Close()
     $output.Close()
-    $input.Close()
+    $inp.Close()
 }
 
 function Set-Comment ( $client, $torrent, $label ) {
@@ -840,7 +841,7 @@ function Get-APISeeding ( $id, $api_key, $seding_days, $call_from ) {
         $url = "https://rep.rutracker.cc/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
 
         ( ( Get-HTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
-            $seed_dates[$_[0]] = $_[1]
+            if ( $null -ne $_ )  { $seed_dates[$_[0]] = $_[1] }
         } 
     }
     return $seed_dates

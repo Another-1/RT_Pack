@@ -91,6 +91,7 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
 
 # Write-Log 'Выгружаем даты запусков по хранимым раздачам'
 $api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Controller'
+if ( $null -eq $api_seeding ) { exit }
 # $i = 0
 Write-Log 'Осмысливаем полученное'
 $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
