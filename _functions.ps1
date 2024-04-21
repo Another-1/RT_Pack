@@ -45,7 +45,7 @@ function Test-Version ( $name, $mess_sender = '') {
                 }
                 if ( $auto_update -eq 'Y' -and $debug -ne 1 ) {
                     Write-Log "$name обновился, сохраняю новую версию"
-                    Copy-Item -Path $new_file_pGjath -Destination ( Join-Path $PSScriptRoot $name ) -Force
+                    Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name ) -Force
                     Write-Log "Снимаю блокировку с запуска $name"
                     Unblock-File -Path ( Join-Path $PSScriptRoot $name )
                     Remove-Item $new_file_path -Force -ErrorAction SilentlyContinue
