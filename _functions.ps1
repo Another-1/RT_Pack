@@ -51,11 +51,11 @@ function Test-Version ( $name, $mess_sender = '') {
                     if ( $name -ne '_functions.ps1' ) {
                         Write-Log "Запускаю новую версию $name в отдельном окне, а тут выхожу"
                         Start-Process pwsh ( Join-Path $PSScriptRoot $name )
-                        Remove-Item $new_file_path -Force
+                        Remove-Item $new_file_path
                         exit
                     }
                     else { 
-                        Remove-Item $new_file_path -Force
+                        Remove-Item $new_file_path
                         return $true
                         # Write-Log 'Ждём 1 секунду, на всякий случай'
                         # Start-Sleep -Seconds 1
