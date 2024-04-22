@@ -197,7 +197,7 @@ Function Set-ForumDetails ( $forum ) {
     $forum.UseApiProxy = $ini_data.proxy.activate_api
     $forum.UseProxy = $ini_data.proxy.activate_forum
     if ( $forum.UseProxy -eq '1' -and $ini_data.proxy.type -notlike 'socks*' ) {
-        Write-Log 'Выберите прокси типа SOCKS5 или SOCKS5H в настройках TLO' -Red
+        Write-Log 'Выберите прокси типа SOCKS5 или SOCKS5H в настройках TLO. Прокси типа HTTP не поддерживаются. Выходим.' -Red
         Exit
     }
     $forum.Login = $ini_data.'torrent-tracker'.login
