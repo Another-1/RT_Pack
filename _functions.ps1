@@ -634,28 +634,18 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
         else {
             # краткая сводка в ТГ
             $message = ''
-            $keys = (  $refrehed.keys + $added.keys + $obsolete.Keys ) | Sort-Object -Unique
+            $keys = (  $refreshed.keys + $added.keys + $obsolete.Keys ) | Sort-Object -Unique
             foreach ( $client in $keys ) {
                 if ( $message -ne '' ) { $message += "`n" }
                 $message += "<u>Клиент <b>$client</b></u>`n"
                 if ( $refreshed -and $refreshed[$client] ) {
-                    # $first = $true
-                    $refreshed[$client].keys | Sort-Object | ForEach-Object {
-                        if ( $message -ne '' ) { $message += "`n" }
-                        # $message += "<i>Раздел $_</i>`n"
-                        $message += ( "Обновлено: " + $refreshed[$client][$_].count + "`n")
-                    }
+                    $stat = ( $refreshed[$client].keys | ForEach-Object { $refreshed[$client][$_] }) | Measure-Object -Property new_size -Sum
+                    $message += "Обновлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg( $stat.Sum ) )`n"
                 }
-                # if ( !$first ) { $message += "`n" }
                 if ( $added -and $added[$client] ) {
-                    # $first = $true
-                    $added[$client].keys | Sort-Object | ForEach-Object {
-                        # if ( $message -ne '' ) { $message += "`n" }
-                        # $message += "<i>Раздел $_</i>`n"
-                        $message += ( "Добавлено: " + $added[$client][$_].count + "`n")
-                    }
+                    $stat = ( $added[$client].keys | ForEach-Object { $added[$client][$_] }) | Measure-Object -Property size -Sum
+                    $message += "Добавлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg( $stat.Sum ) )`n"
                 }
-                # if ( !$first ) { $message += "`n" }
                 if ( $obsolete -and $obsolete[$client] ) {
                     $message += ( "Лишних: " + $obsolete[$client].count + "`n" )
                 }
@@ -841,7 +831,7 @@ function Get-APISeeding ( $id, $api_key, $seding_days, $call_from ) {
         $url = "https://rep.rutracker.cc/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
 
         ( ( Get-HTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
-            if ( $null -ne $_ )  { $seed_dates[$_[0]] = $_[1] }
+            if ( $null -ne $_ ) { $seed_dates[$_[0]] = $_[1] }
         } 
     }
     return $seed_dates
