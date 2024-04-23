@@ -635,21 +635,29 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
             # краткая сводка в ТГ
             $message = ''
             $keys = (  $refreshed.keys + $added.keys + $obsolete.Keys ) | Sort-Object -Unique
+            [double]$added_b = 0
+            [double]$refreshed_b = 0
             foreach ( $client in $keys ) {
                 if ( $message -ne '' ) { $message += "`n" }
                 $message += "<u>Клиент <b>$client</b></u>`n"
                 if ( $refreshed -and $refreshed[$client] ) {
                     $stat = ( $refreshed[$client].keys | ForEach-Object { $refreshed[$client][$_] }) | Measure-Object -Property new_size -Sum
-                    $message += "Обновлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg( $stat.Sum ) )`n"
+                    $stat_was = ( $refreshed[$client].keys | ForEach-Object { $refreshed[$client][$_] }) | Measure-Object -Property old_size -Sum
+                    $message += "Обновлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
+                    $refreshed_b += ( $stat.Sum - $stat_was.Sum )
                 }
                 if ( $added -and $added[$client] ) {
                     $stat = ( $added[$client].keys | ForEach-Object { $added[$client][$_] }) | Measure-Object -Property size -Sum
-                    $message += "Добавлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg( $stat.Sum ) )`n"
+                    $message += "Добавлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
+                    $added_b += $stat.Sum
                 }
                 if ( $obsolete -and $obsolete[$client] ) {
                     $message += ( "Лишних: " + $obsolete[$client].count + "`n" )
                 }
             }
+            $was = ( $clients_torrents | Measure-Object -Property size -sum ).Sum
+            $now = $was + $refreshed_b + $added_b
+            $message += "`n<u><b>Итого</b></u>`nБыло: $(to_kmg $was 3 )`nСтало: $( to_kmg $now 3 )"
         }
         Send-TGMessage -message $message -token $token -chat_id $chat_id -mess_sender $mess_sender
     }
@@ -862,7 +870,6 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states, $c
     Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
     $use_avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' )
     $avg_days = $ini_data.sections.avg_seeders_period
-    $try_count = 1
     $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
     $url = "https://rep.rutracker.cc/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders$subst"
     $content = ( Get-HTTP -url $url -headers $headers -call_from $call_from )
