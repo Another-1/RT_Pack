@@ -1061,3 +1061,55 @@ function Send-APIReport ( $sections, $id, $api_key, $call_from) {
     }
     Write-Log 'Отправлям список хранимых раздач'
 }
+
+function Select-Client {
+    $clients.keys | Sort-Object | ForEach-Object {
+        Write-Host ( $_ + '. ' + $clients[$_].Name )
+    }
+    $ok2 = $false
+    while ( !$ok2 ) {
+        $choice = Read-Host Выберите клиент
+        if (  $clients[ $choice ] ) { $ok2 = $true }
+    }
+    return $clients[$choice]
+}
+
+function Select-Path ( $direction ) {
+    if ( $direction -eq 'from' ) {
+        $default = 'Хранимое'
+        $str = "Выберите исходный кусок пути [$default]"
+    }
+    else {
+        $default = 'Хранимые'
+        $str = "Выберите целевой кусок пути [$default]"
+    } 
+    $choice = Read-Host $str
+    $result = ( $default, $choice )[[bool]$choice]
+    return $result
+}
+
+function Get-String ( [switch]$obligatory, $prompt ) { 
+    $obligatory
+    while ( $true ) {
+        $choice = ( Read-Host $prompt )
+        if ( $nul -ne $choice -and $choice -ne '') { break }
+        elseif ( !$obligatory ) { break }
+    }
+    if ( $choice ) { return $choice } else { return '' }
+}
+
+function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false) {
+    if ( $verbose ) { Write-Host ( 'Перемещаем ' + $torrent.name + ' в ' + $new_path) }
+    $data = @{
+        hashes   = $torrent.hash
+        location = $new_path
+    }
+    try {
+        Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
+    }
+    catch {
+        $client.sid = $null
+        Initialize-Client $client
+        Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
+    }
+}

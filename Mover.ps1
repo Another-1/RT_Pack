@@ -4,45 +4,40 @@ If ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
     Pause
     Exit
 }
-Write-Host 'Подгружаем функции'
-. "$PSScriptRoot\_functions.ps1"
+try {
+    . ( Join-Path $PSScriptRoot _settings.ps1 )
+}
+catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
+if ( $use_timestamp -eq 'Y' ) { $use_timestamp = 'N' }
 
-Test-Version ( '_functions.ps1' )
-Test-Version ( $PSCommandPath | Split-Path -Leaf )
+Write-Host 'Подгружаем функции'
+. ( Join-Path $PSScriptRoot _functions.ps1 )
 
 if ( -not ( [bool](Get-InstalledModule -Name PsIni -ErrorAction SilentlyContinue) ) ) {
     Write-Output 'Не установлен модуль PSIni для чтения настроек Web-TLO, ставим...'
     Install-Module -Name PsIni -Scope CurrentUser -Force
 }
-If ( -not ( Test-path "$PSScriptRoot\_settings.ps1" ) ) {
-    Set-Preferences
-}
-else { . "$PSScriptRoot\_settings.ps1" }
 
-$ini_path = $tlo_path + '\data\config.ini'
+$ini_path = Join-Path $tlo_path 'data' 'config.ini'
 $ini_data = Get-IniContent $ini_path
 
-$clients = @{}
-Write-Host 'Получаем из TLO данные о клиентах'
-$ini_data.keys | Where-Object { $_ -match '^torrent-client' -and $ini_data[$_].client -eq 'qbittorrent' } | ForEach-Object {
-    $clients[$ini_data[$_].id] = @{ Login = $ini_data[$_].login; Password = $ini_data[$_].password; Name = $ini_data[$_].comment; IP = $ini_data[$_].hostname; Port = $ini_data[$_].port; }
-    $clients_sort = [ordered]@{}
-    $clients.GetEnumerator() | Sort-Object -Property key | ForEach-Object { $clients_sort[$_.key] = $clients[$_.key] }
-    $clients = $clients_sort
-    Remove-Variable -Name clients_sort -ErrorAction SilentlyContinue
-} 
-$client = Select-Client
-Write-host ( 'Выбран клиент ' + $client.Name )
+Write-Log 'Получаем из TLO данные о клиентах'
+$clients = Get-Clients
+$client = Select-Client $clients
+Write-Log ( 'Выбран клиент ' + $client.Name )
 $path_from = Select-Path 'from'
 $separator = Get-Separator
 if ( $path_from -notmatch "\${separator}$") { $path_from = "$path_from$separator"}
 $path_to = Select-Path 'to'
 if ( $path_to -notmatch "\${separator}$") { $path_to = "$path_to$separator"}
-$category = Get-String $false 'Укажите категорию (при необходимости)'
+$category = Get-String -prompt 'Укажите категорию (при необходимости)'
 Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
-    $torrents_list = Get-Torrents $client '' | Where-Object { $_.save_path -like "*${path_from}*" }
+    $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose | Where-Object { $_.save_path -like "*${path_from}*" }
+    Write-Log 'Сортируем по полезности и размеру'
+    $torrents_list = $torrents_list | Sort-Object -Property size | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
+
     if ( $category -and $category -ne '' ) {
         $torrents_list = $torrents_list  | Where-Object { $_.category -eq "${category}" }
     }
