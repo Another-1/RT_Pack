@@ -655,7 +655,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
                     $message += ( "Лишних: " + $obsolete[$client].count + "`n" )
                 }
             }
-            $was = ( $clients_torrents | Measure-Object -Property size -sum ).Sum
+            $was = ( $clients_torrents | Measure-Object -Property size -Sum ).Sum
             $now = $was + $refreshed_b + $added_b
             $message += "`n<u><b>Итого</b></u>`nБыло: $(to_kmg $was 3 )`nСтало: $( to_kmg $now 3 )"
         }
@@ -866,7 +866,7 @@ function Get-APITorrents ( $sections, $id, $api_key, $call_from ) {
     return $tracker_torrents
 }
 function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states, $call_from ) {
-    $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }        
+    $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }
     Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
     $use_avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' )
     $avg_days = $ini_data.sections.avg_seeders_period
@@ -1013,26 +1013,51 @@ function  Get-SpokenInterval ( $start_date, $end_date ) {
     $Duration = New-TimeSpan -Start $start_date -End $end_date
     
     $Day = switch ($Duration.Days) {
-        # 0 { $null; break }
-        # 1 { "{0} д," -f $Duration.Days; break }
         Default { "<b>{0}</b> д." -f $Duration.Days }
     }
+    return "$Day"
+}
+function Send-HTTP ( $url, $body, $headers, $call_from ) {
+    $retry_cnt = 1
+    while ( $true ) {
+        try {
+            if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
+                if ( $forum.proxyCred ) {
+                    Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred -Body $body `
+                        -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" | Out-Null
+                    return
+                }
+                else {
+                    Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $forum.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" | Out-Null
+                    return
+                }
+            }
+            else {
+                Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" | Out-Null
+                return
+            }
+        }
+        catch {
+            Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
+            If ( $retry_cnt -gt 10 ) { return }
+        }
+    }
+    Write-Log 'Не удалось отправить данные, выходим досрочно' -Red
+}
     
-    # $Hour = switch ($Duration.Hours) {
-    #     #0 { $null; break }
-    #     Default { "{0} ч," -f $Duration.Hours }
-    # }
+function Send-APIReport ( $sections, $id, $api_key, $call_from) {
+    Write-Log 'Отправляем список хранимых подразделов'
+    $headers = @{
+        Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key ))
+    }
+    $sections | ForEach-Object { 
+        $body = @{
+            'keeper_id'   = $id
+            'subforum_id' = $_
+            'status'      = 1
+        }
     
-    # $Minute = switch ($Duration.Minutes) {
-    #     #0 { $null; break }
-    #     # 1 { "{0} Minute," -f $Duration.Minutes; break }
-    #     Default { "{0} мин," -f $Duration.Minutes }
-    # }
-    
-    # $Second = switch ($Duration.Seconds) {
-    #     #0 { $null; break }
-    #     # 1 { "{0} Second" -f $Duration.Seconds; break }
-    #     Default { "{0} сек." -f $Duration.Seconds }
-    # }
-    return "$Day" # $Hour $Minute $Second"    
+        Send-HTTP -url "https://rep.rutracker.cc/krs/api/v1/subforum/set_status?keeper_id=$id&subforum_id=$_&status=1" -headers $headers -call_from $call_from
+    }
+    Write-Log 'Отправлям список хранимых раздач'
 }
