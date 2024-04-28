@@ -367,11 +367,11 @@ function Get-TopicIDs ( $client, $torrent_list ) {
     }
 }
 
-function Add-ClientTorrent ( $Client, $File, $Path, $Category, $mess_sender = '', [switch]$Skip_checking ) {
+function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = '', [switch]$Skip_checking ) {
     $Params = @{
-        torrents      = Get-Item $File
-        savepath      = $Path
-        category      = $Category
+        torrents      = Get-Item $file
+        savepath      = $path
+        category      = $category
         name          = 'torrents'
         root_folder   = 'false'
         paused        = $Paused

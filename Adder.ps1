@@ -117,7 +117,7 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
                 } # Список всех неподходящих раздач по этому разделу
                 Write-Log ( 'По разделу ' + $section + ' отброшено масками ' + ( Get-Spell -qty $masks_db[$section].count -spelling 1 -entity 'torrents' ) )
             }
-            $masks_like[$_] = $group_mask -replace ('^|$|\s', '*')
+            $masks_like[$_.Key] = $group_mask -replace ('^|$|\s', '*')
         }
     }
     # $masks_db.Keys | ForEach-Object {
@@ -323,7 +323,7 @@ if ( $new_torrents_keys ) {
                 Set-ClientSetting $client 'temp_path_enabled' $false
             }
             Write-Log 'Отправляем скачанный torrent-файл в клиент'
-            Add-ClientTorrent $client $new_torrent_file $existing_torrent.save_path $existing_torrent.category
+            Add-ClientTorrent -client $client -file $new_torrent_file -category $existing_torrent.save_path $existing_torrent.category -mess_sender 'Adder'
             # While ($true) {
             Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
             Start-Sleep -Seconds 5
@@ -404,7 +404,7 @@ if ( $new_torrents_keys ) {
                 }
             }
             Write-Log 'Отправляем скачанный torrent-файл в клиент'
-            Add-ClientTorrent $client $new_torrent_file $save_path $section_details[$new_tracker_data.section].label
+            Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $section_details[$new_tracker_data.section].label -mess_sender 'Adder'
             If ( $mask_passed -eq $true -and $null -ne $mask_label ) {
                 Start-Sleep -Seconds 1
                 $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder'
