@@ -1089,7 +1089,6 @@ function Select-Path ( $direction ) {
 }
 
 function Get-String ( [switch]$obligatory, $prompt ) { 
-    $obligatory
     while ( $true ) {
         $choice = ( Read-Host $prompt )
         if ( $nul -ne $choice -and $choice -ne '') { break }
