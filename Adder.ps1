@@ -405,14 +405,16 @@ if ( $new_torrents_keys ) {
             }
             Write-Log 'Отправляем скачанный torrent-файл в клиент'
             Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $section_details[$new_tracker_data.section].label -mess_sender 'Adder'
-            If ( $masks -and $mask_passed -eq $true -and $mask_label ) {
-                Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы задача "подхватилась'
-                Start-Sleep -Seconds 2
-                $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder'
-                Set-Comment -client $client -torrent $client_torrent -label $mask_label
-            }
-            elseif ( $masks -and !$mask_label ) {
-                Write-Log 'Метка масок не задана, простановка метки маски не требуется'
+            if ( $masks ) {
+                Write-Log 'Заданы маски, начинаем работу с метками при необходимости'
+                If ( $mask_passed -eq $true -and $mask_label ) {
+                    Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы задача "подхватилась'
+                    Start-Sleep -Seconds 2
+                    $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder'
+                    Set-Comment -client $client -torrent $client_torrent -label $mask_label
+                }
+                elseif ( !$mask_label ) { Write-Log 'Метка масок не задана, простановка метки маски не требуется' }
+                elseif ( $mask_passed -eq $false ) { Write-Log 'Маска не пройдена, но раздача добавлена. Такого не должно было произойти. Где-то косяк' }
             }
         }
         elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( (Get-Date).ToUniversalTime().AddDays( 0 - $min_days ) ) ) {
