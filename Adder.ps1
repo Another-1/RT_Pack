@@ -322,7 +322,6 @@ if ( $new_torrents_keys ) {
                 }
                 Set-ClientSetting $client 'temp_path_enabled' $false
             }
-            Write-Log 'Отправляем скачанный torrent-файл в клиент'
             Add-ClientTorrent -client $client -file $new_torrent_file -path $existing_torrent.save_path -category $existing_torrent.category -mess_sender 'Adder'
             # While ($true) {
             Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
@@ -403,7 +402,6 @@ if ( $new_torrents_keys ) {
                     Set-ClientSetting $client 'preallocate_all' $false
                 }
             }
-            Write-Log 'Отправляем скачанный torrent-файл в клиент'
             Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $section_details[$new_tracker_data.section].label -mess_sender 'Adder'
             if ( $masks ) {
                 Write-Log 'Заданы маски, начинаем работу с метками при необходимости'
@@ -416,6 +414,7 @@ if ( $new_torrents_keys ) {
                 elseif ( !$mask_label ) { Write-Log 'Метка масок не задана, простановка метки маски не требуется' }
                 elseif ( $mask_passed -eq $false ) { Write-Log 'Маска не пройдена, но раздача добавлена. Такого не должно было произойти. Где-то косяк' }
             }
+            else { Write-Log 'Маски не заданы, простановка метки маски не требуется' }
         }
         elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( (Get-Date).ToUniversalTime().AddDays( 0 - $min_days ) ) ) {
             Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' слишком новая.' )

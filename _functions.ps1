@@ -379,6 +379,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
     }
 
     # Добавляем раздачу в клиент.
+    Write-Log 'Отправляем скачанный torrent-файл в клиент'
     $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/add'
     $added_ok = $false
     $abort = $false
