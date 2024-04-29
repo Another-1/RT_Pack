@@ -323,7 +323,7 @@ if ( $new_torrents_keys ) {
                 Set-ClientSetting $client 'temp_path_enabled' $false
             }
             Write-Log 'Отправляем скачанный torrent-файл в клиент'
-            Add-ClientTorrent -client $client -file $new_torrent_file -category $existing_torrent.save_path $existing_torrent.category -mess_sender 'Adder'
+            Add-ClientTorrent -client $client -file $new_torrent_file -path $existing_torrent.save_path -category $existing_torrent.category -mess_sender 'Adder'
             # While ($true) {
             Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
             Start-Sleep -Seconds 5
