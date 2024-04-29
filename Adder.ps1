@@ -111,13 +111,13 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
         foreach ( $section in ( $_.Key -replace ( '\s*', '')).split(',') ) {
             $db_return = ( Invoke-SqliteQuery -Query ( 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $section + ' AND ' + $columnNames['name'] + ' NOT LIKE "%' + ( ($group_mask -replace ('\s', '%')) -join '%" AND ' + $columnNames['name'] + ' NOT LIKE "%' ) + '%"' ) -SQLiteConnection $conn )
             if ( $db_return ) {
-                $db_return.id.GetEnumerator() | ForEach-Object {
+                @($db_return.id).GetEnumerator() | ForEach-Object {
                     if ( !$masks_db[$section]) { $masks_db[$section] = @{} }
                     $masks_db[$section][$_.ToInt64($null)] = 1
                 } # Список всех неподходящих раздач по этому разделу
                 Write-Log ( 'По разделу ' + $section + ' отброшено масками ' + ( Get-Spell -qty $masks_db[$section].count -spelling 1 -entity 'torrents' ) )
             }
-            $masks_like[$_.Key] = $group_mask -replace ('^|$|\s', '*')
+            $masks_like[$section] = $group_mask -replace ('^|$|\s', '*')
         }
     }
     # $masks_db.Keys | ForEach-Object {
@@ -407,7 +407,7 @@ if ( $new_torrents_keys ) {
                 Write-Log 'Заданы маски, начинаем работу с метками при необходимости'
                 Write-Log "DEBUG:`nmask_passed: $mask_passed`nmask_label: $mask_label"
                 If ( $mask_passed -eq $true -and $mask_label ) {
-                    Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы задача "подхватилась'
+                    Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы раздача "подхватилась"'
                     Start-Sleep -Seconds 2
                     $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder'
                     Set-Comment -client $client -torrent $client_torrent -label $mask_label
