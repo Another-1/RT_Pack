@@ -768,7 +768,7 @@ Function DeGZip-File {
 }
 
 function Set-Comment ( $client, $torrent, $label ) {
-    Write-Log ( 'Метим раздачу ' + $torrent.topic_id + ' меткой ' + $label )
+    Write-Log ( 'Метим раздачу меткой ' + $label )
     $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/addTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
     Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
