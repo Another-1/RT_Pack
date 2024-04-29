@@ -239,7 +239,7 @@ $refreshed = @{}
 
 if ( $new_torrents_keys ) {
     $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
-    foreach ( $new_torrent_key in $new_torrents_keys ) {
+    foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $section_details[$tracker_torrents[$_].section] }) {
         Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
         $new_tracker_data = $tracker_torrents[$new_torrent_key]
         $subfolder_kind = $section_details[$new_tracker_data.section].data_subfolder
