@@ -405,6 +405,7 @@ if ( $new_torrents_keys ) {
             Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $section_details[$new_tracker_data.section].label -mess_sender 'Adder'
             if ( $masks ) {
                 Write-Log 'Заданы маски, начинаем работу с метками при необходимости'
+                Write-Log "DEBUG:`nmask_passed: $mask_passed`nmask_label: $mask_label"
                 If ( $mask_passed -eq $true -and $mask_label ) {
                     Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы задача "подхватилась'
                     Start-Sleep -Seconds 2
