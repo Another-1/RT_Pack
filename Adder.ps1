@@ -86,6 +86,11 @@ if ( $never_obsolete ) {
     $never_obsolete_array = $never_obsolete.Replace(' ','').split(',')
     $all_sections += $never_obsolete_array
     $all_sections = $all_sections | Select-Object -Unique
+    Write-Log 'Запрашиваем список всех разделов чтобы исключить празничные, если на дворе не праздник'
+    $existing_sections = (( Get-HTTP -url 'https://api.rutracker.cc/v1/static/cat_forum_tree' ) | ConvertFrom-Json -AsHashtable ).result.f.keys
+    Write-Log "Обнаружено разделов на форуме: $($existing_sections.count)"
+    Write-Log "Исключаем праздничные разделы по праздникам, которые не на дворе"
+    $all_sections = $all_sections | Where-Object { $_ -in $existing_sections }
 }
 Write-Log "Разделов в TLO: $( $sections.count )"
 if ( $forced_sections ) {
