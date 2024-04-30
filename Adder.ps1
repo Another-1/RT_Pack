@@ -82,6 +82,11 @@ if ( $update_trigger -and $psversionTable.Platform.ToLower() -like '*win*') {
 # $sections = Get-IniSections -useForced
 $sections = $ini_data.sections.subsections.split( ',' )
 $all_sections = $sections
+if ( $never_obsolete ) {
+    $never_obsolete_array = $never_obsolete.Replace(' ','').split(',')
+    $all_sections += $never_obsolete_array
+    $all_sections = $all_sections | Select-Object -Unique
+}
 Write-Log "Разделов в TLO: $( $sections.count )"
 if ( $forced_sections ) {
     Write-Log 'Обнаружена настройка forced_sections, отбрасывем лишние разделы'
@@ -239,7 +244,7 @@ $refreshed = @{}
 
 if ( $new_torrents_keys ) {
     $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
-    foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $section_details[$tracker_torrents[$_].section] }) {
+    foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $section_details[$tracker_torrents[$_].section] -and ( !$never_obsolete -or $tracker_torrents[$_].section -notin $never_obsolete_array ) } ) {
         Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
         $new_tracker_data = $tracker_torrents[$new_torrent_key]
         $subfolder_kind = $section_details[$new_tracker_data.section].data_subfolder
