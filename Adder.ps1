@@ -200,6 +200,8 @@ if ( $max_seeds -ne -1 ) {
 
 if ( $get_hidden -and $get_hidden -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи из скрытых разделов'
+    $sections_to_skip = $section_details.keys | Where-Object { $section_details[$_].'hide_topics' -ne '0' }
+    if ($sections_to_skip ) { Write-Log "Будут отсеяны разделы: $( $sections_to_skip -join( ', ' ) )" }
     $new_torrents_keys = $new_torrents_keys | Where-Object { $section_details[$tracker_torrents[$_].section].hide_topics -eq '0' }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
