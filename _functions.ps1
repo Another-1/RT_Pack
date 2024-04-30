@@ -83,7 +83,7 @@ function Test-Module ( $module, $description ) {
 }
 
 function Test-Setting ( $setting, [switch]$required, $default ) {
-    $settings = @{
+    $set_names = @{
         'tg_token'              = @{ prompt = 'Токен бота Telegram, если нужна отправка событий в Telegram. Если не нужно, оставить пустым'; default = ''; type = 'string' }
         'tg_chat'               = @{ prompt = 'Номер чата для отправки сообщений Telegram'; default = ''; type = 'string' }
         'alert_oldies'          = @{ prompt = 'Уведомлять о новых версиях скриптов в Telegram? (нужен свой бот ТГ!)'; default = 'Y'; type = 'YN' }
@@ -126,14 +126,14 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
     $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
     if ( $current_var ) { $current = $current_var.Value }
     else {
-        if ( $default -and $default -ne '' ) { $settings[$setting].default = $default }
+        if ( $default -and $default -ne '' ) { $set_names[$setting].default = $default }
         do {
-            $current = Read-Host -Prompt ( $settings[$setting].prompt + $( ( $settings[$setting].default -and $settings[$setting].default -ne '' ) ? ' [' + $settings[$setting].default + ']' : '' ) )
-            if ( $settings[$setting].type -eq 'YN' ) {
+            $current = Read-Host -Prompt ( $set_names[$setting].prompt + $( ( $set_names[$setting].default -and $set_names[$setting].default -ne '' ) ? ' [' + $set_names[$setting].default + ']' : '' ) )
+            if ( $set_names[$setting].type -eq 'YN' ) {
                 if ( $current -ne '' ) { $current = $current.ToUpper() }
             }
-            if ( $current -eq '' -and $nul -ne $settings[$setting].default ) {
-                $current = $settings[$setting].default
+            if ( $current -eq '' -and $nul -ne $set_names[$setting].default ) {
+                $current = $set_names[$setting].default
             }
             if ( $setting -eq 'tlo_path') {
                 $ini_path = Join-Path $current 'data' 'config.ini'
@@ -157,15 +157,15 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
             else {
                 $changed = $true
             }
-        } while ( ( $current -eq '' -and $required ) -or ( $settings[$setting].type -eq 'YN' -and $current -notmatch '[YN]' ) )
+        } while ( ( $current -eq '' -and $required ) -or ( $set_names[$setting].type -eq 'YN' -and $current -notmatch '[YN]' ) )
 
         if ( $changed ) {
-            if ( $settings[$setting].type -eq ( 'number' ) ) {
+            if ( $set_names[$setting].type -eq ( 'number' ) ) {
                 $current = $current.ToInt64( $null )
             }
             Set-Variable -Name $setting -Value $current
             Add-Content -Path ( Join-Path $PSScriptRoot '_settings.ps1' ) `
-                -Value ( '$' + $setting + ' = ' + $( ( $settings[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + $current + $( ( $settings[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + '   # ' + $settings[$setting].prompt )
+                -Value ( '$' + $setting + ' = ' + $( ( $set_names[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + $current + $( ( $set_names[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + '   # ' + $set_names[$setting].prompt )
         }
     }
     return $current
@@ -313,7 +313,7 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
         try {
             $json_content = ( Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
             $torrents_list = $json_content | ConvertFrom-Json | `
-                Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client_key } }, infohash_v1, size, completion_on, progress, tracker, added_on | `
+                Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client_key } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags | `
                 Where-Object { $_.save_path -match ('^' + $dsk ) }
         }
         catch {
@@ -768,9 +768,16 @@ Function DeGZip-File {
     $inp.Close()
 }
 
-function Set-Comment ( $client, $torrent, $label ) {
+function Set-Comment ( $client, $torrent, $label, [switch]$silent ) {
     Write-Log ( 'Метим раздачу меткой ' + $label )
     $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/addTags'
+    $tag_body = @{ hashes = $torrent.hash; tags = $label }
+    Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+}
+
+function Remove-Comment ( $client, $torrent, $label, [switch]$silent ) {
+    Write-Log ( 'Снимаем метку ' + $label )
+    $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/removeTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
     Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
 }
@@ -990,6 +997,7 @@ function Get-HTTP ( $url, $body, $headers, $call_from ) {
             else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
         }
         catch {
+            Write-Log "Ошибка $($error[0].Exception.Message)`nЖдём 10 секунд и пробуем ещё раз" -Red
             Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
             If ( $retry_cnt -gt 10 ) { break }
         }
