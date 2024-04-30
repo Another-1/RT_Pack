@@ -120,6 +120,8 @@ function Test-Setting ( $setting, [switch]$required, $default ) {
         'min_stop_to_start'     = @{ prompt = 'Через сколько дней простоя обязательно запускать раздачу? '; default = 21; type = 'number' }
         'report_nowork'         = @{ prompt = 'Сообщать в Telegam если ничего не пришлось делать? (нужен свой бот ТГ!)'; default = 'Y'; type = 'YN' }
         'auto_update'           = @{ prompt = 'Автоматически обновлять версии скриптов?'; default = 'N'; type = 'YN' }
+        'down_tag'              = @{ prompt = 'Тэг для скачиваемых раздач'; type = 'string' }
+        'seed_tag'              = @{ prompt = 'Тег для завершённых раздач'; type = 'string' }
         'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота Кузи в /about_me)'; type = 'string' }
     }
     $changed = $false
@@ -769,14 +771,23 @@ Function DeGZip-File {
 }
 
 function Set-Comment ( $client, $torrent, $label, [switch]$silent ) {
-    Write-Log ( 'Метим раздачу меткой ' + $label )
+    if (!$silent) {
+        Write-Log ( 'Метим раздачу меткой ' + $label )
+    }
     $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/addTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
-    Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+    try {
+        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+    }
+    catch {
+        Initialize-Client $client -force
+    }
 }
 
 function Remove-Comment ( $client, $torrent, $label, [switch]$silent ) {
-    Write-Log ( 'Снимаем метку ' + $label )
+    if (!$silent) {
+        Write-Log ( 'Снимаем метку ' + $label )
+    }
     $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/removeTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
     Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null

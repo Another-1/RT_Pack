@@ -19,6 +19,8 @@ Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Marker'
 
 $use_timestamp = Test-Setting 'use_timestamp'
 $tlo_path = Test-Setting 'tlo_path' -required
+$down_tag = Test-Setting 'down_tag' -required
+$seed_tag = Test-Setting 'seed_tag' -required
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 Write-Log 'Читаем настройки Web-TLO'
 $ini_data = Get-IniContent $ini_path
@@ -28,13 +30,15 @@ $clients_torrents = Get-ClientsTorrents -clients $clients -mess_sender 'Marker' 
 
 foreach ( $torrent in $clients_torrents ) {
     if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', 'pausedDL') -and $torrent.tags -notlike "*$down_tag*" ) {
+        Write-Log "Метим раздачу $($torrent.name) меткой $down_tag"
         Set-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $down_tag
     }
     elseif ( $torrent.state -in ( 'queuedUP', 'stalledUP', 'forcedUP', 'pausedUP', 'uploading' ) -and $torrent.tags -notlike "*$seed_tag*" ) {
-        if ( -and $torrent.tags -like "*$down_tag*" ) {
+        if ( $torrent.tags -like "*$down_tag*" ) {
+            Write-Log "Снимаем с раздачи $($torrent.name) метку $down_tag"
             Remove-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent
         }
-    
+        Write-Log "Метим раздачу $($torrent.name) меткой $seed_tag"
         Set-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $seed_tag -silent
     }
 }
