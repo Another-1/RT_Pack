@@ -80,6 +80,8 @@ if ( $update_trigger -and $psversionTable.Platform.ToLower() -like '*win*') {
 }
 
 # $sections = Get-IniSections -useForced
+
+$forum = Set-ForumDetails
 $sections = $ini_data.sections.subsections.split( ',' )
 $all_sections = $sections
 if ( $never_obsolete ) {
@@ -144,7 +146,7 @@ else {
 
 Write-Log 'Достаём из TLO подробности о разделах'
 $section_details = Get-IniSectionDetails $sections
-$forum = Set-ForumDetails
+# $forum = Set-ForumDetails
 
 if ( $get_blacklist -eq 'N' ) {
     $blacklist = Get-Blacklist -verbose
