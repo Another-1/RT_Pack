@@ -877,10 +877,22 @@ function Get-APITorrents ( $sections, $id, $api_key, $call_from ) {
     }
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
 
-    foreach ( $section in $sections ) {
-        $section_torrents = Get-APISectionTorrents -forum $forum -section $section -id $id -api_key $api_key -ok_states $ok_states -call_from $call_from
-        $tracker_torrents += $section_torrents
-
+    $counter = 0
+    while ( $counter -lt 10 ) {
+        try {
+            foreach ( $section in $sections ) {
+                $section_torrents = Get-APISectionTorrents -forum $forum -section $section -id $id -api_key $api_key -ok_states $ok_states -call_from $call_from
+                $tracker_torrents += $section_torrents
+            }
+            break
+        }
+        catch {
+            Write-Log 'Похоже, наткнулись на обовление API, подождём минуту и начнём заново' -Red
+            $counter++
+            Start-Sleep -Seconds 60
+            Write-Log "Попытка $counter"
+            Remove-Variable -Name $tracker_torrents -ErrorAction SilentlyContinue
+        }
     }
     return $tracker_torrents
 }

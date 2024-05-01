@@ -17,13 +17,15 @@ if ( !$debug ) {
     Test-Module 'PSSQLite' 'для работы с базой TLO'
     Write-Log 'Проверяем актуальность скриптов' 
     # Test-Version ( '_functions.ps1' ) 'Adder'
-    if ( ( Test-Version '_functions.ps1' 'Adder' ) -eq $true ) {
+    if ( ( Test-Version '_functions.ps1' ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ) -eq $true ) {
         Write-Log 'Запускаем новую версию  _functions.ps1'
         . ( Join-Path $PSScriptRoot '_functions.ps1' )
     }
-    Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Adder'
+    Test-Version ( $PSCommandPath | Split-Path -Leaf ) ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
     Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
 }
+
+( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
 
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
 Write-Log 'Проверяем наличие всех нужных настроек'
@@ -159,12 +161,12 @@ if ( $get_blacklist -eq 'N' ) {
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
     # $tracker_torrents = Get-TrackerTorrents $sections
-    $tracker_torrents = Get-APITorrents -sections $all_sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Adder'
+    $tracker_torrents = Get-APITorrents -sections $all_sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
-    $clients_torrents = Get-ClientsTorrents $clients 'Adder'
+    $clients_torrents = Get-ClientsTorrents -clients $clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
 }
 
 $hash_to_id = @{}
@@ -280,7 +282,7 @@ if ( $new_torrents_keys ) {
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             if ( $null -eq $new_torrent_file ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
             $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
-            $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from 'Adder' ).topic_title
+            $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title
             $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_topic_title + ' в клиенте ' + $client.Name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
@@ -318,7 +320,7 @@ if ( $new_torrents_keys ) {
                             Invoke-SqliteQuery -Query "UPDATE updates SET cnt = $current_cnt WHERE id = $($new_tracker_data.topic_id) " -SQLiteConnection $up_conn | Out-Null
                         }
                         if ( $current_cnt -ge $update_trigger) {
-                            Send-TGMessage -message "Рекомендуется перенести в клиенте <b>$($client.Name)</b> на SSD раздачу $($new_tracker_data.topic_id) $($existing_torrent.name)" -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'
+                            Send-TGMessage -message "Рекомендуется перенести в клиенте <b>$($client.Name)</b> на SSD раздачу $($new_tracker_data.topic_id) $($existing_torrent.name)" -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
                         }
                     }
                 }
@@ -336,11 +338,11 @@ if ( $new_torrents_keys ) {
                 }
                 Set-ClientSetting $client 'temp_path_enabled' $false
             }
-            Add-ClientTorrent -client $client -file $new_torrent_file -path $existing_torrent.save_path -category $existing_torrent.category -mess_sender 'Adder'
+            Add-ClientTorrent -client $client -file $new_torrent_file -path $existing_torrent.save_path -category $existing_torrent.category -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
             # While ($true) {
             Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
             Start-Sleep -Seconds 5
-            $new_topic_info = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder' )
+            $new_topic_info = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') )
             $new_topic_title = $new_topic_info.name
             # # на случай, если в pvc были устаревшие данные, и по старому хшу раздача не находится, будем считать, что имя совпало.
             # if ( $null -eq $new_tracker_data.name ) { $new_tracker_data.name = $existing_torrent.name }
@@ -368,7 +370,7 @@ if ( $new_torrents_keys ) {
 
             else {
                 if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
-                    $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from 'Adder' ).topic_title
+                    $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title
                     $mask_passed = $false
                     $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
                         if ( -not $mask_passed -and $new_topic_title -like $_ ) {
@@ -379,7 +381,7 @@ if ( $new_torrents_keys ) {
                 else { $mask_passed = 'N/A' }
             }
             if ( $masks_like -and -not $mask_passed ) {
-                $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from 'Adder' ).topic_title
+                $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title
                 Write-Log ( 'Новая раздача ' + $new_topic_title + ' отброшена масками' )
                 continue
             }
@@ -389,7 +391,7 @@ if ( $new_torrents_keys ) {
             }
             if ( !$forum.sid ) { Initialize-Forum $forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
-            if ( $null -eq $new_topic_title ) { $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from 'Adder' ).topic_title }
+            if ( $null -eq $new_topic_title ) { $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title }
             $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_topic_title + ' в клиент ' + $client.Name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
@@ -416,14 +418,14 @@ if ( $new_torrents_keys ) {
                     Set-ClientSetting $client 'preallocate_all' $false
                 }
             }
-            Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $section_details[$new_tracker_data.section].label -mess_sender 'Adder'
+            Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $section_details[$new_tracker_data.section].label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
             if ( $masks ) {
                 # Write-Log 'Заданы маски, начинаем работу с метками при необходимости'
                 # Write-Log "DEBUG:`nmask_passed: $mask_passed`nmask_label: $mask_label"
                 If ( $mask_passed -eq $true -and $mask_label ) {
                     Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы раздача "подхватилась"'
                     Start-Sleep -Seconds 2
-                    $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender 'Adder'
+                    $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
                     Set-Comment -client $client -torrent $client_torrent -label $mask_label
                 }
                 elseif ( !$mask_label ) { Write-Log 'Метка масок не задана, простановка метки маски не требуется' }
@@ -485,10 +487,10 @@ elseif ( $update_stats -ne 'Y' -or !$php_path ) {
 }
 
 if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or ( $obsolete.Count -gt 0 -and $report_obsolete -eq 'Y' ) -or ( $broken.count -gt 0 -and $report_broken -eq 'Y' ) -or $notify_nowork -eq 'Y' ) -and $tg_token -ne '' -and $tg_chat -ne '' ) {
-    Send-TGReport -refreshed $refreshed -added $added -obsolete $obsolete -broken $broken -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'
+    Send-TGReport -refreshed $refreshed -added $added -obsolete $obsolete -broken $broken -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
 }
 elseif ( $report_nowork -eq 'Y' -and $tg_token -ne '' -and $tg_chat -ne '' ) { 
-    Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Adder' ) + ' отработал, ничего делать не пришлось.' ) -token $tg_token -chat_id $tg_chat -mess_sender 'Adder'
+    Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' : ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ) + ' отработал, ничего делать не пришлось.' ) -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
 }
 
 if ( $update_trigger ) {

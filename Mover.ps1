@@ -43,8 +43,8 @@ if ( $client.sid ) {
     $i = 0
     $sum_size = 0
     $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose | Where-Object { $_.save_path -like "*${path_from}*" }
-    Write-Log 'Сортируем по полезности и размеру'
-    $torrents_list = $torrents_list | Sort-Object -Property size | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
+    Write-Log 'Сортируем по полезности и подразделу'
+    $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
 
     if ( $category -and $category -ne '' ) {
         $torrents_list = $torrents_list | Where-Object { $_.category -eq "${category}" }
