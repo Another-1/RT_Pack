@@ -49,6 +49,7 @@ foreach ( $torrent in $clients_torrents ) {
             Remove-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent
         }
         if ( $torrent.state -eq 'forcedUP' ) {
+            Write-Log "Перевожу раздачу $($torrent.name) в статус Seeding"
             $start_keys = @($torrent.hash)
             Start-Torrents -hashes $start_keys -client $clients[$torrent.client_key]
         }
