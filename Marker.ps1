@@ -49,11 +49,11 @@ foreach ( $torrent in $clients_torrents ) {
         $down_cnt++
     }
     elseif ( $torrent.state -in ( 'queuedUP', 'stalledUP', 'forcedUP', 'pausedUP', 'uploading' ) ) {
+        if ( $torrent.tags -like "*$down_tag*" ) {
+            Write-Log "Снимаем с раздачи $($torrent.name) метку $down_tag"
+            Remove-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent
+        }
         if ( $torrent.tags -notlike "*$seed_tag*" ) {
-            if ( $torrent.tags -like "*$down_tag*" ) {
-                Write-Log "Снимаем с раздачи $($torrent.name) метку $down_tag"
-                Remove-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent
-            }
             Write-Log "Метим раздачу $($torrent.name) меткой $seed_tag"
             Set-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $seed_tag -silent
             $seed_cnt++            
