@@ -21,24 +21,40 @@ $use_timestamp = Test-Setting 'use_timestamp'
 $tlo_path = Test-Setting 'tlo_path' -required
 $down_tag = Test-Setting 'down_tag' -required
 $seed_tag = Test-Setting 'seed_tag' -required
+$tg_token = Test-Setting 'tg_token'
+if ( $tg_token -ne '') {
+    $tg_chat = Test-Setting 'tg_chat' -required
+}
+
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 Write-Log 'Читаем настройки Web-TLO'
 $ini_data = Get-IniContent $ini_path
 
 $clients = Get-Clients
 $clients_torrents = Get-ClientsTorrents -clients $clients -mess_sender 'Marker' -noIDs
-
+$seed_cnt = 0
+$down_cnt = 0
 foreach ( $torrent in $clients_torrents ) {
-    if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', 'pausedDL') -and $torrent.tags -notlike "*$down_tag*" ) {
-        Write-Log "Метим раздачу $($torrent.name) меткой $down_tag"
-        Set-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $down_tag
+    if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', 'pausedDL') ) {
+        if ( $torrent.tags -notlike "*$down_tag*" ) {
+            Write-Log "Метим раздачу $($torrent.name) меткой $down_tag"
+            Set-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $down_tag
+            $torrent.state = 'OK'
+        }
+        $down_cnt++
     }
     elseif ( $torrent.state -in ( 'queuedUP', 'stalledUP', 'forcedUP', 'pausedUP', 'uploading' ) -and $torrent.tags -notlike "*$seed_tag*" ) {
         if ( $torrent.tags -like "*$down_tag*" ) {
             Write-Log "Снимаем с раздачи $($torrent.name) метку $down_tag"
             Remove-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent
         }
+        if ( $torrent.state -eq 'forcedUP' ) {
+            $start_keys = @($torrent.hash)
+            Start-Torrents -hashes $start_keys -client $clients[$torrent.client_key]
+        }
         Write-Log "Метим раздачу $($torrent.name) меткой $seed_tag"
         Set-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $seed_tag -silent
+        $seed_cnt++            
     }
 }
+Send-TGMessage -message "Переведено в seeding: $seed_cnt`nОсталось в downloading: $down_cnt" -token $tg_token -chat_id $tg_chat -mess_sender 'Marker'
