@@ -35,7 +35,7 @@ $clients_torrents = Get-ClientsTorrents -clients $clients -mess_sender 'Marker' 
 $seed_cnt = 0
 $down_cnt = 0
 
-$test_torrent = @( $clients_torrents | Where-Object {$_.name -eq 'Akhmed'} ) | Select-Object -First 1
+$test_torrent = @( $clients_torrents | Where-Object {$_.name -eq 'Boredoms'} ) | Select-Object -First 1
 if ( $test_torrent ) { $test_torrent }
 Pause
 
