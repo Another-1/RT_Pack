@@ -371,6 +371,7 @@ if ( $new_torrents_keys ) {
 
             else {
                 if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
+                    Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id)"
                     $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title
                     $mask_passed = $false
                     $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
@@ -382,6 +383,7 @@ if ( $new_torrents_keys ) {
                 else { $mask_passed = 'N/A' }
             }
             if ( $masks_like -and -not $mask_passed ) {
+                Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id)"
                 $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title
                 Write-Log ( 'Новая раздача ' + $new_topic_title + ' отброшена масками' )
                 continue
@@ -392,7 +394,10 @@ if ( $new_torrents_keys ) {
             }
             if ( !$forum.sid ) { Initialize-Forum $forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
-            if ( $null -eq $new_topic_title ) { $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title }
+            if ( $null -eq $new_topic_title ) {
+                Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id)"
+                $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title
+            }
             $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_topic_title + ' в клиент ' + $client.Name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
