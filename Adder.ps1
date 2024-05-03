@@ -282,7 +282,7 @@ if ( $new_torrents_keys ) {
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             if ( $null -eq $new_torrent_file ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
             $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
-            Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id)"
+            Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
             $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title
             $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_topic_title + ' в клиенте ' + $client.Name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
@@ -371,7 +371,7 @@ if ( $new_torrents_keys ) {
 
             else {
                 if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
-                    Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id)"
+                    Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
                     $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title
                     $mask_passed = $false
                     $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
@@ -383,7 +383,7 @@ if ( $new_torrents_keys ) {
                 else { $mask_passed = 'N/A' }
             }
             if ( $masks_like -and -not $mask_passed ) {
-                Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id)"
+                Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
                 $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title
                 Write-Log ( 'Новая раздача ' + $new_topic_title + ' отброшена масками' )
                 continue
@@ -395,7 +395,7 @@ if ( $new_torrents_keys ) {
             if ( !$forum.sid ) { Initialize-Forum $forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             if ( $null -eq $new_topic_title ) {
-                Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id)"
+                Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
                 $new_topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ).topic_title
             }
             $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_topic_title + ' в клиент ' + $client.Name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
