@@ -53,6 +53,7 @@ Write-Log 'Строим таблицы'
 $sections = $ini_data.sections.subsections.split( ',' )
 $section_details = Get-IniSectionDetails $sections
 $sections | ForEach-Object { $section_seeds[$_] = ( $section_details[$_].control_peers -ne '' ? $section_details[$_].control_peers : $global_seeds ) }
+$clients = Get-Clients
 if ( $control_override -and (Get-Date).hour -in $control_override.hours ) { 
     foreach ( $section in @($section_seeds.Keys) ) {
         if ( $control_override.client[$clients[$section_details[$section].client].Name] ) {
@@ -76,7 +77,6 @@ if ( !$tracker_torrents) {
     $tracker_torrents = Get-APITorrents -sections $sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Controller'
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
-    $clients = Get-Clients
     $clients_torrents = Get-ClientsTorrents $clients 'Controller'
     $hash_to_id = @{}
     $id_to_info = @{}
