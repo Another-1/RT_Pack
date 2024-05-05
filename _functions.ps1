@@ -902,7 +902,7 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states, $c
     $use_avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' )
     $avg_days = $ini_data.sections.avg_seeders_period
     $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
-    $url = "https://rep.rutracker.cc/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders$subst"
+    $url = "https://rep.rutracker.cc/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders,topic_title$subst"
     $content = ( Get-HTTP -url $url -headers $headers -call_from $call_from )
     # if ( $use_avg_seeds -eq 'Y' ) { $content = $content.replace( 'average_seeds_sum','seeders' ) }
     $json = $content | ConvertFrom-Json
