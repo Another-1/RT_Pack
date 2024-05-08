@@ -25,8 +25,6 @@ if ( !$debug ) {
     Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
 }
 
-( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
-
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
 Write-Log 'Проверяем наличие всех нужных настроек'
 $tg_token = Test-Setting 'tg_token'
