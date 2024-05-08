@@ -27,7 +27,6 @@ if ( -not ( [bool](Get-InstalledModule -Name PsIni -ErrorAction SilentlyContinue
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 $ini_data = Get-IniContent $ini_path
 
-Write-Log 'Получаем из TLO данные о клиентах'
 $clients = Get-Clients
 $client = Select-Client $clients
 Write-Log ( 'Выбран клиент ' + $client.Name )

@@ -772,7 +772,7 @@ Function DeGZip-File {
 
 function Set-Comment ( $client, $torrent, $label, [switch]$silent ) {
     if (!$silent) {
-        Write-Log ( 'Метим раздачу меткой ' + $label )
+        Write-Log ( "Метим раздачу меткой '$label'" )
     }
     $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/addTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
