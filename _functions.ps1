@@ -64,6 +64,7 @@ function Test-Version ( $name, $mess_sender = '') {
                     }
                 }
             }
+            Remove-Item $new_file_path -ErrorAction SilentlyContinue
         } 
     }
     catch {}

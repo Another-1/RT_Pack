@@ -29,7 +29,7 @@ if ( !$debug ) {
         . ( Join-Path $PSScriptRoot '_functions.ps1' )
     }
     Test-Version -name ( $PSCommandPath | Split-Path -Leaf ) -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
-    Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
+    # Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
 }
 
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
