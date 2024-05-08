@@ -49,8 +49,8 @@ function Test-Version ( $name, $mess_sender = '') {
                     Write-Log "Снимаю блокировку с запуска $name"
                     Unblock-File -Path ( Join-Path $PSScriptRoot $name )
                     if ( $name -ne '_functions.ps1' ) {
-                        Write-Log "Запускаю новую версию $name в отдельном окне, а тут выхожу"
-                        Start-Process pwsh ( Join-Path $PSScriptRoot $name )
+                        Write-Log "Запускаем новую версию $name в отдельном окне, а тут выходим"
+                        Start-Process pwsh ( ( Join-Path $PSScriptRoot $name ) + ' -delay' )
                         Remove-Item $new_file_path
                         exit
                     }
