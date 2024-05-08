@@ -343,18 +343,18 @@ if ( $new_torrents_keys ) {
             # While ($true) {
             Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
             Start-Sleep -Seconds 5
-            # $new_topic_info = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') )
-            # $new_topic_title = $new_topic_info.name
-            # # на случай, если в pvc были устаревшие данные, и по старому хшу раздача не находится, будем считать, что имя совпало.
+            $new_topic_info = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') )
+            $new_topic_title = $new_topic_info.name
+            # на случай, если в pvc были устаревшие данные, и по старому хшу раздача не находится, будем считать, что имя совпало.
 
             # if ( $null -eq $new_tracker_data.name ) { $new_tracker_data.name = $existing_torrent.name }
             # if ( $null -ne $new_tracker_data.name ) { break }
 
             # }
-            if ( $null -ne $new_tracker_data.topic_title -and $new_tracker_data.topic_title -eq $existing_torrent.name -and $subfolder_kind -le '2') {
+            if ( $null -ne $new_topic_title -and $new_topic_title -eq $existing_torrent.name -and $subfolder_kind -le '2') {
                 Remove-ClientTorrent $client $existing_torrent.hash
             }
-            elseif ($null -ne $new_tracker_data.topic_title ) {
+            elseif ($null -ne $new_topic_title ) {
                 Remove-ClientTorrent $client $existing_torrent.hash -deleteFiles
             }
             Start-Sleep -Milliseconds 100 
