@@ -1,3 +1,10 @@
+param ([switch]$delay )
+
+if ( $delay ) {
+    Write-Host 'Запуск после обновления, ждём 5 секунд чтобы старое окно точно закрылось.'
+    Start-Sleep -Seconds 5
+}
+
 $ProgressPreference = 'SilentlyContinue'
 Write-Output 'Подгружаем настройки'
 
