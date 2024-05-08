@@ -21,7 +21,7 @@ if ( !$debug ) {
         Write-Log 'Запускаем новую версию  _functions.ps1'
         . ( Join-Path $PSScriptRoot '_functions.ps1' )
     }
-    Test-Version ( $PSCommandPath | Split-Path -Leaf ) ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
+    Test-Version ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','')
     Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
 }
 
