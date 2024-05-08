@@ -17,7 +17,7 @@ if ( !$debug ) {
     Test-Module 'PSSQLite' 'для работы с базой TLO'
     Write-Log 'Проверяем актуальность скриптов' 
     # Test-Version ( '_functions.ps1' ) 'Adder'
-    if ( ( Test-Version '_functions.ps1' ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ) -eq $true ) {
+    if ( ( Test-Version -name '_functions.ps1' -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1','') ) -eq $true ) {
         Write-Log 'Запускаем новую версию  _functions.ps1'
         . ( Join-Path $PSScriptRoot '_functions.ps1' )
     }
