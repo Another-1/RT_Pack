@@ -921,6 +921,7 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states, $c
     $lines = @{}
     $hash_column = $columns.keys | Where-Object { $columns[$_] -eq 'info_hash' }
     $status_column = $columns.keys | Where-Object { $columns[$_] -eq 'tor_status' }
+    $title_column = $columns.keys | Where-Object { $columns[$_] -eq 'topic_title' }
     foreach ( $release in $json.releases | Where-Object { $_[$status_column] -in $ok_states } ) {
         $j = 0
         foreach ( $field in $release ) {
