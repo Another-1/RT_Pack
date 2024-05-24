@@ -279,7 +279,7 @@ if ( $new_torrents_keys ) {
             $min_delay = $min_days
         }
         if ( $existing_torrent ) {
-            if ( !$ConnectDetails.sid ) { Initialize-Forum $forum }
+            if ( !$ConnectDetails.sid ) { Initialize-Forum $ConnectDetails }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             if ( $null -eq $new_torrent_file ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
             $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
@@ -408,7 +408,7 @@ if ( $new_torrents_keys ) {
                 # Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' из необновляемого раздела' )
                 continue
             }
-            if ( !$ConnectDetails.sid ) { Initialize-Forum $forum }
+            if ( !$ConnectDetails.sid ) { Initialize-Forum $ConnectDetails }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             # if ( $null -eq $new_tracker_data.topic_title ) {
             #     Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
