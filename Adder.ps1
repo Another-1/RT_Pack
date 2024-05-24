@@ -396,20 +396,20 @@ if ( $new_torrents_keys ) {
                         Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section), так как API его не вернуло (бывает)"
                         $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
                     }
-                    $mask_passed = $false
                     # $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
                     #     if ( -not $mask_passed -and $new_tracker_data.topic_title -like $_ ) {
                     #         $mask_passed = $true
                     #     }
                     # }
                     $mask_passed = $false
-                    $mask_passed = $false
                     Foreach ( $mask_line in $masks_sect[$new_tracker_data.section] ) {
                         ForEach ( $mask_word in $mask_line.split(' ') ) {
                             $mask_passed = ($new_tracker_data.topic_title -like "*$mask_word*")
                             if ( !$mask_passed ) { break }
                         }
-                        if ( $mask_passed ) { break }
+                        if ( $mask_passed ) {
+                            Write-Log "Сработала маска $mask_line на раздачу $($new_tracker_data.topic_title)"
+                            break }
                     }
                 }
                 else { $mask_passed = 'N/A' }
