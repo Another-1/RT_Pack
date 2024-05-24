@@ -418,7 +418,7 @@ Function Set-ClientSetting ( $client, $param, $value ) {
 }
 
 function Initialize-Forum () {
-    if ( !$forum ) {
+    if ( !$ConnectDetails ) {
         Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
         Exit
     }
