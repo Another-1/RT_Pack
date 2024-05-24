@@ -255,8 +255,8 @@ $added = @{}
 $refreshed = @{}
 
 if ( $new_torrents_keys ) {
-    Write-Log 'Сортируем новые раздачи по разделу'
-    $new_torrents_keys | Sort-Object -Property { $tracker_torrents[$_].section.ToInt16($null) }
+    Write-Log 'Сортируем новые раздачи по клиентам'
+    $new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $section_details[$tracker_torrents[$_].section].client }
     $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
     foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $section_details[$tracker_torrents[$_].section] -and ( !$never_obsolete -or $tracker_torrents[$_].section -notin $never_obsolete_array ) } ) {
         # Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
