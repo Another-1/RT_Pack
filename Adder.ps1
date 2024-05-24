@@ -404,7 +404,7 @@ if ( $new_torrents_keys ) {
                     $mask_passed = $false
                     Foreach ( $mask_line in $masks_sect[$new_tracker_data.section] ) {
                         ForEach ( $mask_word in $mask_line.split(' ') ) {
-                            $mask_passed = ($new_tracker_data.topic_title -match "\W$mask_word\W")
+                            $mask_passed = ($new_tracker_data.topic_title -match "\W$($mask_word.Replace('_','\s'))\W")
                             if ( !$mask_passed ) { break }
                         }
                         if ( $mask_passed ) {
