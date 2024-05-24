@@ -899,7 +899,7 @@ function Get-APITorrents ( $sections, $id, $api_key, $call_from ) {
 }
 function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states, $call_from ) {
     $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }
-    Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
+    # Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
     $use_avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' )
     $avg_days = $ini_data.sections.avg_seeders_period
     $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
@@ -941,7 +941,7 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states, $c
         # $lines[$release[$hash_column]] = $line
     }
     
-    Write-Log ( 'Получено раздач: ' + $lines.count ) -skip_timestamp -nologfile
+    Write-Log ( "По разделу $section получено раздач: $($lines.count)" ) # -skip_timestamp -nologfile
     if ( !$lines.count ) {
         Write-Log 'Не получилось' -Red
         exit 
@@ -1047,7 +1047,7 @@ function  Get-SpokenInterval ( $start_date, $end_date ) {
     $Duration = New-TimeSpan -Start $start_date -End $end_date
     
     $Day = switch ($Duration.Days) {
-        Default { "<b>{0}</b> д." -f $Duration.Days }
+        Default { "<b>{ 0 }<д." -f $Duration.Days }
     }
     return "$Day"
 }
