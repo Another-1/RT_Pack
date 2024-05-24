@@ -214,14 +214,14 @@ Function Set-ConnectDetails ( $ConnectDetails ) {
     if ( $ini_data.'torrent-tracker'.api_url_custom -and $ini_data.'torrent-tracker'.api_url_custom -ne '') {
         $ConnectDetails.api_url = $ini_data.'torrent-tracker'.api_url_custom
     }
-    ele {
+    else {
         $ConnectDetails.api_url = $ini_data.'torrent-tracker'.api_url
     }
     $ConnectDetails.api_ssl = $ini_data.'torrent-tracker'.api_ssl
     if ( $ini_data.'torrent-tracker'.report_url_custom -and $ini_data.'torrent-tracker'.report_url_custom -ne '') {
         $ConnectDetails.report_url = $ini_data.'torrent-tracker'.report_url_custom
     }
-    ele {
+    else {
         $ConnectDetails.report_url = $ini_data.'torrent-tracker'.report_url
     }
     $ConnectDetails.report_ssl = $ini_data.'torrent-tracker'.report_ssl
