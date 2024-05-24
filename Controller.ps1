@@ -52,6 +52,11 @@ $section_seeds = @{}
 Write-Log 'Строим таблицы'
 $sections = $ini_data.sections.subsections.split( ',' )
 $section_details = Get-IniSectionDetails $sections
+
+# !!!! TEMP !!!!
+# $section = $sections | Where-Object { $_ -ne '915' }
+# !!!! TEMP !!!!
+
 $sections | ForEach-Object { $section_seeds[$_] = ( $section_details[$_].control_peers -ne '' ? $section_details[$_].control_peers : $global_seeds ) }
 if (!$clients) { $clients = Get-Clients }
 if ( $control_override -and (Get-Date).hour -in $control_override.hours ) { 

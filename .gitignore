@@ -11,3 +11,5 @@ ipfilter.dat
 *.journal
 _masks.ps1
 *.db
+Avenger.ps1
+usernames.xml

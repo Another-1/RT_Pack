@@ -5,6 +5,11 @@ if ( $delay ) {
     Start-Sleep -Seconds 5
 }
 
+if ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like ('*' + ( $PSCommandPath | Split-Path -Leaf ) ) ).count -gt 1 ) {
+    Write-Host 'Я и так уже выполняюсь, выходим' -ForegroundColor Red
+    exit
+}
+
 $ProgressPreference = 'SilentlyContinue'
 Write-Output 'Подгружаем настройки'
 
@@ -122,13 +127,19 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
     . "$PSScriptRoot\_masks.ps1"
     $masks_db = @{}
     # $masks_db_plain = @{}
-    $masks_like = @{}
+    # $masks_like = @{}
+    $masks_sect = @{}
     $conn = Open-TLODatabase
     $columnNames = Get-DB_ColumnNames $conn
     $masks.GetEnumerator() | ForEach-Object {
         $group_mask = $_.Value
         foreach ( $section in ( $_.Key -replace ( '\s*', '')).split(',') ) {
-            $db_return = ( Invoke-SqliteQuery -Query ( 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $section + ' AND ' + $columnNames['name'] + ' NOT LIKE "%' + ( ($group_mask -replace ('\s', '%')) -join '%" AND ' + $columnNames['name'] + ' NOT LIKE "%' ) + '%"' ) -SQLiteConnection $conn )
+            # $db_return = ( Invoke-SqliteQuery -Query ( 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $section + ' AND ' + $columnNames['name'] + ' NOT LIKE "%' + ( ($group_mask -replace ('\s', '%')) -join '%" AND ' + $columnNames['name'] + ' NOT LIKE "%' ) + '%"' ) -SQLiteConnection $conn )
+            $sql_sentence = 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $section + ' AND ' + `
+            ( ( $group_mask | ForEach-Object {
+                        '( ' + $columnNames['name'] + ' NOT LIKE ' + ( ( $_ -split ' ' | ForEach-Object { "'%$_%'" } ) -join ( ' OR ' + $columnNames['name'] + ' NOT LIKE ' ) ) + ' ) '
+                    } ) -join ' AND ' )
+            $db_return = ( Invoke-SqliteQuery -Query $sql_sentence -SQLiteConnection $conn )
             if ( $db_return ) {
                 @($db_return.id).GetEnumerator() | ForEach-Object {
                     if ( !$masks_db[$section]) { $masks_db[$section] = @{} }
@@ -136,7 +147,8 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
                 } # Список всех неподходящих раздач по этому разделу
                 Write-Log ( 'По разделу ' + $section + ' отброшено масками ' + ( Get-Spell -qty $masks_db[$section].count -spelling 1 -entity 'torrents' ) )
             }
-            $masks_like[$section] = $group_mask -replace ('^|$|\s', '*')
+            # $masks_like[$section] = $group_mask -replace ('^|$|\s', '*')
+            $masks_sect[$section] = $group_mask
         }
     }
     # $masks_db.Keys | ForEach-Object {
@@ -147,7 +159,7 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
     $conn.Close()
 }
 else {
-    Remove-Variable -Name masks_like -ErrorAction SilentlyContinue
+    # Remove-Variable -Name masks_like -ErrorAction SilentlyContinue
     Remove-Variable -Name masks_db -ErrorAction SilentlyContinue
 }
 
@@ -378,25 +390,33 @@ if ( $new_torrents_keys ) {
             if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.topic_id] ) { $mask_passed = $false }
 
             else {
-                if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
-                    # Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
+                # if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
+                if ( $masks_sect -and $masks_sect[$new_tracker_data.section.ToString()] ) {
                     if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
+                        Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section), так как API его не вернуло (бывает)"
                         $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
                     }
                     $mask_passed = $false
-                    $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
-                        if ( -not $mask_passed -and $new_tracker_data.topic_title -like $_ ) {
-                            $mask_passed = $true
+                    # $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
+                    #     if ( -not $mask_passed -and $new_tracker_data.topic_title -like $_ ) {
+                    #         $mask_passed = $true
+                    #     }
+                    # }
+                    $mask_passed = $false
+                    $mask_passed = $false
+                    Foreach ( $mask_line in $masks_sect[$new_tracker_data.section] ) {
+                        ForEach ( $mask_word in $mask_line.split(' ') ) {
+                            $mask_passed = ($new_tracker_data.topic_title -like "*$mask_word*")
+                            if ( !$mask_passed ) { break }
                         }
+                        if ( $mask_passed ) { break }
                     }
                 }
                 else { $mask_passed = 'N/A' }
             }
-            if ( $masks_like -and -not $mask_passed ) {
+            # if ( $masks_like -and -not $mask_passed ) {
+            if ( $masks_sect -and -not $mask_passed ) {
                 # Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
-                if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
-                    $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
-                }
                 Write-Log ( 'Новая раздача ' + $new_tracker_data.topic_title + ' отброшена масками' )
                 continue
             }
