@@ -57,10 +57,6 @@ function Test-Version ( $name, $mess_sender = '') {
                     else { 
                         Remove-Item $new_file_path
                         return $true
-                        # Write-Log 'Ждём 1 секунду, на всякий случай'
-                        # Start-Sleep -Seconds 1
-                        # Write-Log "Запускаем новую версию  $name"
-                        # . ( Join-Path $PSScriptRoot $name )
                     }
                 }
             }
@@ -187,33 +183,41 @@ function Test-ForumWorkingHours ( [switch]$verbose ) {
     }
 }
 
-Function Set-ForumDetails ( $forum ) {
-    $forum = @{}
-    If ( $ini_data.proxy.activate_forum -eq '1' -or $ini_data.proxy.activate_api -eq '1' ) {
+Function Set-ConnectDetails ( $ConnectDetails ) {
+    $ConnectDetails = @{}
+    If ( $ini_data.proxy.activate_forum -eq '1' -or $ini_data.proxy.activate_api -eq '1' -or $ini_data.proxy.activate_report -eq '1' ) {
         Write-Log ( 'Используем ' + $ini_data.proxy.type.Replace('socks5h', 'socks5') + ' прокси ' + $ini_data.proxy.hostname + ':' + $ini_data.proxy.port )
-        $forum.ProxyIP = $ini_data.proxy.hostname
-        $forum.ProxyPort = $ini_data.proxy.port
-        $forum.ProxyURL = 'socks5://' + $ini_data.proxy.hostname + ':' + $ini_data.proxy.port
-        $forum.ProxyLogin = $ini_data.proxy.login
-        $forum.ProxyPassword = $ini_data.proxy.password
+        $ConnectDetails.ProxyIP = $ini_data.proxy.hostname
+        $ConnectDetails.ProxyPort = $ini_data.proxy.port
+        if ( $ini_data.proxy.type -like 'socks*' ) {
+            $ConnectDetails.ProxyURL = 'socks5://' + $ini_data.proxy.hostname + ':' + $ini_data.proxy.port
+        }
+        else { 
+            $ConnectDetails.ProxyURL = 'http://' + $ini_data.proxy.hostname + ':' + $ini_data.proxy.port
+        }
+        $ConnectDetails.ProxyLogin = $ini_data.proxy.login
+        $ConnectDetails.ProxyPassword = $ini_data.proxy.password
     }
-    $forum.UseApiProxy = $ini_data.proxy.activate_api
-    $forum.UseProxy = $ini_data.proxy.activate_forum
-    if ( $forum.UseProxy -eq '1' -and $ini_data.proxy.type -notlike 'socks*' ) {
-        Write-Log 'Выберите прокси типа SOCKS5 или SOCKS5H в настройках TLO. Прокси типа HTTP не поддерживаются. Выходим.' -Red
-        Exit
-    }
-    $forum.Login = $ini_data.'torrent-tracker'.login
-    $forum.Password = $ini_data.'torrent-tracker'.password
-    $forum.url = $ini_data.'torrent-tracker'.forum_url
-    $forum.UserID = $ini_data.'torrent-tracker'.user_id
+    $ConnectDetails.UseApiProxy = $ini_data.proxy.activate_api
+    $ConnectDetails.UseRepProxy = $ini_data.proxy.activate_report
+    $ConnectDetails.UseProxy = $ini_data.proxy.activate_forum
+    $ConnectDetails.Login = $ini_data.'torrent-tracker'.login
+    $ConnectDetails.Password = $ini_data.'torrent-tracker'.password
+    $ConnectDetails.forum_url = $ini_data.'torrent-tracker'.forum_url
+    $ConnectDetails.forum_ssl = $ini_data.'torrent-tracker'.forum_ssl
+    $ConnectDetails.UserID = $ini_data.'torrent-tracker'.user_id
+    $ConnectDetails.api_url = $ini_data.'torrent-tracker'.api_url
+    $ConnectDetails.api_ssl = $ini_data.'torrent-tracker'.api_ssl
+    $ConnectDetails.report_url = $ini_data.'torrent-tracker'.report_url
+    $ConnectDetails.report_ssl = $ini_data.'torrent-tracker'.report_ssl
 
-    if ( $forum.ProxyURL -and $forum.ProxyPassword -and $forum.ProxyPassword -ne '') {
+    if ( $ConnectDetails.ProxyURL -and $ConnectDetails.ProxyPassword -and $ConnectDetails.ProxyPassword -ne '') {
         $proxyPass = ConvertTo-SecureString $ini_data.proxy.password -AsPlainText -Force
-        $forum.proxyCred = New-Object System.Management.Automation.PSCredential -ArgumentList $forum.ProxyLogin, $proxyPass
+        $ConnectDetails.proxyCred = New-Object System.Management.Automation.PSCredential -ArgumentList $ConnectDetails.ProxyLogin, $proxyPass
     }
     
-    return $forum
+
+    return $ConnectDetails
 }
 
 function Open-Database( $db_path, [switch]$verbose ) {
@@ -354,7 +358,6 @@ function Get-TopicIDs ( $client, $torrent_list ) {
         $torrent_list | ForEach-Object {
             if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int64]$tracker_torrents[$_.hash.toUpper()].topic_id }
             if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
-                # Write-Log ( 'Не нашлось информации по ID для раздачи ' + $_.hash.toUpper() + ', попробуем достать из клиента')
                 $Params = @{ hash = $_.hash }
                 try {
                     $comment = ( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.Port + '/api/v2/torrents/properties' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json | Select-Object comment -ExpandProperty comment
@@ -381,7 +384,6 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
         skip_checking = $Skip_checking
     }
 
-    # Добавляем раздачу в клиент.
     Write-Log 'Отправляем скачанный torrent-файл в клиент'
     $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/add'
     $added_ok = $false
@@ -422,19 +424,19 @@ function Initialize-Forum () {
     }
     Write-Log 'Авторизуемся на форуме.'
 
-    $login_url = 'https://' + $forum.url + '/forum/login.php'
+    $login_url = 'https://' + $ConnectDetails.forum_url + '/forum/login.php'
     $headers = @{ 'User-Agent' = 'Mozilla/5.0' }
-    $payload = @{ 'login_username' = $forum.login; 'login_password' = $forum.password; 'login' = '%E2%F5%EE%E4' }
+    $payload = @{ 'login_username' = $ConnectDetails.login; 'login_password' = $ConnectDetails.password; 'login' = '%E2%F5%EE%E4' }
     $i = 1
 
     while ($true) {
         try {
-            if ( [bool]$forum.ProxyURL ) {
-                if ( $forum.proxycred ) {
-                    Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred | Out-Null
+            if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseProxy -eq '1' ) {
+                if ( $ConnectDetails.proxycred ) {
+                    Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred | Out-Null
                 }
                 else {
-                    Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $forum.ProxyURL | Out-Null
+                    Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL | Out-Null
                 }
             }
             else { Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck | Out-Null }
@@ -449,25 +451,25 @@ function Initialize-Forum () {
         Write-Log 'Не удалось авторизоваться на форуме.' -Red
         Exit
     }
-    $forum.sid = $sid
+    $ConnectDetails.sid = $sid
     Write-Log ( 'Успешно.' )
 }
 
 function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
-    if ( !$forum.sid ) { Initialize-Forum }
-    $get_url = 'https://' + $forum.url + '/forum/dl.php?t=' + $Id
+    if ( !$ConnectDetails.sid ) { Initialize-Forum }
+    $get_url = 'https://' + $ConnectDetails.forum_url + '/forum/dl.php?t=' + $Id
     if ( $null -eq $save_path ) { $Path = Join-Path $PSScriptRoot ( $Id.ToString() + '.torrent' ) } else { $path = Join-Path $save_path ( $Id.ToString() + '.torrent' ) }
     $i = 1
     Write-Log 'Скачиваем torrent-файл с форума'
     while ( $i -le 10 ) {
         try { 
-            if ( [bool]$forum.ProxyURL ) {
-                if ( $forum.proxycred ) { Invoke-WebRequest -Uri $get_url -WebSession $forum.sid -OutFile $Path -Proxy $forum.ProxyURL -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $forum.proxyCred }
-                else { Invoke-WebRequest -Uri $get_url -WebSession $forum.sid -OutFile $Path -Proxy $forum.ProxyURL -MaximumRedirection 999 -SkipHttpErrorCheck }
+            if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseProxy -eq 1) {
+                if ( $ConnectDetails.proxycred ) { Invoke-WebRequest -Uri $get_url -WebSession $ConnectDetails.sid -OutFile $Path -Proxy $ConnectDetails.ProxyURL -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $ConnectDetails.proxyCred }
+                else { Invoke-WebRequest -Uri $get_url -WebSession $ConnectDetails.sid -OutFile $Path -Proxy $ConnectDetails.ProxyURL -MaximumRedirection 999 -SkipHttpErrorCheck }
                 break
             }
             else {
-                Invoke-WebRequest -Uri $get_url -WebSession $forum.sid -OutFile $Path -MaximumRedirection 999 -SkipHttpErrorCheck
+                Invoke-WebRequest -Uri $get_url -WebSession $ConnectDetails.sid -OutFile $Path -MaximumRedirection 999 -SkipHttpErrorCheck
                 break
             }
         }
@@ -581,7 +583,6 @@ function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
 function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_id, $mess_sender ) {
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 -or $broken.Count -gt 0 ) {
         if ( $brief_reports -ne 'Y') {
-            # полная сводка в ТГ
             $message = ''
             $first = $true
             foreach ( $client in $refreshed.Keys ) {
@@ -589,7 +590,6 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
                 $first = $false
                 $message += "Обновлены в клиенте <b>$client</b>`n"
                 $refreshed[$client].keys | Sort-Object | ForEach-Object {
-                    # $message += "<i>Раздел $_</i>`n"
                     $refreshed[$client][$_] | ForEach-Object { $message += ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" ) }
                 }
             }
@@ -602,7 +602,6 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
                 $first = $false
                 $message += "Добавлены в клиент <b>$client</b>`n"
                 $added[$client].keys | Sort-Object | ForEach-Object {
-                    # $message += "<i>Раздел $_</i>`n"
                     $added[$client][$_] | ForEach-Object { $message += ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + "`n" + $_.name + ' (' + ( to_kmg $_.size 1 ) + ')' + "`n`n") }
                 }
             }
@@ -636,7 +635,6 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
             }
         }
         else {
-            # краткая сводка в ТГ
             $message = ''
             $keys = (  $refreshed.keys + $added.keys + $obsolete.Keys ) | Sort-Object -Unique
             [double]$added_b = 0
@@ -682,33 +680,6 @@ function Stop-Torrents( $hashes, $client) {
     $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/pause'
     Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
 }
-
-# function Set-StartStop ( $keys ) {
-#     $now_epoch = ( Get-Date -UFormat %s ).ToInt32($null)
-#     $new_keys = $keys | Where-Object { !$db_data[$hash_to_id[$_]] }
-#     $existing_keys = $keys | Where-Object { $db_data[$hash_to_id[$_]] }
-
-#     if ( $new_keys -and $new_keys.count -gt 0 ) {
-#         $sql_values = '(' + ( $hash_to_id[ $new_keys ] -join ", $now_epoch ), (") + ", $now_epoch)"
-#         try {
-#             Invoke-SqliteQuery -Query "INSERT INTO start_dates (id,start_date) VALUES $sql_values" -SQLiteConnection $conn
-#         }
-#         catch { 
-#             Write-Log 'Что-то пошло не так при записи даты запуска/остановки в БД, этого не должно было случиться' -Red
-#             Pause
-#         }
-#     }
-#     if ( $existing_keys -and $existing_keys.count -gt 0 ) {
-#         try {
-#             $list = "('" + ( $hash_to_id[$existing_keys] -join "','" ) + "')"
-#             Invoke-SqliteQuery -Query "UPDATE start_dates SET start_date = @st_date WHERE id IN $list" -SqlParameters @{ st_date = $now_epoch } -SQLiteConnection $conn
-#         }
-#         catch {
-#             Write-Log 'Что-то пошло не так при обновлении даты запуска/остановки в БД, этого не должно было случиться' -Red
-#             Pause
-#         }
-#     }
-# }
 
 function Get-IniSections ( [switch]$useForced ) {
     $result = @()
@@ -856,20 +827,20 @@ function Get-APISeeding ( $id, $api_key, $seding_days, $call_from ) {
     $seed_dates = @{}
     foreach ( $section in $sections ) {
         Write-Log "Запрашиваем историю сидирования по разделу $section"
-        $url = "https://rep.rutracker.cc/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
+        $url = "/krs/api/v1/keeper/$id/reports?only_subforums_marked_as_kept=true&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
 
-        ( ( Get-HTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
+        ( ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
             if ( $null -ne $_ ) { $seed_dates[$_[0]] = $_[1] }
         } 
     }
     return $seed_dates
 }
 
-function Get-APITorrents ( $sections, $id, $api_key, $call_from ) {
+function Get-RepTorrents ( $sections, $id, $api_key, $call_from ) {
     Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
     $tracker_torrents = @{}
     if ($i -gt 1 ) { Write-Log "Попытка номер $i" }
-    $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_status_titles' -call_from $call_from
+    $content = Get-ApiHTTP '/v1/get_tor_status_titles' -call_from $call_from
     $titles = ($content | ConvertFrom-Json -AsHashtable ).result
 
     if (!$titles) {
@@ -882,7 +853,7 @@ function Get-APITorrents ( $sections, $id, $api_key, $call_from ) {
     while ( $counter -lt 10 ) {
         try {
             foreach ( $section in $sections ) {
-                $section_torrents = Get-APISectionTorrents -forum $forum -section $section -id $id -api_key $api_key -ok_states $ok_states -call_from $call_from
+                $section_torrents = Get-RepSectionTorrents -section $section -id $id -api_key $api_key -ok_states $ok_states -call_from $call_from
                 $tracker_torrents += $section_torrents
             }
             break
@@ -897,31 +868,22 @@ function Get-APITorrents ( $sections, $id, $api_key, $call_from ) {
     }
     return $tracker_torrents
 }
-function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states, $call_from ) {
+function Get-RepSectionTorrents( $section, $id, $api_key, $ok_states, $call_from ) {
     $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }
-    # Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
     $use_avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' )
     $avg_days = $ini_data.sections.avg_seeders_period
     $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
-    $url = "https://rep.rutracker.cc/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders,topic_title$subst"
-    $content = ( Get-HTTP -url $url -headers $headers -call_from $call_from )
-    # if ( $use_avg_seeds -eq 'Y' ) { $content = $content.replace( 'average_seeds_sum','seeders' ) }
+    $url = "/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders,topic_title$subst"
+    $content = ( Get-RepHTTP -url $url -headers $headers -call_from $call_from )
     $json = $content | ConvertFrom-Json
     $columns = @{}
     $i = 0
     $json.columns | ForEach-Object { $columns[$i] = $_; $i++ }
-    # $line = [PSCustomObject]@{}
     $line = @{}
-    # $json.columns | Where-Object { $_ -ne 'info_hash' } | ForEach-Object {
-    #     $line | Add-Member -MemberType NoteProperty -Name $_ -Value $null
-    # }
-    # $line | Add-Member -MemberType NoteProperty -Name section -Value $section
     $line.section = $section
-    # if ( $use_avg_seeds -eq 'Y' ) { $line | Add-Member -MemberType NoteProperty -Name seeders -Value 0.0 }
     $lines = @{}
     $hash_column = $columns.keys | Where-Object { $columns[$_] -eq 'info_hash' }
     $status_column = $columns.keys | Where-Object { $columns[$_] -eq 'tor_status' }
-    $title_column = $columns.keys | Where-Object { $columns[$_] -eq 'topic_title' }
     foreach ( $release in $json.releases | Where-Object { $_[$status_column] -in $ok_states } ) {
         $j = 0
         foreach ( $field in $release ) {
@@ -938,7 +900,6 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states, $c
         }
         catch { $line.seeders = 0 }
         $lines[$release[$hash_column]] = $line | Select-Object *
-        # $lines[$release[$hash_column]] = $line
     }
     
     Write-Log ( "По разделу $section получено раздач: $($lines.count)" ) # -skip_timestamp -nologfile
@@ -949,75 +910,26 @@ function Get-APISectionTorrents( $forum, $section, $id, $api_key, $ok_states, $c
     return $lines
 }
 
+function Get-ForumHTTP ( $url, $body, $headers, $call_from ) {
+    return Get-HTTP -url $url -body $body -headers $headers -call_from $call_from -use_proxy $ConnectDetails.UseProxy
+}
 
-# function Get-TrackerTorrents ( $sections ) {
-#     Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
-#     $i = 1
-#     do {
-#         try {
-#             if ($i -gt 1 ) { Write-Log "Попытка номер $i" }
-#             $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_status_titles'
-#             $titles = ($content | ConvertFrom-Json -AsHashtable ).result
-#             if ( $titles ) { break }
-#         }
-#         catch { Start-Sleep -Seconds 10; $i++ }
-#     }
-#     until ( $i -ge 5 )
-#     if (!$titles) {
-#         Write-Log 'Нет связи с API трекера, выходим' -Red
-#         exit
-#     }
-#     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
-#     $tracker_torrents = @{}
-#     foreach ( $section in $sections ) {
- 
-#         $section_torrents = Get-SectionTorrents $forum $section
-#         $section_torrents.Keys | Where-Object { $section_torrents[$_][0] -in $ok_states } | ForEach-Object {
-#             $tracker_torrents[$section_torrents[$_][7]] = @{
-#                 id             = $_
-#                 section        = $section
-#                 status         = $section_torrents[$_][0]
-#                 name           = $null
-#                 reg_time       = $section_torrents[$_][2]
-#                 size           = $section_torrents[$_][3]
-#                 priority       = $section_torrents[$_][4]
-#                 seeders        = $section_torrents[$_][1]
-#                 hidden_section = $section_details[$section].hide_topics
-#                 releaser       = $section_torrents[$_][8].ToInt32($null)
-#             }
-#         }
-#     }
-#     return $tracker_torrents
-# }
+function Get-ApiHTTP ( $url, $body, $headers, $call_from ) {
+    return Get-HTTP -url "$( $ConnectDetails.api_ssl -eq '1' ? 'https://' : 'http:' )$($ConnectDetails.api_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $ConnectDetails.UseApiProxy
+}
 
-# function Get-SectionTorrents ( $forum, $section ) {
-#     $i = 1
-#     Write-Log ('Получаем с трекера раздачи раздела ' + $section + '... ' ) -NoNewline
-#     while ( $true) {
-#         try {
-#             $content = Get-HTTP "https://api.rutracker.cc/v1/static/pvc/f/$section"
-#             $tmp_torrents = ( $content | ConvertFrom-Json -AsHashtable ).result
-#             break
-#         }
-#         catch { Start-Sleep -Seconds 10; $i++; Write-Host "Попытка номер $i" -ForegroundColor Cyan }
-#     }
-#     Write-Log ( 'Получено раздач: ' + $tmp_torrents.count ) -skip_timestamp -nologfile
-#     if ( !$tmp_torrents ) {
-#         Write-Host 'Не получилось' -ForegroundColor Red
-#         exit 
-#     }
-#     return $tmp_torrents
-# }
+function Get-RepHTTP ( $url, $body, $headers, $call_from ) {
+    return Get-HTTP -url "$( $ConnectDetails.report_ssl -eq '1' ? 'https://' : 'http:' )$($ConnectDetails.report_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $ConnectDetails.UseRepProxy
+}
 
 
-
-function Get-HTTP ( $url, $body, $headers, $call_from ) {
+function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
     $retry_cnt = 1
     while ( $true ) {
         try {
-            if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
-                if ( $forum.proxyCred ) { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)").Content }
-                else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $forum.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
+            if ( $use_proxy -eq "1" ) {
+                if ( $ConnectDetails.proxyCred ) { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)").Content }
+                else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
             }
             else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
         }
@@ -1055,14 +967,14 @@ function Send-HTTP ( $url, $body, $headers, $call_from ) {
     $retry_cnt = 1
     while ( $true ) {
         try {
-            if ( [bool]$forum.ProxyURL -and $forum.UseApiProxy -eq 1 ) {
-                if ( $forum.proxyCred ) {
-                    Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $forum.ProxyURL -ProxyCredential $forum.proxyCred -Body $body `
+            if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseApiProxy -eq 1 ) {
+                if ( $ConnectDetails.proxyCred ) {
+                    Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred -Body $body `
                         -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" | Out-Null
                     return
                 }
                 else {
-                    Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $forum.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" | Out-Null
+                    Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" | Out-Null
                     return
                 }
             }

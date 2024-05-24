@@ -28,13 +28,11 @@ if ( !$debug ) {
     Test-Module 'PsIni' 'для чтения настроек TLO'
     Test-Module 'PSSQLite' 'для работы с базой TLO'
     Write-Log 'Проверяем актуальность скриптов' 
-    # Test-Version ( '_functions.ps1' ) 'Adder'
     if ( ( Test-Version -name '_functions.ps1' -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) -eq $true ) {
         Write-Log 'Запускаем новую версию  _functions.ps1'
         . ( Join-Path $PSScriptRoot '_functions.ps1' )
     }
     Test-Version -name ( $PSCommandPath | Split-Path -Leaf ) -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-    # Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
 }
 
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
@@ -91,9 +89,7 @@ if ( $update_trigger -and $psversionTable.Platform.ToLower() -like '*win*') {
     Invoke-SqliteQuery -Query 'CREATE TABLE IF NOT EXISTS updates (id INT PRIMARY KEY NOT NULL, cnt INT)' -SQLiteConnection $up_conn
 }
 
-# $sections = Get-IniSections -useForced
-
-$forum = Set-ForumDetails
+$ConnectDetails = Set-ConnectDetails
 $sections = $ini_data.sections.subsections.split( ',' )
 $all_sections = $sections
 if ( $never_obsolete ) {
@@ -101,7 +97,7 @@ if ( $never_obsolete ) {
     $all_sections += $never_obsolete_array
     $all_sections = $all_sections | Select-Object -Unique
     Write-Log 'Запрашиваем список всех разделов чтобы исключить празничные, если на дворе не праздник'
-    $existing_sections = (( Get-HTTP -url 'https://api.rutracker.cc/v1/static/cat_forum_tree' ) | ConvertFrom-Json -AsHashtable ).result.f.keys
+    $existing_sections = (( Get-ApiHTTP -url '/v1/static/cat_forum_tree' ) | ConvertFrom-Json -AsHashtable ).result.f.keys
     Write-Log "Обнаружено разделов на форуме: $($existing_sections.count)"
     Write-Log "Исключаем праздничные разделы по праздникам, которые не на дворе"
     $all_sections = $all_sections | Where-Object { $_ -in $existing_sections }
@@ -126,15 +122,12 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
     Write-Log 'Подтягиваем из БД TLO названия раздач из маскированных разделов по хранимым раздачам'
     . "$PSScriptRoot\_masks.ps1"
     $masks_db = @{}
-    # $masks_db_plain = @{}
-    # $masks_like = @{}
     $masks_sect = @{}
     $conn = Open-TLODatabase
     $columnNames = Get-DB_ColumnNames $conn
     $masks.GetEnumerator() | ForEach-Object {
         $group_mask = $_.Value
         foreach ( $section in ( $_.Key -replace ( '\s*', '')).split(',') ) {
-            # $db_return = ( Invoke-SqliteQuery -Query ( 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $section + ' AND ' + $columnNames['name'] + ' NOT LIKE "%' + ( ($group_mask -replace ('\s', '%')) -join '%" AND ' + $columnNames['name'] + ' NOT LIKE "%' ) + '%"' ) -SQLiteConnection $conn )
             $sql_sentence = 'SELECT id FROM Topics WHERE ' + $columnNames['forum_id'] + '=' + $section + ' AND ' + `
             ( ( $group_mask | ForEach-Object {
                         '( ' + $columnNames['name'] + ' NOT LIKE ' + ( ( $_ -split ' ' | ForEach-Object { "'%$_%'" } ) -join ( ' OR ' + $columnNames['name'] + ' NOT LIKE ' ) ) + ' ) '
@@ -147,25 +140,17 @@ If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
                 } # Список всех неподходящих раздач по этому разделу
                 Write-Log ( 'По разделу ' + $section + ' отброшено масками ' + ( Get-Spell -qty $masks_db[$section].count -spelling 1 -entity 'torrents' ) )
             }
-            # $masks_like[$section] = $group_mask -replace ('^|$|\s', '*')
             $masks_sect[$section] = $group_mask
         }
     }
-    # $masks_db.Keys | ForEach-Object {
-    #     $masks_db[$_].Keys | ForEach-Object {
-    #         $masks_db_plain[$_] = 1
-    #     }
-    # }
     $conn.Close()
 }
 else {
-    # Remove-Variable -Name masks_like -ErrorAction SilentlyContinue
     Remove-Variable -Name masks_db -ErrorAction SilentlyContinue
 }
 
 Write-Log 'Достаём из TLO подробности о разделах'
 $section_details = Get-IniSectionDetails $sections
-# $forum = Set-ForumDetails
 
 if ( $get_blacklist -eq 'N' ) {
     $blacklist = Get-Blacklist -verbose
@@ -177,8 +162,7 @@ if ( $get_blacklist -eq 'N' ) {
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
-    # $tracker_torrents = Get-TrackerTorrents $sections
-    $tracker_torrents = Get-APITorrents -sections $all_sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+    $tracker_torrents = Get-RepTorrents -sections $all_sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
@@ -295,7 +279,7 @@ if ( $new_torrents_keys ) {
             $min_delay = $min_days
         }
         if ( $existing_torrent ) {
-            if ( !$forum.sid ) { Initialize-Forum $forum }
+            if ( !$ConnectDetails.sid ) { Initialize-Forum $forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             if ( $null -eq $new_torrent_file ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
             $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
@@ -424,7 +408,7 @@ if ( $new_torrents_keys ) {
                 # Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' из необновляемого раздела' )
                 continue
             }
-            if ( !$forum.sid ) { Initialize-Forum $forum }
+            if ( !$ConnectDetails.sid ) { Initialize-Forum $forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             # if ( $null -eq $new_tracker_data.topic_title ) {
             #     Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"

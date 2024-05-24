@@ -1,20 +1,6 @@
-# function  Start-batch {
-#     $spell = Get-Spell $start_keys.count 2
-#     Write-Log ( "Запускаем $spell в клиенте " + $clients[$client].name )
-#     Start-Torrents $start_keys $clients[$client]
-#     # Set-StartStop $start_keys
-# }
-# function  Stop-batch {
-#     $spell = Get-Spell $stop_keys.count 2
-#     Write-Log ( "Тормозим $spell в клиенте " + $clients[$client].name )
-#     Stop-Torrents $stop_keys $clients[$client]
-#     # Set-StartStop $stop_keys
-# }
-
 if ( !$tracker_torrents) {
     Write-Output 'Подгружаем настройки'
 
-    # $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
     . ( Join-Path $PSScriptRoot '_settings.ps1' )
 
     $str = 'Подгружаем функции'
@@ -32,14 +18,11 @@ Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
 
 If ( !$ini_data) {
     Test-Module 'PsIni' 'для чтения настроек TLO'
-    # Test-Module 'PSSQLite' 'для работы с базой TLO'
     $tlo_path = Test-Setting 'tlo_path' -required
     $ini_path = Join-Path $tlo_path 'data' 'config.ini'
     Write-Log 'Читаем настройки Web-TLO'
     $ini_data = Get-IniContent $ini_path
 }
-# $hours_to_stop = Test-Setting 'hours_to_stop'
-# $ok_to_stop = (Get-Date).ToUniversalTime().AddHours( 0 - $hours_to_stop )
 $ok_to_stop = (Get-Date).ToUniversalTime().AddDays( -1 )
 $old_starts_per_run = Test-Setting 'old_starts_per_run'
 $min_stop_to_start = Test-Setting 'min_stop_to_start'
@@ -52,10 +35,6 @@ $section_seeds = @{}
 Write-Log 'Строим таблицы'
 $sections = $ini_data.sections.subsections.split( ',' )
 $section_details = Get-IniSectionDetails $sections
-
-# !!!! TEMP !!!!
-# $section = $sections | Where-Object { $_ -ne '915' }
-# !!!! TEMP !!!!
 
 $sections | ForEach-Object { $section_seeds[$_] = ( $section_details[$_].control_peers -ne '' ? $section_details[$_].control_peers : $global_seeds ) }
 if (!$clients) { $clients = Get-Clients }
@@ -77,9 +56,8 @@ $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать пр
 
 if ( !$tracker_torrents) {
     Write-Log 'Автономный запуск, надо сходить на трекер за актуальными сидами и ID'
-    $forum = Set-ForumDetails # чтобы подтянуть настройки прокси для следующего шага
-    # $tracker_torrents = Get-TrackerTorrents $sections -1 # без ограничения на количество сидов. Нужно чтобы получить оттуда сидов.
-    $tracker_torrents = Get-APITorrents -sections $sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Controller'
+    $ConnectDetails = Set-ConnectDetails # чтобы подтянуть настройки прокси для следующего шага
+    $tracker_torrents = Get-RepTorrents -sections $sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Controller'
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients_torrents = Get-ClientsTorrents $clients 'Controller'
@@ -94,10 +72,8 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     }
 }
 
-# Write-Log 'Выгружаем даты запусков по хранимым раздачам'
 $api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Controller'
 if ( $null -eq $api_seeding ) { exit }
-# $i = 0
 Write-Log 'Осмысливаем полученное'
 $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
     $states[$_.hash] = @{
@@ -105,7 +81,6 @@ $clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '3
         state            = $_.state
         seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
     }
-    # $states[$_.hash] = @{ client = $_.client_key; state = $_.state; seeder_last_seen = $tracker_torrents[$_.infohash_v1].seeder_last_seen }
     if ( $_.state -eq 'pausedUP' ) {
         $paused_sort.Add( [PSCustomObject]@{ hash = $_.infohash_v1; client = $_.client_key; seeder_last_seen = $states[$_.infohash_v1].seeder_last_seen } ) | Out-Null
     }
@@ -124,7 +99,6 @@ foreach ( $client in $clients.keys ) {
         try { 
             if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $section_seeds[$tracker_torrents[$_].section] ) {
                 if ( $start_keys.count -eq $batch_size ) {
-                    # Start-batch
                     Start-Torrents $start_keys $clients[$client]
                     $started += $start_keys.count
                     $start_keys = @()
@@ -138,7 +112,6 @@ foreach ( $client in $clients.keys ) {
             ) {
 
                 if ( $stop_keys.count -eq $batch_size ) {
-                    # Stop-batch
                     Stop-Torrents $stop_keys $clients[$client]
                     $stopped += $stop_keys.count
                     $stop_keys = @()
@@ -149,12 +122,10 @@ foreach ( $client in $clients.keys ) {
         catch { } # на случай поглощённых раздач.
     }
     if ( $start_keys.count -gt 0) {
-        # Start-batch
         Start-Torrents $start_keys $clients[$client]
         $started += $start_keys.count
     }
     if ( $stop_keys.count -gt 0) {
-        # Stop-batch
         Stop-Torrents $stop_keys $clients[$client]
         $stopped += $stop_keys.count
     }
@@ -175,14 +146,11 @@ if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
     $counter = 0
     $start_keys = @()
     $client = 'Z'
-    # $paused_sort.GetEnumerator() | ForEach-Object {
     foreach ( $state in $paused_sort.GetEnumerator() ) {
         if ( $client -eq 'Z' ) {
             $client = $state.client
         }
-        # if ($counter -gt 625 ) { break }
         if ( $start_keys.count -eq $batch_size -or $state.client -ne $client ) {
-            # Start-batch
             Start-Torrents $start_keys $clients[$client]
             $client = $state.client
             $started += $start_keys.count
@@ -192,7 +160,6 @@ if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
         $counter++
     }
     if ( $start_keys.count -gt 0 ) {
-        # Start-batch
         Start-Torrents $start_keys $clients[$client]
         $started += $start_keys.count
     }
