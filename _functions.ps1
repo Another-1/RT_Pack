@@ -923,7 +923,6 @@ function Get-RepSectionTorrents( $section, $id, $api_key, $ok_states, $call_from
                 -and ( !$min_release_date -or ( $min_release_date -and $line.reg_time -le $min_release_date ) ) `
                 -and ( !$min_seeders -or ( $min_seeders -and $line.seeders -ge $min_seeders ) )
         ) {
-            Write-Log "$( $line.topic_id ) $( $line.topic_title ) $( $line.avg_seeders )"
             $lines[$release[$hash_column]] = $line | Select-Object tor_status, reg_time, topic_poster, tor_size_bytes, keeping_priority, seeder_last_seen, seeders, topic_title, section, topic_id
         }
     }
