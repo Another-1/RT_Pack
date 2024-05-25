@@ -104,7 +104,7 @@ if ( $never_obsolete ) {
 }
 Write-Log "Разделов в TLO: $( $sections.count )"
 if ( $forced_sections ) {
-    if ( $reverse_forced -eq 'Y' ) {
+    if ( $inverse_forced -eq 'Y' ) {
         Write-Log 'Обнаружена инвертированная настройка forced_sections, отбрасывем лишние разделы'
     }
     else {
@@ -113,7 +113,7 @@ if ( $forced_sections ) {
     $forced_sections = $forced_sections.Replace(' ', '')
     $forced_sections_array = @()
     $forced_sections.split(',') | ForEach-Object { $forced_sections_array += $_ }
-    if ( $reverse_forced -eq 'Y' ) {
+    if ( $inverse_forced -eq 'Y' ) {
         $sections = $sections | Where-Object { $_ -notin $forced_sections_array }
     }
     else {
