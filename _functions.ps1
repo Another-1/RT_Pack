@@ -225,6 +225,11 @@ Function Set-ConnectDetails ( $ConnectDetails ) {
         $ConnectDetails.report_url = $ini_data.'torrent-tracker'.report_url
     }
     $ConnectDetails.report_ssl = $ini_data.'torrent-tracker'.report_ssl
+    if ( !$ConnectDetails.report_url -or !$ConnectDetails.report_url -eq '' ) {
+        $ConnectDetails.report_url = 'rep.rutracker.cc'
+        $ConnectDetails.report_ssl = $ini_data.'torrent-tracker'.api_ssl
+        $ConnectDetails.UseRepProxy =     $ConnectDetails.UseApiProxy
+    }
 
     if ( $ConnectDetails.ProxyURL -and $ConnectDetails.ProxyPassword -and $ConnectDetails.ProxyPassword -ne '') {
         $proxyPass = ConvertTo-SecureString $ini_data.proxy.password -AsPlainText -Force
