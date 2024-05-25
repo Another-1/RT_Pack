@@ -228,7 +228,7 @@ Function Set-ConnectDetails ( $ConnectDetails ) {
     if ( !$ConnectDetails.report_url -or !$ConnectDetails.report_url -eq '' ) {
         $ConnectDetails.report_url = 'rep.rutracker.cc'
         $ConnectDetails.report_ssl = $ini_data.'torrent-tracker'.api_ssl
-        $ConnectDetails.UseRepProxy =     $ConnectDetails.UseApiProxy
+        $ConnectDetails.UseRepProxy = $ConnectDetails.UseApiProxy
     }
 
     if ( $ConnectDetails.ProxyURL -and $ConnectDetails.ProxyPassword -and $ConnectDetails.ProxyPassword -ne '') {
@@ -977,12 +977,11 @@ function Get-DiskTypes {
 function  Get-SpokenInterval ( $start_date, $end_date ) {
     
     $Duration = New-TimeSpan -Start $start_date -End $end_date
-    
-    $Day = switch ($Duration.Days) {
-        Default { "<b>{ 0 }<д." -f $Duration.Days }
-    }
-    return "$Day"
+    $day_cnt = [Math]::Round( $duration.Days)
+    $Day = "$day_cnt" + ( Get-Spell -qty $day_cnt -spelling 1 -entity 'days' )
+    return $Day
 }
+
 function Send-HTTP ( $url, $body, $headers, $call_from ) {
     $retry_cnt = 1
     while ( $true ) {
