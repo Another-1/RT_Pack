@@ -856,10 +856,9 @@ function Get-APISeeding ( $id, $api_key, $seding_days, $call_from ) {
     return $seed_dates
 }
 
-function Get-RepTorrents ( $sections, $id, $api_key, $call_from ) {
+function Get-RepTorrents ( $sections, $id, $api_key, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
+    if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
     Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
-    $tracker_torrents = @{}
-    if ($i -gt 1 ) { Write-Log "Попытка номер $i" }
     $content = Get-ApiHTTP '/v1/get_tor_status_titles' -call_from $call_from
     $titles = ($content | ConvertFrom-Json -AsHashtable ).result
 
@@ -873,7 +872,7 @@ function Get-RepTorrents ( $sections, $id, $api_key, $call_from ) {
     while ( $counter -lt 10 ) {
         try {
             foreach ( $section in $sections ) {
-                $section_torrents = Get-RepSectionTorrents -section $section -id $id -api_key $api_key -ok_states $ok_states -call_from $call_from
+                $section_torrents = Get-RepSectionTorrents -section $section -id $id -api_key $api_key -ok_states $ok_states -call_from $call_from -avg_seeds:$avg_seeds.IsPresent -min_avg $min_avg -min_release_date $min_release_date -min_seeders $min_seeders
                 $tracker_torrents += $section_torrents
             }
             break
@@ -888,9 +887,9 @@ function Get-RepTorrents ( $sections, $id, $api_key, $call_from ) {
     }
     return $tracker_torrents
 }
-function Get-RepSectionTorrents( $section, $id, $api_key, $ok_states, $call_from ) {
+function Get-RepSectionTorrents( $section, $id, $api_key, $ok_states, $call_from, [switch]$avg_seeds, $min_avg, $min_release_date, $min_seeders ) {
     $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }
-    $use_avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' )
+    $use_avg_seeds = ( $avg_seeds.IsPresent ? $true : ( $ini_data.sections.avg_seeders -eq '1' ) )
     $avg_days = $ini_data.sections.avg_seeders_period
     $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
     $url = "/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders,topic_title$subst"
@@ -919,14 +918,20 @@ function Get-RepSectionTorrents( $section, $id, $api_key, $ok_states, $call_from
             }
         }
         catch { $line.seeders = 0 }
-        $lines[$release[$hash_column]] = $line | Select-Object *
+        if (
+                ( !$min_avg -or ( $min_avg -ge $line.avg_seeders -and $line.reg_time -le $min_release_date ) ) `
+                -and ( !$min_release_date -or ( $min_release_date -and $line.reg_time -le $min_release_date ) ) `
+                -and ( !$min_seeders -or ( $min_seeders -and $line.seeders -ge $min_seeders ) )
+        ) {
+            Write-Log "$( $line.topic_id ) $( $line.topic_title ) $( $line.avg_seeders )"
+            $lines[$release[$hash_column]] = $line | Select-Object tor_status, reg_time, topic_poster, tor_size_bytes, keeping_priority, seeder_last_seen, seeders, topic_title, section, topic_id
+        }
     }
-    
     Write-Log ( "По разделу $section получено раздач: $($lines.count)" ) # -skip_timestamp -nologfile
-    if ( !$lines.count ) {
-        Write-Log 'Не получилось' -Red
-        exit 
-    }
+    # if ( !$lines.count ) {
+    #     Write-Log 'Не получилось' -Red
+    #     exit 
+    # }
     return $lines
 }
 
