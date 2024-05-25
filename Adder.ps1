@@ -104,11 +104,21 @@ if ( $never_obsolete ) {
 }
 Write-Log "Разделов в TLO: $( $sections.count )"
 if ( $forced_sections ) {
-    Write-Log 'Обнаружена настройка forced_sections, отбрасывем лишние разделы'
+    if ( $reverse_forced -eq 'Y' ) {
+        Write-Log 'Обнаружена инвертированная настройка forced_sections, отбрасывем лишние разделы'
+    }
+    else {
+        Write-Log 'Обнаружена настройка forced_sections, отбрасывем лишние разделы'
+    }
     $forced_sections = $forced_sections.Replace(' ', '')
     $forced_sections_array = @()
     $forced_sections.split(',') | ForEach-Object { $forced_sections_array += $_ }
-    $sections = $sections | Where-Object { $_ -in $forced_sections_array }
+    if ( $reverse_forced -eq 'Y' ) {
+        $sections = $sections | Where-Object { $_ -notin $forced_sections_array }
+    }
+    else {
+        $sections = $sections | Where-Object { $_ -in $forced_sections_array }
+    }
     Write-Log "Осталось разделов: $( $sections.count )"
 }
 if ( $sections.count -eq 0 ) {
@@ -395,7 +405,8 @@ if ( $new_torrents_keys ) {
                         }
                         if ( $mask_passed ) {
                             Write-Log "Сработала маска $mask_line на раздачу $($new_tracker_data.topic_title)"
-                            break }
+                            break 
+                        }
                     }
                 }
                 else { $mask_passed = 'N/A' }

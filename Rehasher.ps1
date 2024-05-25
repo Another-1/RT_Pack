@@ -40,9 +40,6 @@ Test-Module 'PSSQLite' 'для работы с базой TLO'
 
 $min_repeat_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $frequency * 24 * 60 * 60 ) # количество секунд между повторными рехэшами одной раздачи
 $min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay * 24 * 60 * 60 ) # количество секунд до первого рехэша новых раздач
-# $repeat_min = ( Get-Date -UFormat %s ).ToInt32($null) + ( $frequency * 24 * 60 * 60 )
-# $fresh_min = ( Get-Date -UFormat %s ).ToInt32($null) + ( $freshes_delay * 24 * 60 * 60 )
-$now = ( Get-Date -UFormat %s ).ToInt32($null)
 
 Write-Log 'Читаем настройки Web-TLO'
 
@@ -51,7 +48,7 @@ $ini_data = Get-IniContent $ini_path
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients = Get-Clients
-    $clients_torrents = Get-ClientsTorrents $clients 'Rehasher' -noIDs -completed
+    $clients_torrents = Get-ClientsTorrents -clients $clients -mess_sender 'Rehasher' -noIDs -completed
 }
 
 Write-Log 'Исключаем уже хэшируемые и стояшие в очереди на рехэш'
@@ -81,7 +78,6 @@ $closest_rehash = (Get-Date -UFormat %s).ToInt32($null) + 3 * 365 * 24 * 60 * 60
 $full_data_sorted | ForEach-Object {
     if ( $_.completion_on -gt $min_freshes_epoch -and ( $_.rehash_date -gt $min_repeat_epoch -or $_.rehash_date -eq 0 ) ) {
         $closest_rehash = (@( $closest_rehash; (@( ( $rehash_freshes -eq 'Y' ? 0 : $_.completion_on + $freshes_delay *24*60*60 ); $_.rehash_date + $frequency*24*60*60) | Measure-Object -Maximum).Maximum ) | Measure-Object -Minimum).Minimum
-        # $closest_rehash = (@( $closest_rehash; $_.completion_on + $freshes_delay *24*60*60; $_.rehash_date + $frequency*24*60*60 ) | Measure-Object -Minimum).Minimum
     }
 }
 
@@ -94,8 +90,6 @@ if ( $rehash_freshes -ne 'Y') {
     Write-Log ( 'Исключено раздач: ' + ( $before - $full_data_sorted.count ) )
 }
 
-
-
 Write-Log 'Исключаем раздачи, которые рано рехэшить'
 $before = $full_data_sorted.count
 $full_data_sorted = $full_data_sorted | Where-Object { $_.rehash_date -lt $min_repeat_epoch }
@@ -103,11 +97,6 @@ Write-Log ( 'Исключено раздач: ' + ( $before - $full_data_sorted.
 
 $was_count = $full_data_sorted.count
 $was_sum_size = ( $full_data_sorted | Measure-Object -Property size -Sum ).Sum
-
-# if ( $max_rehash_qty -and $mix_clients -ne 'Y') {
-#     Write-Log "Отбрасываем все раздачи кроме первых $max_rehash_qty"
-#     $full_data_sorted = $full_data_sorted | Select-Object -First $max_rehash_qty
-# }
 
 Write-Log 'Сортируем всё по дате рехэша и размеру'
 $full_data_sorted = $full_data_sorted | Sort-Object -Property size -Descending | Sort-Object -Property rehash_date -Stable
@@ -155,7 +144,6 @@ foreach ( $torrent in $full_data_sorted ) {
             Stop-Torrents $torrent.hash $clients[$torrent.client_key]
         }
     }
-    # Write-Log ( 'Отправляем в рехэш "' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
     Write-Log 'Отправляем в рехэш'
     Start-Rehash $clients[$torrent.client_key] $torrent.hash
     if ( !$db_data[$torrent.hash] ) {
