@@ -302,20 +302,6 @@ function Initialize-Client ( $client, $mess_sender = '', [switch]$verbose, [swit
         try {
             if ( $verbose ) { Write-Log ( 'Авторизуемся в клиенте ' + $client.Name ) }
             $url = $client.IP + ':' + $client.Port + '/api/v2/auth/login'
-            if ( $use_proxy -eq "1" ) {
-                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url используя прокси $($ConnectDetails.ProxyURL)" }
-                if ( $ConnectDetails.proxyCred ) {
-                    $result = ( Invoke-WebRequest -Method POST -Uri $url -Headers $loginheader -Body $logindata -SessionVariable sid -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)").Content
-                }
-                else {
-                    $result = ( Invoke-WebRequest -Method POST -Uri $url -Headers $loginheader -Body $logindata -SessionVariable sid -Proxy $ConnectDetails.ProxyURL -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content
-                }
-            }
-            else {
-                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url без прокси, напрямую" }
-                 return ( Invoke-WebRequest -Method POST -Uri $url -Headers $loginheader -Body $logindata -SessionVariable sid -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
-
-
             $result = Invoke-WebRequest -Method POST -Uri $url -Headers $loginheader -Body $logindata -SessionVariable sid
             if ( $result.StatusCode -ne 200 ) {
                 Write-Log 'You are banned.' -Red
