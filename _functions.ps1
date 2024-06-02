@@ -460,14 +460,18 @@ function Initialize-Forum () {
         }
         catch {
             Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
-            If ( $i -gt 20 ) { break }
+            If ( $i -gt 10 ) { break }
+        }
+        if ( $sid.Cookies.Count -eq 0 ) {
+            Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
+            If ( $i -gt 10 ) { break }
         }
     }
     if ( $sid.Cookies.Count -eq 0 ) {
         Write-Log 'Не удалось авторизоваться на форуме.' -Red
         Exit
     }
-    $token = ( ( Select-String -InputObject $content -Pattern "\tform_token ?: '(.+?)'," ).matches[0].value.Replace("',",'')) -replace( "\s*form_token: '",'')
+    $token = ( ( Select-String -InputObject $content -Pattern "\tform_token ?: '(.+?)'," ).matches[0].value.Replace("',", '')) -replace ( "\s*form_token: '", '')
     if ($token -and $token -ne '' ) { $ConnectDetails.token = $token }
     $ConnectDetails.sid = $sid
     Write-Log ( 'Успешно.' )
@@ -1011,7 +1015,8 @@ function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
             }
             else {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url без прокси, напрямую" }
-                 return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
+                return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content 
+            }
         }
         catch {
             Write-Log "Ошибка $($error[0].Exception.Message)`nЖдём 10 секунд и пробуем ещё раз" -Red
