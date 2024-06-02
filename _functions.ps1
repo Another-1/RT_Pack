@@ -452,14 +452,10 @@ function Initialize-Forum () {
     while ($true) {
         try {
             if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseProxy -eq '1' ) {
-                if ( $ConnectDetails.proxycred ) {
-                    Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred | Out-Null
-                }
-                else {
-                    Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL | Out-Null
-                }
+                if ( $ConnectDetails.proxycred ) { $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred ).content }
+                else { $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL ).content }
             }
-            else { Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck | Out-Null }
+            else { $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck ).content }
             break
         }
         catch {
@@ -471,9 +467,57 @@ function Initialize-Forum () {
         Write-Log 'Не удалось авторизоваться на форуме.' -Red
         Exit
     }
+    $token = ( ( Select-String -InputObject $content -Pattern "\tform_token ?: '(.+?)'," ).matches[0].value.Replace("',",'')) -replace( "\s*form_token: '",'')
+    if ($token -and $token -ne '' ) { $ConnectDetails.token = $token }
     $ConnectDetails.sid = $sid
     Write-Log ( 'Успешно.' )
 }
+
+function ConvertTo-1251 ( $inp ) {
+    $sourceEncoding = [System.Text.Encoding]::GetEncoding("Windows-1251")
+    return [System.Web.HttpUtility]::UrlEncode($sourceEncoding.GetBytes($inp)) #.ToUpper()
+}
+
+# function ConvertTo-1251 ( $inp ) {
+#     $targetEncoding = [System.Text.Encoding]::UTF8
+#     $sourceEncoding = [System.Text.Encoding]::GetEncoding("Windows-1251")
+#     $bytes = $sourceEncoding.GetBytes( $inp )
+#     # $convertedBytes = [System.Text.Encoding]::Convert($sourceEncoding, $targetEncoding, $bytes)
+#     return $targetEncoding.GetString($bytes)
+# }
+
+
+function Send-Forum ( $ConnectDetails, $mess, $post_id ) {
+    if ( !$ConnectDetails ) {
+        Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
+        Exit
+    }
+    if ( !$ConnectDetails.sid ) { Initialize-Forum $ConnectDetails }
+
+    $pos_url = "https://$($ConnectDetails.forum_url)/forum/posting.php"
+    $headers = @{ 'User-Agent' = 'Mozilla/5.0' }
+    $body = "mode=editpost&p=$post_id&message=$mess&submit_mode=submit&form_token=$($ConnectDetails.token)"
+    $i = 1
+
+    while ($true) {
+        try {
+            if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseProxy -eq 1) {
+                if ( $ConnectDetails.proxycred ) { Invoke-WebRequest -Uri $pos_url -Method POST -WebSession $ConnectDetails.sid -Headers $headers -Body $body -Proxy $ConnectDetails.ProxyURL -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $ConnectDetails.proxyCred }
+                else { Invoke-WebRequest -Uri $pos_url -Method POST -WebSession $ConnectDetails.sid -Headers $headers -Body $body -Proxy $ConnectDetails.ProxyURL -MaximumRedirection 999 -SkipHttpErrorCheck }
+                break
+            }
+            else {
+                Invoke-WebRequest -Uri $pos_url -Method POST -WebSession $ConnectDetails.sid -Headers $headers -Body $body -MaximumRedirection 999 -SkipHttpErrorCheck -ContentType "application/x-www-form-urlencoded"
+                break
+            }
+        }
+        catch {
+            Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
+            If ( $i -gt 20 ) { break }
+        }
+    }
+}
+
 
 function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
     if ( !$ConnectDetails.sid ) { Initialize-Forum }
@@ -934,6 +978,11 @@ function Get-RepSectionTorrents( $section, $id, $api_key, $ok_states, $call_from
     return $lines
 }
 
+function Get-RepTopics( $id, $api_key, $call_from ) {
+    $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }
+    $url = "/krs/api/v1//subforum/report_topics"
+    return ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json -AsHashtable
+}
 function Get-ForumHTTP ( $url, $body, $headers, $call_from ) {
     return Get-HTTP -url $url -body $body -headers $headers -call_from $call_from -use_proxy $ConnectDetails.UseProxy
 }
@@ -952,10 +1001,13 @@ function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
     while ( $true ) {
         try {
             if ( $use_proxy -eq "1" ) {
+                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url используя прокси $($ConnectDetails.ProxyURL):$($ConnectDetails.ProxyPort)" }
                 if ( $ConnectDetails.proxyCred ) { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)").Content }
                 else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
             }
-            else { return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
+            else {
+                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url без прокси, напрямую" }
+                 return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content }
         }
         catch {
             Write-Log "Ошибка $($error[0].Exception.Message)`nЖдём 10 секунд и пробуем ещё раз" -Red
