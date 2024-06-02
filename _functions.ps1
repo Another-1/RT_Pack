@@ -466,6 +466,7 @@ function Initialize-Forum () {
             Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
             If ( $i -gt 10 ) { break }
         }
+        else { break }
     }
     if ( $sid.Cookies.Count -eq 0 ) {
         Write-Log 'Не удалось авторизоваться на форуме.' -Red
