@@ -454,20 +454,26 @@ function Initialize-Forum () {
             if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseProxy -eq '1' ) {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url используя прокси $($ConnectDetails.ProxyURL)" }
                 if (
-                    $ConnectDetails.proxycred ) { $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred ).content
-                    }
+                    $ConnectDetails.proxycred ) {
+                    $answer = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred )
+                }
                 else {
-                    $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL ).content
+                    $answer = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL )
                 }
             }
             else {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url без прокси, напрямую" }
-                $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck ).content
+                $answer = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck )
             }
             break
         }
         catch {
             Write-Log 'Не удалось соединиться с форумом' -Red
+            Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
+            If ( $i -gt 10 ) { break }
+        }
+        if ( $answer.StatusCode -ne 200 ) {
+            Write-Log "Форум не вернул ответ $($answer.StatusCode)" -Red
             Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
             If ( $i -gt 10 ) { break }
         }
@@ -478,11 +484,18 @@ function Initialize-Forum () {
         }
         else { break }
     }
-    if ( $sid.Cookies.Count -eq 0 ) {
-        Write-Log 'Не удалось авторизоваться на форуме.' -Red
-        Exit
+    if ( $answer.StatusCode -ne 200 ) {
+        Write-Log "Форум не вернул ответ $($answer.StatusCode)" -Red
+        Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
+        If ( $i -gt 10 ) { break }
     }
-    $token = ( ( Select-String -InputObject $content -Pattern "\tform_token ?: '(.+?)'," ).matches[0].value.Replace("',", '')) -replace ( "\s*form_token: '", '')
+    if ( $sid.Cookies.Count -eq 0 ) {
+        Write-Log 'Форум не вернул cookie' -Red
+        Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
+        If ( $i -gt 10 ) { break }
+    }
+
+    $token = ( ( Select-String -InputObject $answer.Content -Pattern "\tform_token ?: '(.+?)'," ).matches[0].value.Replace("',", '')) -replace ( "\s*form_token: '", '')
     if ($token -and $token -ne '' ) { $ConnectDetails.token = $token }
     $ConnectDetails.sid = $sid
     Write-Log ( 'Успешно.' )
