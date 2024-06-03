@@ -565,7 +565,7 @@ function Get-ForumTorrentInfo ( $id, $call_from ) {
         val = $id 
     }
 
-    $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_topic_data' -Body $params -call_from $call_from
+    $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_topic_data' -Body $params -call_from $call_from -use_proxy $ConnectDetails.UseApiProxy
     $torinfo = ( $content | ConvertFrom-Json ).result.$id 
     $name = $torinfo.topic_title
     $size = $torinfo.size
