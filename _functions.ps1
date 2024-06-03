@@ -203,27 +203,27 @@ Function Set-ConnectDetails ( $ConnectDetails ) {
     $ConnectDetails.UseProxy = $ini_data.proxy.activate_forum
     $ConnectDetails.Login = $ini_data.'torrent-tracker'.login
     $ConnectDetails.Password = $ini_data.'torrent-tracker'.password
-    if ( $ini_data.'torrent-tracker'.forum_url_custom -and $ini_data.'torrent-tracker'.forum_url_custom -ne '') {
-        $ConnectDetails.forum_url = $ini_data.'torrent-tracker'.forum_url_custom
-    }
-    else {
-        $ConnectDetails.forum_url = $ini_data.'torrent-tracker'.forum_url
-    }
+    # if ( $ini_data.'torrent-tracker'.forum_url_custom -and $ini_data.'torrent-tracker'.forum_url_custom -ne '') {
+    #     $ConnectDetails.forum_url = $ini_data.'torrent-tracker'.forum_url_custom
+    # }
+    # else {
+    $ConnectDetails.forum_url = $ini_data.'torrent-tracker'.forum_url
+    # }
     $ConnectDetails.forum_ssl = $ini_data.'torrent-tracker'.forum_ssl
     $ConnectDetails.UserID = $ini_data.'torrent-tracker'.user_id
-    if ( $ini_data.'torrent-tracker'.api_url_custom -and $ini_data.'torrent-tracker'.api_url_custom -ne '') {
-        $ConnectDetails.api_url = $ini_data.'torrent-tracker'.api_url_custom
-    }
-    else {
-        $ConnectDetails.api_url = $ini_data.'torrent-tracker'.api_url
-    }
+    # if ( $ini_data.'torrent-tracker'.api_url_custom -and $ini_data.'torrent-tracker'.api_url_custom -ne '') {
+    # $ConnectDetails.api_url = $ini_data.'torrent-tracker'.api_url_custom
+    # }
+    # else {
+    $ConnectDetails.api_url = $ini_data.'torrent-tracker'.api_url
+    # }
     $ConnectDetails.api_ssl = $ini_data.'torrent-tracker'.api_ssl
-    if ( $ini_data.'torrent-tracker'.report_url_custom -and $ini_data.'torrent-tracker'.report_url_custom -ne '') {
-        $ConnectDetails.report_url = $ini_data.'torrent-tracker'.report_url_custom
-    }
-    else {
-        $ConnectDetails.report_url = $ini_data.'torrent-tracker'.report_url
-    }
+    # if ( $ini_data.'torrent-tracker'.report_url_custom -and $ini_data.'torrent-tracker'.report_url_custom -ne '') {
+    #     $ConnectDetails.report_url = $ini_data.'torrent-tracker'.report_url_custom
+    # }
+    # else {
+    $ConnectDetails.report_url = $ini_data.'torrent-tracker'.report_url
+    # }
     $ConnectDetails.report_ssl = $ini_data.'torrent-tracker'.report_ssl
     if ( !$ConnectDetails.report_url -or !$ConnectDetails.report_url -eq '' ) {
         $ConnectDetails.report_url = 'rep.rutracker.cc'
