@@ -473,7 +473,7 @@ function Initialize-Forum () {
             If ( $i -gt 10 ) { break }
         }
         if ( $answer.StatusCode -ne 200 ) {
-            Write-Log "Форум не вернул ответ $($answer.StatusCode)" -Red
+            Write-Log "Форум вернул ответ $($answer.StatusCode)" -Red
             Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
             If ( $i -gt 10 ) { break }
         }
@@ -485,7 +485,7 @@ function Initialize-Forum () {
         else { break }
     }
     if ( $answer.StatusCode -ne 200 ) {
-        Write-Log "Форум не вернул ответ $($answer.StatusCode)" -Red
+        Write-Log "Форум вернул ответ $($answer.StatusCode)" -Red
         Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
         If ( $i -gt 10 ) { break }
     }
