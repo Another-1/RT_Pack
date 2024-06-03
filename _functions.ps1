@@ -452,17 +452,27 @@ function Initialize-Forum () {
     while ($true) {
         try {
             if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseProxy -eq '1' ) {
-                if ( $ConnectDetails.proxycred ) { $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred ).content }
-                else { $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL ).content }
+                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url используя прокси $($ConnectDetails.ProxyURL)" }
+                if (
+                    $ConnectDetails.proxycred ) { $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred ).content
+                    }
+                else {
+                    $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $ConnectDetails.ProxyURL ).content
+                }
             }
-            else { $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck ).content }
+            else {
+                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url без прокси, напрямую" }
+                $content = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck ).content
+            }
             break
         }
         catch {
+            Write-Log 'Не удалось соединиться с форумом' -Red
             Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
             If ( $i -gt 10 ) { break }
         }
         if ( $sid.Cookies.Count -eq 0 ) {
+            Write-Log 'Форум не вернул cookie' -Red
             Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
             If ( $i -gt 10 ) { break }
         }
