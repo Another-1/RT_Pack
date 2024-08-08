@@ -1052,7 +1052,7 @@ function Set-Proxy( $settings ) {
         $settings.connection.proxy.url = ( $settings.connection.proxy.type -like 'socks*' ? 'socks5://' : 'http://' ) + $settings.connection.proxy.ip + ':' + $settings.connection.proxy.port
         if ( $settings.connection.proxy.ip -and $settings.connection.proxy.password -and $settings.connection.proxy.password -ne '') {
             $proxy_pass = ConvertTo-SecureString $settings.connection.proxy.password -AsPlainText -Force
-            $settings.connection.proxy.credentials = New-Object System.Management.Automation.PSCredential -ArgumentList $settings.connection.login, $proxy_pass
+            $settings.connection.proxy.credentials = New-Object System.Management.Automation.PSCredential -ArgumentList $settings.connection.proxy.login, $proxy_pass
         }
     }
 }
