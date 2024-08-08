@@ -46,7 +46,8 @@ Write-Log 'Читаем настройки Web-TLO'
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 try { $ini_data = Get-IniContent $ini_path } catch {}
 
-$settings = @{}
+if ( $null -eq $settings ) { $settings = @{} }
+
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 -or $null -eq $settings.clients ) {
     Get-Clients $settings
     $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
@@ -70,7 +71,14 @@ Write-Log 'Ищем раздачи из клиентов в БД рехэшей'
 $clients_torrents | ForEach-Object {
     if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
     if ($_.infohash_v1 -and ( $nul -ne $_.infohash_v1 ) -and ( $_.infohash_v1 -ne '' ) ) {
-        $full_data_sorted.Add( [PSCustomObject]@{ hash = $_.infohash_v1; rehash_date = $( $null -ne $db_data[$_.infohash_v1] -and $db_data[$_.infohash_v1] -gt 0 ? $db_data[$_.infohash_v1] : 0 ); client_key = $_.client_key; size = $_.size; name = $_.name; completion_on = $_.completion_on } ) | Out-Null
+        $full_data_sorted.Add( [PSCustomObject]@{
+                hash          = $_.infohash_v1
+                rehash_date   = $( $null -ne $db_data[$_.infohash_v1] -and $db_data[$_.infohash_v1] -gt 0 ? $db_data[$_.infohash_v1] : 0 )
+                client_key    = $_.client_key
+                size          = $_.size
+                name          = $_.name
+                completion_on = $_.completion_on
+            } ) | Out-Null
     }
 }
 
@@ -78,7 +86,7 @@ Write-Log 'Ищем время ближайшего следующего рех�
 $closest_rehash = (Get-Date -UFormat %s).ToInt32($null) + 3 * 365 * 24 * 60 * 60
 $full_data_sorted | ForEach-Object {
     if ( $_.completion_on -gt $min_freshes_epoch -and ( $_.rehash_date -gt $min_repeat_epoch -or $_.rehash_date -eq 0 ) ) {
-        $closest_rehash = (@( $closest_rehash; (@( ( $rehash_freshes -eq 'Y' ? 0 : $_.completion_on + $freshes_delay *24*60*60 ); $_.rehash_date + $frequency*24*60*60) | Measure-Object -Maximum).Maximum ) | Measure-Object -Minimum).Minimum
+        $closest_rehash = (@( $closest_rehash; (@( ( $rehash_freshes -eq 'Y' ? 0 : $_.completion_on + $freshes_delay * 24 * 60 * 60 ); $_.rehash_date + $frequency * 24 * 60 * 60) | Measure-Object -Maximum).Maximum ) | Measure-Object -Minimum).Minimum
     }
 }
 
@@ -106,7 +114,10 @@ if ( $mix_clients -eq 'Y') {
     Write-Log 'Тщательнейшим образом перемешиваем клиентов'
     $per_client = @{}
     $full_resorted = [System.Collections.ArrayList]::new()
-    foreach ( $i in  0..( $full_data_sorted | Measure-Object -Property client_key -Maximum ).maximum ) { $per_client[$i] = $full_data_sorted | Where-Object { $_.client_key -eq $i } }
+    foreach ( $i in  1..( $full_data_sorted | ForEach-Object { $settings.clients[$_.client_key].seqno } | Measure-Object -Maximum ).Maximum ) {
+        $this_client = ( $settings.clients.Keys | Where-Object { $settings.clients[$_].seqno -eq $i } ).ToString()
+        $per_client[$i] = $full_data_sorted | Where-Object { $_.client_key -eq $this_client }
+    }
     
     $done = 0
     $max_qty = ( $per_client.GetEnumerator() | ForEach-Object { $_.Value.count } | Measure-Object -Maximum ).Maximum
