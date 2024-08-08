@@ -1,66 +1,73 @@
-if ( !$tracker_torrents) {
-    Write-Output 'Подгружаем настройки'
-
-    . ( Join-Path $PSScriptRoot '_settings.ps1' )
-
-    $str = 'Подгружаем функции'
-    if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
-    . ( Join-Path $PSScriptRoot '_functions.ps1' )
+# $debug = 1
+. ( Join-Path $PSScriptRoot '_functions.ps1' )
+Write-Output 'Подгружаем настройки'
+if ( Test-Path -Path ( Join-Path $PSScriptRoot 'settings.json') ) {
+    $settings = Get-Content -Path ( Join-Path $PSScriptRoot 'settings.json') | ConvertFrom-Json -AsHashtable; $standalone = $true
 }
-
-Write-Log 'Проверяем актуальность Controller и _functions' 
-if ( ( Test-Version '_functions.ps1' 'Controller' ) -eq $true ) {
-    Write-Log 'Запускаем новую версию  _functions.ps1'
-    . ( Join-Path $PSScriptRoot '_functions.ps1' )
-}
-Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Controller'
-Remove-Item ( Join-Path $PSScriptRoot '*.new' ) -ErrorAction SilentlyContinue
-
-If ( !$ini_data) {
+else {
+    if ( Test-Path ( Join-Path $PSScriptRoot _settings.ps1 ) ) { . ( Join-Path $PSScriptRoot _settings.ps1 ) }
     Test-Module 'PsIni' 'для чтения настроек TLO'
     $tlo_path = Test-Setting 'tlo_path' -required
     $ini_path = Join-Path $tlo_path 'data' 'config.ini'
     Write-Log 'Читаем настройки Web-TLO'
     $ini_data = Get-IniContent $ini_path
+    if ( !$settings ) { $settings = @{} }
+    if ( !$settings.controller ) { $settings.controller = @{} }
+    if ( !$settings.clients ) { Get-Clients ( $settings ) }
+    if ( !$settings.sections ) {
+        $sections = Get-IniSections
+        Get-IniSectionDetails $settings $sections
+    }
+    if ( $control_override -and !$settings.controller.$control_override ) { $settings.controller.$control_override = $control_override }
+    if ( !$settings.connection ) { Set-ConnectDetails( $settings ) }
+    $standalone = $false
 }
-$ok_to_stop = (Get-Date).ToUniversalTime().AddDays( -1 )
-$old_starts_per_run = Test-Setting 'old_starts_per_run'
-$min_stop_to_start = Test-Setting 'min_stop_to_start'
-$ok_to_start = (Get-Date).ToUniversalTime().AddDays( 0 - $min_stop_to_start )
-$auto_update = Test-Setting 'auto_update'
 
-$global_seeds = $ini_data['topics_control'].peers
-$section_seeds = @{}
+if ( $standalone -eq $true ) { $settings.controller.old_starts_per_run = Test-Setting '$settings.controller.old_starts_per_run' }
+else { $old_starts_per_run = Test-Setting 'old_starts_per_run'; $settings.controller.old_starts_per_run = $old_starts_per_run }
+if ( $standalone -eq $true ) { $settings.controller.min_stop_to_start = Test-Setting 'settings.controller.min_stop_to_start' }
+else { $min_stop_to_start = Test-Setting 'min_stop_to_start'; $settings.controller.min_stop_to_start = $min_stop_to_start }
+if ( $standalone -eq $false ) { $settings.controller.global_seeds = $ini_data['topics_control'].peers }
+
+$settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = ( $settings.sections[$_].control_peers -ne '' ? $settings.sections[$_].control_peers : -2 ) }
+$settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds }
+# $settings.sections.count; pause
+if ( !$debug ) {
+    Write-Log 'Проверяем актуальность Controller и _functions' 
+    if ( ( Test-Version '_functions.ps1' 'Controller' ) -eq $true ) {
+        Write-Log 'Запускаем новую версию  _functions.ps1'
+        . ( Join-Path $PSScriptRoot '_functions.ps1' )
+    }
+
+    Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Controller'
+}
 
 Write-Log 'Строим таблицы'
-$sections = $ini_data.sections.subsections.split( ',' )
-$section_details = Get-IniSectionDetails $sections
 
-$sections | ForEach-Object { $section_seeds[$_] = ( $section_details[$_].control_peers -ne '' ? $section_details[$_].control_peers : $global_seeds ) }
-if (!$clients) { $clients = Get-Clients }
-if ( $control_override -and (Get-Date).hour -in $control_override.hours ) { 
-    foreach ( $section in @($section_seeds.Keys) ) {
-        if ( $control_override.client[$clients[$section_details[$section].client].Name] ) {
-            $section_seeds[$section] = $control_override.client[$clients[$section_details[$section].client].Name]
+$ok_to_start = (Get-Date).ToUniversalTime().AddDays( 0 - $settings.controller.min_stop_to_start )
+if ( $settings.controller.control_override -and (Get-Date).hour -in $settings.controller.control_override.hours ) { 
+    foreach ( $section in @($settings.sections.Keys) ) {
+        if ( $settings.controller.control_override.client[$settings.clients[$settings.sections[$section].client]] ) {
+            $settings.sections[$section].control_peers = $settings.controller.control_override.client[$clients[$settings.sections[$section].client]]
         }
-        elseif ( $control_override.global ) {
-            $section_seeds[$section] = $control_override.global
+        elseif ( $settings.controller.control_override.global ) {
+            $settings.sections[$section].control_peers = $settings.controller.control_override.global
         }
-
     }
 }
-$states = @{}
+
 $paused_sort = [System.Collections.ArrayList]::new()
 
 $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
 
+Set-Proxy( $settings )
+
 if ( !$tracker_torrents) {
     Write-Log 'Автономный запуск, надо сходить на трекер за актуальными сидами и ID'
-    $ConnectDetails = Set-ConnectDetails # чтобы подтянуть настройки прокси для следующего шага
-    $tracker_torrents = Get-RepTorrents -sections $sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Controller'
+    $tracker_torrents = Get-RepTorrents -sections $settings.sections.keys -call_from 'Controller'
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
-    $clients_torrents = Get-ClientsTorrents $clients 'Controller'
+    $clients_torrents = Get-ClientsTorrents 'Controller'
     $hash_to_id = @{}
     $id_to_info = @{}
     
@@ -72,17 +79,20 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     }
 }
 
-$api_seeding = Get-APISeeding -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from 'Controller'
-if ( $null -eq $api_seeding ) { exit }
-Write-Log 'Осмысливаем полученное'
-$clients_torrents | Where-Object { $null -ne $_.topic_id -and $_.topic_id -ne '349785' } | ForEach-Object {
-    $states[$_.hash] = @{
-        client           = $_.client_key
-        state            = $_.state
-        seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
-    }
-    if ( $_.state -eq 'pausedUP' ) {
-        $paused_sort.Add( [PSCustomObject]@{ hash = $_.infohash_v1; client = $_.client_key; seeder_last_seen = $states[$_.infohash_v1].seeder_last_seen } ) | Out-Null
+if ( !$api_seeding -or $debug -eq $false ) {
+    $states = @{}
+    $api_seeding = Get-APISeeding -call_from 'Controller'
+    if ( $null -eq $api_seeding ) { exit }
+    Write-Log 'Осмысливаем полученное'
+    $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
+        $states[$_.hash] = @{
+            client           = $_.client_key
+            state            = $_.state
+            seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
+        }
+        if ( $_.state -eq 'pausedUP' ) {
+            $paused_sort.Add( [PSCustomObject]@{ hash = $_.infohash_v1; client = $_.client_key; seeder_last_seen = $states[$_.infohash_v1].seeder_last_seen } ) | Out-Null
+        }
     }
 }
 
@@ -90,16 +100,17 @@ $batch_size = 400
 
 $started = 0
 $stopped = 0
-foreach ( $client in $clients.keys ) {
-    Write-Log ( 'Регулируем клиент ' + $clients[$client].Name + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
+foreach ( $client in $settings.clients.keys ) {
+    Write-Log ( 'Регулируем клиент ' + $client + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
 
     $start_keys = @()
     $stop_keys = @()
     $states.Keys | Where-Object { $states[$_].client -eq $client } | ForEach-Object {
         try { 
-            if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $section_seeds[$tracker_torrents[$_].section] ) {
+            # if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $section_seeds[$tracker_torrents[$_].section] ) {
+            if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $settings.sections[$tracker_torrents[$_].section].control_peers ) {
                 if ( $start_keys.count -eq $batch_size ) {
-                    Start-Torrents $start_keys $clients[$client]
+                    Start-Torrents $start_keys $settings.clients[$client]
                     $started += $start_keys.count
                     $start_keys = @()
                 }
@@ -107,12 +118,12 @@ foreach ( $client in $clients.keys ) {
                 $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
             }
             elseif ( ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced -eq 'Y' )) `
-                    -and $tracker_torrents[$_].seeders -gt ( $section_seeds[$tracker_torrents[$_].section] ) `
-                    -and $states[$_].seeder_last_seen -gt $ok_to_stop
+                    -and $tracker_torrents[$_].seeders -gt ( $settings.sections[$tracker_torrents[$_].section].control_peers ) `
+                    # -and $states[$_].seeder_last_seen -gt $ok_to_stop
             ) {
 
                 if ( $stop_keys.count -eq $batch_size ) {
-                    Stop-Torrents $stop_keys $clients[$client]
+                    Stop-Torrents $stop_keys $settings.clients[$client]
                     $stopped += $stop_keys.count
                     $stop_keys = @()
                 }
@@ -122,11 +133,11 @@ foreach ( $client in $clients.keys ) {
         catch { } # на случай поглощённых раздач.
     }
     if ( $start_keys.count -gt 0) {
-        Start-Torrents $start_keys $clients[$client]
+        Start-Torrents $start_keys $settings.clients[$client]
         $started += $start_keys.count
     }
     if ( $stop_keys.count -gt 0) {
-        Stop-Torrents $stop_keys $clients[$client]
+        Stop-Torrents $stop_keys $settings.clients[$client]
         $stopped += $stop_keys.count
     }
 }
@@ -151,7 +162,7 @@ if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
             $client = $state.client
         }
         if ( $start_keys.count -eq $batch_size -or $state.client -ne $client ) {
-            Start-Torrents $start_keys $clients[$client]
+            Start-Torrents $start_keys $settings.clients[$client]
             $client = $state.client
             $started += $start_keys.count
             $start_keys = @()
@@ -160,7 +171,7 @@ if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
         $counter++
     }
     if ( $start_keys.count -gt 0 ) {
-        Start-Torrents $start_keys $clients[$client]
+        Start-Torrents $start_keys $settings.clients[$client]
         $started += $start_keys.count
     }
 }

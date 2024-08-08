@@ -4,10 +4,23 @@ If ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
     Pause
     Exit
 }
-try {
-    . ( Join-Path $PSScriptRoot _settings.ps1 )
+
+if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
+    $debug = 1
+    $settings = Get-Content -Path ( Join-Path $PSScriptRoot 'settings.json') | ConvertFrom-Json -AsHashtable
+    $standalone = $true
 }
-catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
+else {
+    try {
+        . ( Join-Path $PSScriptRoot _settings.ps1 )
+        $settings = [ordered]@{}
+        $settings.interface = @{}
+        $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
+        $standalone = $false
+    }
+    catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
+}
+
 if ( $use_timestamp -eq 'Y' ) { $use_timestamp = 'N' }
 
 Write-Host 'Подгружаем функции'
@@ -31,26 +44,31 @@ $clients = Get-Clients
 $client = Select-Client $clients
 Write-Log ( 'Выбран клиент ' + $client.Name )
 $path_from = Select-Path 'from'
-$separator = Get-Separator
-if ( $path_from -notmatch "\${separator}$") { $path_from = "$path_from$separator" }
 $path_to = Select-Path 'to'
-if ( $path_to -notmatch "\${separator}$") { $path_to = "$path_to$separator" }
 $category = Get-String -prompt 'Укажите категорию (при необходимости)'
-$max_size = ( Get-String -obligatory -prompt 'Максимальный объём к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1073741824
+$max_size = ( Get-String -obligatory -prompt 'Максимальный объём к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb
+# $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write
 Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
     $sum_size = 0
-    $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose | Where-Object { $_.save_path -like "*${path_from}*" }
+    $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" } 
     Write-Log 'Сортируем по полезности и подразделу'
     $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
 
     if ( $category -and $category -ne '' ) {
         $torrents_list = $torrents_list | Where-Object { $_.category -eq "${category}" }
     }
+    If ( $id_subfolder -eq 'Y' ) {
+        Write-Log 'Получаем ID раздач из комментариев. Это может быть небыстро.'
+        Get-TopicIDs -client $client -torrent_list $torrents_list
+    }
     foreach ( $torrent in $torrents_list) {
         $i++
         $new_path = $torrent.save_path.replace( $path_from, $path_to )
+        if ( $new_path -notlike "*$($torrent.topic_id)*" ) {
+            $new_path = Join-Path $new_path $torrent.topic_id
+        }
         if ( $new_path -ne $torrent.save_path ) {
             $sum_size += $torrent.size
             if ( $max_size -gt 0 -and $sum_size -gt $max_size ) {

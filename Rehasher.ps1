@@ -4,7 +4,7 @@ try { . ( $PSScriptRoot + $separator + '_settings.ps1' ) } catch {}
 
 $str = 'Подгружаем функции' 
 if ( $use_timestamp -ne 'Y' ) { Write-Output $str } else { Write-Output ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
-. ( $PSScriptRoot + $separator + '_functions.ps1' )
+. ( Join-Path $PSScriptRoot _functions.ps1 )
 
 Write-Log 'Проверяем версии скриптов на актуальность'
 # Test-Version '_functions.ps1' 'Rehasher'
@@ -43,12 +43,13 @@ $min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay 
 
 Write-Log 'Читаем настройки Web-TLO'
 
-$ini_path = $tlo_path + $separator + 'data' + $separator + 'config.ini'
-$ini_data = Get-IniContent $ini_path
+$ini_path = Join-Path $tlo_path 'data' 'config.ini'
+try { $ini_data = Get-IniContent $ini_path } catch {}
 
-if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
-    $clients = Get-Clients
-    $clients_torrents = Get-ClientsTorrents -clients $clients -mess_sender 'Rehasher' -noIDs -completed
+$settings = @{}
+if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 -or $null -eq $settings.clients ) {
+    Get-Clients $settings
+    $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
 }
 
 Write-Log 'Исключаем уже хэшируемые и стояшие в очереди на рехэш'
@@ -135,17 +136,17 @@ foreach ( $torrent in $full_data_sorted ) {
         }
     }    
     if ( $wait_finish -eq 'Y' ) {
-        Write-Log ( 'Будем рехэшить раздачу "' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name + ' размером ' + ( to_kmg $torrent.size 2 ))
-        $prev_state = ( Get-ClientTorrents $clients[$torrent.client_key] -mess_sender 'Rehasher' -hash $torrent.hash ).state
+        Write-Log ( 'Будем рехэшить раздачу "' + $torrent.name + '" в клиенте ' + $torrent.client_key + ' размером ' + ( to_kmg $torrent.size 2 ))
+        $prev_state = ( Get-ClientTorrents $settings.clients[$torrent.client_key] -mess_sender 'Rehasher' -hash $torrent.hash ).state
         if ( $prev_state -eq 'pausedUP') { Write-Log 'Раздача уже остановлена, так и запишем' } else { Write-Log 'Раздача запущена, предварительно остановим' }
         if ( $prev_state -ne 'pausedUP' ) {
             # Write-Log ( 'Останавливаем раздачу"' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
             Write-Log 'Останавливаем раздачу'
-            Stop-Torrents $torrent.hash $clients[$torrent.client_key]
+            Stop-Torrents $torrent.hash $settings.clients[$torrent.client_key]
         }
     }
     Write-Log 'Отправляем в рехэш'
-    Start-Rehash $clients[$torrent.client_key] $torrent.hash
+    Start-Rehash $settings.clients[$torrent.client_key] $torrent.hash
     if ( !$db_data[$torrent.hash] ) {
         Invoke-SqliteQuery -Query "INSERT INTO rehash_dates (hash, rehash_date) VALUES (@hash, @epoch )" -SqlParameters @{ hash = $torrent.hash; epoch = ( Get-Date -UFormat %s ) }-SQLiteConnection $conn
     }
@@ -157,28 +158,28 @@ foreach ( $torrent in $full_data_sorted ) {
     if ( $wait_finish -eq 'Y' ) {
         Start-Sleep -Seconds $check_state_delay
         Write-Log 'Подождём окончания рехэша'
-        while ( ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' ).state -like 'checking*' ) {
+        while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' ).state -like 'checking*' ) {
             Start-Sleep -Seconds $check_state_delay
         }
-        $percentage = ( Get-ClientTorrents -client $clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' ).progress
+        $percentage = ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' ).progress
         if ( $percentage -lt 1 ) {
             Write-Log ( 'Раздача "' + $torrent.name + '" битая! Полнота: ' + $percentage )
             if ( $start_errored -eq 'Y' ) {
-                Start-Torrents $torrent.hash $clients[$torrent.client_key]
+                Start-Torrents $torrent.hash $settings.clients[$torrent.client_key]
             }
             $torrent | Add-Member -NotePropertyName topic_id -NotePropertyValue $null
             $torrents_list = @( $torrent )
-            Get-TopicIDs -client $clients[$torrent.client_key] -torrent_list $torrents_list
-            $message = 'Битая раздача <b>' + $torrent.name + "`n</b>в клиенте <b>" + $clients[$torrent.client_key].name + '</b> http://' + $clients[$torrent.client_key].IP + ':' + $clients[$torrent.client_key].Port + `
+            Get-TopicIDs -client $settings.clients[$torrent.client_key] -torrent_list $torrents_list
+            $message = 'Битая раздача <b>' + $torrent.name + "`n</b>в клиенте <b>" + $settings.clients[$torrent.client_key].name + '</b> http://' + $settings.clients[$torrent.client_key].IP + ':' + $settings.clients[$torrent.client_key].port + `
                 "`nполнота: " + [math]::Round($percentage * 100) + "%`nссылка: https://rutracker.org/forum/viewtopic.php?t=" + $torrent.topic_id 
             Send-TGMessage -message $message -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
-            Set-Comment $clients[$torrent.client_key] $torrent 'Битая'
+            Set-Comment $settings.clients[$torrent.client_key] $torrent 'Битая'
         }
         else {
             Write-Log ( 'Раздача "' + $torrent.name + '" в порядке' ) -Green
             if ( $prev_state -ne 'pausedUP' ) { 
                 Write-Log 'Запускаем раздачу обратно'
-                Start-Torrents $torrent.hash $clients[$torrent.client_key]
+                Start-Torrents $torrent.hash $settings.clients[$torrent.client_key]
             }
         }
     }

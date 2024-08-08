@@ -14,13 +14,25 @@ $ProgressPreference = 'SilentlyContinue'
 Write-Output 'Подгружаем настройки'
 
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
-try {
-    . ( Join-Path $PSScriptRoot _settings.ps1 )
+
+if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
+    # $debug = 1
+    $settings = Get-Content -Path ( Join-Path $PSScriptRoot 'settings.json') | ConvertFrom-Json -AsHashtable
+    $standalone = $true
 }
-catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
+else {
+    try {
+        . ( Join-Path $PSScriptRoot _settings.ps1 )
+        $settings = [ordered]@{}
+        $settings.interface = @{}
+        $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
+        $standalone = $false
+    }
+    catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
+}
 
 $str = 'Подгружаем функции'
-if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
+if ( $settings.interface.use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
 . ( Join-Path $PSScriptRoot _functions.ps1 )
 
 if ( !$debug ) {
@@ -37,41 +49,47 @@ if ( !$debug ) {
 
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
 Write-Log 'Проверяем наличие всех нужных настроек'
-$tg_token = Test-Setting 'tg_token'
-if ( $tg_token -ne '') {
-    $tg_chat = Test-Setting 'tg_chat' -required
-    $alert_oldies = Test-Setting 'alert_oldies'
-    $report_nowork = Test-Setting 'report_nowork'
-    $report_obsolete = Test-Setting 'report_obsolete'
+if ( !$settings.telegram) { $settings.telegram = [ordered]@{} }
+$json_section = ( $standalone -eq $true ? 'telegram' : '' )
+$settings.telegram.tg_token = Test-Setting 'tg_token' -json_section $json_section
+if ( $tg_token -ne '' -or $settings.telegram.tg_token -ne '' ) {
+    $settings.telegram.tg_chat = Test-Setting 'tg_chat' -required -json_section $json_section
+    $settings.telegram.alert_oldies = Test-Setting 'alert_oldies' -required -json_section $json_section
+    $settings.telegram.report_nowork = Test-Setting 'report_nowork' -required -json_section $json_section
+    $settings.telegram.report_obsolete = Test-Setting 'report_obsolete' -required -json_section $json_section
 }
 
-$use_timestamp = Test-Setting 'use_timestamp'
-$tlo_path = Test-Setting 'tlo_path' -required
-$ini_path = Join-Path $tlo_path 'data' 'config.ini'
-Write-Log 'Читаем настройки Web-TLO'
-$ini_data = Get-IniContent $ini_path
-$get_news = Test-Setting 'get_news'
-$min_days = Test-Setting 'min_days' -default $ini_data.sections.rule_date_release
-if (!$min_days ) { $min_days = 0 }
-$get_blacklist = Test-Setting 'get_blacklist'
-$max_seeds = Test-Setting -setting 'max_seeds' -default $ini_data.sections.rule_topics
-$get_hidden = Test-Setting 'get_hidden'
-$get_shown = Test-Setting 'get_shown'
-$get_lows = Test-Setting 'get_lows'
-$get_mids = Test-Setting 'get_mids'
-$get_highs = Test-Setting 'get_highs'
-$control = Test-Setting 'control'
-$auto_update = Test-Setting 'auto_update'
-$report_stalled = Test-Setting 'report_stalled'
-if ( $report_stalled -eq 'Y' ) {
-    $stalled_pwd = Test-Setting 'stalled_pwd' -required
+if ( !$settings.interface ) { $settings.interface = [ordered]@{} }
+if ( $standalone -eq $true ) { $settings.interface.use_timestamp = Test-Setting 'use_timestamp' -json_path 'interface' -required } else { $settings.interface.use_timestamp = Test-Setting 'use_timestamp' -required }
+if ( $standalone -eq $false ) {
+    $tlo_path = Test-Setting 'tlo_path' -required
+    $ini_path = Join-Path $tlo_path 'data' 'config.ini'
+    Write-Log 'Читаем настройки Web-TLO'
+    $ini_data = Get-IniContent $ini_path
 }
-$update_stats = Test-Setting 'update_stats'
-if ( $update_stats -eq 'Y' ) {
-    $update_obsolete = Test-Setting 'update_obsolete'
-}
+if ( !$settings.adder ) { $settings.adder = [ordered]@{} }
+$json_section = ( $standalone -eq $true ? 'adder' : '' )
+$settings.adder.get_news = Test-Setting 'get_news' -json_section $json_section
+$settings.adder.min_days = Test-Setting 'min_days' -default $ini_data.sections.rule_date_release -required -json_section$json_section
+if (!$settings.adder.min_days ) { $settings.adder.min_days = 0 }
+$settings.adder.get_blacklist = Test-Setting 'get_blacklist' -json_section $json_section
+$settings.adder.max_seeds = Test-Setting -setting 'max_seeds' -default $ini_data.sections.rule_topics -json_section $json_section
+$settings.adder.get_hidden = Test-Setting 'get_hidden' -json_section $json_section
+$settings.adder.get_shown = Test-Setting 'get_shown' -json_section $json_section
+$settings.adder.get_lows = Test-Setting 'get_lows' -json_section $json_section
+$settings.adder.get_mids = Test-Setting 'get_mids' -json_section $json_section
+$settings.adder.get_highs = Test-Setting 'get_highs' -json_section $json_section
+$settings.adder.control = Test-Setting 'control' -json_section $json_section
+$settings.adder.report_stalled = Test-Setting 'report_stalled' -json_section $json_section
+if ( $settings.adder.report_stalled -eq 'Y' ) { $settings.adder.stalled_pwd = Test-Setting 'stalled_pwd' -json_section $json_section -required }
+$settings.adder.update_stats = Test-Setting 'update_stats' -json_section $json_section
+if ( $update_stats -eq 'Y' ) { $settings.adder.update_obsolete = Test-Setting 'update_obsolete' -json_section $json_section }
 
-if ( $update_stats -eq 'Y') {
+$json_section = ( $standalone -eq $true ? 'others' : '' )
+if ( !$settings.others ) { $settings.others = [ordered]@{} }
+$settings.others.auto_update = Test-Setting 'auto_update' -required -json_section $json_section
+
+if ( $update_stats -eq 'Y' -and $standalone -ne $true ) {
     if ( !$send_reports ) { Write-Log 'Для обновления БД TLO и отправки отчётов нужен интерпретатор php на этом же компе.' }
     $send_reports = Test-Setting 'send_reports'
     while ( $true ) {
@@ -83,16 +101,23 @@ if ( $update_stats -eq 'Y') {
 }
 
 if ( $update_trigger -and $psversionTable.Platform.ToLower() -like '*win*') {
-    $database_path = $PSScriptRoot + $separator + 'updates.db'
-    Write-Log 'Подключаемся к БД обновлений раздач'
-    $up_conn = Open-Database $database_path
-    Invoke-SqliteQuery -Query 'CREATE TABLE IF NOT EXISTS updates (id INT PRIMARY KEY NOT NULL, cnt INT)' -SQLiteConnection $up_conn
+     $database_path = Join-Path $PSScriptRoot 'updates.db'
+     Write-Log 'Подключаемся к БД обновлений раздач'
+     $up_conn = Open-Database $database_path
+     Invoke-SqliteQuery -Query 'CREATE TABLE IF NOT EXISTS updates (id INT PRIMARY KEY NOT NULL, cnt INT)' -SQLiteConnection $up_conn
 }
 
-$ConnectDetails = Set-ConnectDetails
-$sections = $ini_data.sections.subsections.split( ',' )
-$all_sections = $sections
-if ( $never_obsolete ) {
+if ( !$settings.connection -and $standlone -ne $true ) {
+    Set-ConnectDetails $settings
+    Set-Proxy( $settings )
+}
+
+# $section_numbers = $ini_data.sections.subsections.split( ',' )
+# if ( !$settings.sections ) { $settings.sections = [ordered]@{} }
+if ( $ini_data ) { $section_numbers = $ini_data.sections.subsections.split( ',' ) } else { $section_numbers = $settings.sections.keys }
+$all_sections = $section_numbers
+if ( !$settings.adder.never_obsolete -and $never_obsolete ) { $settings.adder.never_obsolete = $never_obsolete }
+if ( $settings.adder.never_obsolete ) {
     $never_obsolete_array = $never_obsolete.Replace(' ', '').split(',')
     $all_sections += $never_obsolete_array
     $all_sections = $all_sections | Select-Object -Unique
@@ -102,26 +127,28 @@ if ( $never_obsolete ) {
     Write-Log "Исключаем праздничные разделы по праздникам, которые не на дворе"
     $all_sections = $all_sections | Where-Object { $_ -in $existing_sections }
 }
-Write-Log "Разделов в TLO: $( $sections.count )"
-if ( $forced_sections ) {
+Write-Log "Разделов в работе: $( $section_numbers.count )"
+if ( $forced_sections ) { $settings.adder.forced_sections = $forced_sections }
+if ( $settings.adder.forced_sections ) {
     if ( $inverse_forced -eq 'Y' ) {
         Write-Log 'Обнаружена инвертированная настройка forced_sections, отбрасывем лишние разделы'
     }
     else {
         Write-Log 'Обнаружена настройка forced_sections, отбрасывем лишние разделы'
     }
-    $forced_sections = $forced_sections.Replace(' ', '')
+    $forced_sections = $settings.adder.forced_sections.Replace(' ', '')
     $forced_sections_array = @()
     $forced_sections.split(',') | ForEach-Object { $forced_sections_array += $_ }
     if ( $inverse_forced -eq 'Y' ) {
-        $sections = $sections | Where-Object { $_ -notin $forced_sections_array }
+        $sections = $section_numbers | Where-Object { $_ -notin $forced_sections_array }
     }
     else {
-        $sections = $sections | Where-Object { $_ -in $forced_sections_array }
+        $sections = $section_numbers | Where-Object { $_ -in $forced_sections_array }
     }
-    Write-Log "Осталось разделов: $( $sections.count )"
+    Write-Log "Осталось разделов: $( $section_numbers.count )"
 }
-if ( $sections.count -eq 0 ) {
+else { $sections = $section_numbers }
+if ( $section_numbers.count -eq 0 ) {
     Write-Log 'Значит и делать ничего не надо, выходим.'
     exit
 }
@@ -159,10 +186,13 @@ else {
     Remove-Variable -Name masks_db -ErrorAction SilentlyContinue
 }
 
-Write-Log 'Достаём из TLO подробности о разделах'
-$section_details = Get-IniSectionDetails $sections
+if ( $standalone -ne $true ) {
+    Get-Clients( $section_numbers )
+    Write-Log 'Достаём из TLO подробности о разделах'
+    Get-IniSectionDetails $settings $sections
+}
 
-if ( $get_blacklist -eq 'N' ) {
+if ( $settings.adder.get_blacklist -eq 'N' -and $standalone -ne $true ) {
     $blacklist = Get-Blacklist -verbose
     if ( !$blacklist -or $blacklist.Count -eq 0 ) {
         $oldblacklist = Get-OldBlacklist
@@ -172,13 +202,14 @@ if ( $get_blacklist -eq 'N' ) {
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
-    $avg_seeders = ( $ini_data.sections.avg_seeders -eq '1' ) 
-    $tracker_torrents = Get-RepTorrents -sections $all_sections -id $ini_data.'torrent-tracker'.user_id -api_key $ini_data.'torrent-tracker'.api_key -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$avg_seeders
+    if ( !$settings.adder.avg_seeds -and $standalone -ne $true ) {
+        $settings.adder.avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' ) 
+        $tracker_torrents = Get-RepTorrents -sections $all_sections -id $settings.connection.user_id -api_key $settings.connection.api_key -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$settings.adder.avg_seeds
+    }
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
-    $clients = Get-Clients
-    $clients_torrents = Get-ClientsTorrents -clients $clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+    $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
 
 $hash_to_id = @{}
@@ -214,15 +245,15 @@ if ( $max_seeds -ne -1 ) {
 
 if ( $get_hidden -and $get_hidden -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи из скрытых и праздничных разделов'
-    $sections_to_skip = $section_details.keys | Where-Object { $section_details[$_].'hide_topics' -ne '0' }
+    $sections_to_skip = $section_numbers | Where-Object { $settings.sections[$_].hide_topics -ne 'N' }
     if ($sections_to_skip ) { Write-Log "Будут отсеяны разделы: $( $sections_to_skip -join( ', ' ) )" }
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $section_details[$tracker_torrents[$_].section].hide_topics -eq '0' }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $settings.sections[$tracker_torrents[$_].section].hide_topics -eq 'N' }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
 if ( $get_shown -and $get_shown -eq 'N' ) { 
     Write-Log 'Отсеиваем раздачи из видимых разделов'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $section_details[$tracker_torrents[$_].section].hide_topics -eq '1' }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $settings.sections[$tracker_torrents[$_].section].hide_topics -eq '1' }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
@@ -267,32 +298,31 @@ $refreshed = @{}
 
 if ( $new_torrents_keys ) {
     Write-Log 'Сортируем новые раздачи по клиентам'
-    $new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $section_details[$tracker_torrents[$_].section].client }
+    $new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $settings.sections[$tracker_torrents[$_].section].client }
     $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
-    foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $section_details[$tracker_torrents[$_].section] -and ( !$never_obsolete -or $tracker_torrents[$_].section -notin $never_obsolete_array ) } ) {
+    foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $settings.sections[$tracker_torrents[$_].section] -and ( !$never_obsolete -or $tracker_torrents[$_].section -notin $never_obsolete_array ) } ) {
         # Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
         $new_tracker_data = $tracker_torrents[$new_torrent_key]
-        $subfolder_kind = $section_details[$new_tracker_data.section].data_subfolder
         $existing_torrent = $id_to_info[ $new_tracker_data.topic_id ]
         if ( $existing_torrent ) {
-            $client = $clients[$existing_torrent.client_key]
-            Write-Log ( "Раздача " + $new_tracker_data.topic_id + ' обнаружена в клиенте ' + $client.Name )
+            $client = $settings.clients[$existing_torrent.client_key]
+            Write-Log ( "Раздача " + $new_tracker_data.topic_id + ' обнаружена в клиенте ' + $existing_torrent.client_key )
         }
         else {
-            $client = $clients[$section_details[$new_tracker_data.section].client]
+            $client = $settings.clients[$settings.sections[$new_tracker_data.section].client]
             if (!$client) {
-                $client = $clients[$section_details[$new_tracker_data.section].client]
+                $client = $settings.clients[$settings.sections[$new_tracker_data.section].client]
             }
         }
         
         if ( $new_tracker_data.topic_poster -in $priority_releasers.keys ) {
-            $min_delay = $priority_releasers[$new_tracker_data.topic_poster]
+            $min_delay = $priority_releasers[$new_tracker_data.topic_poster.ToInt32($null)]
         }
         else {
             $min_delay = $min_days
         }
         if ( $existing_torrent ) {
-            if ( !$ConnectDetails.sid ) { Initialize-Forum $ConnectDetails }
+            if ( !$settings.connection.sid ) { Initialize-Forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             if ( $null -eq $new_torrent_file ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
             $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
@@ -300,13 +330,13 @@ if ( $new_torrents_keys ) {
             if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
                 $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
             }
-            $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.Name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
+            $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
-                if ( !$refreshed[ $client.Name ] ) { $refreshed[ $client.Name] = @{} }
-                if ( !$refreshed[ $client.Name ][ $new_tracker_data.section] ) { $refreshed[ $client.Name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
+                if ( !$refreshed[ $client ] ) { $refreshed[ $client] = @{} }
+                if ( !$refreshed[ $client ][ $new_tracker_data.section] ) { $refreshed[ $client ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
                 if ( $ssd ) {
-                    $refreshed[ $client.Name][ $new_tracker_data.section ] += [PSCustomObject]@{
+                    $refreshed[ $client][ $new_tracker_data.section ] += [PSCustomObject]@{
                         id       = $new_tracker_data.topic_id
                         comment  = ( $on_ssd ? ' SSD' : ' HDD' ) + ' ' + $existing_torrent.save_path[0]
                         name     = $new_tracker_data.topic_title
@@ -315,7 +345,7 @@ if ( $new_torrents_keys ) {
                     }
                 }
                 else {
-                    $refreshed[ $client.Name][ $new_tracker_data.section ] += [PSCustomObject]@{
+                    $refreshed[ $client][ $new_tracker_data.section ] += [PSCustomObject]@{
                         id       = $new_tracker_data.topic_id
                         comment  = ''
                         name     = $new_tracker_data.topic_title
@@ -337,7 +367,7 @@ if ( $new_torrents_keys ) {
                             Invoke-SqliteQuery -Query "UPDATE updates SET cnt = $current_cnt WHERE id = $($new_tracker_data.topic_id) " -SQLiteConnection $up_conn | Out-Null
                         }
                         if ( $current_cnt -ge $update_trigger) {
-                            Send-TGMessage -message "Рекомендуется перенести в клиенте <b>$($client.Name)</b> на SSD раздачу $($new_tracker_data.topic_id) $($existing_torrent.name)" -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                            Send-TGMessage -message "Рекомендуется перенести в клиенте <b>$($client.name)</b> на SSD раздачу $($new_tracker_data.topic_id) $($existing_torrent.name)" -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
                         }
                     }
                 }
@@ -367,7 +397,7 @@ if ( $new_torrents_keys ) {
             # if ( $null -ne $new_tracker_data.name ) { break }
 
             # }
-            if ( $null -ne $new_topic_title -and $new_topic_title -eq $existing_torrent.name -and $subfolder_kind -le '2') {
+            if ( $null -ne $new_topic_title -and $new_topic_title -eq $existing_torrent.name -and $settings.sections[$new_tracker_data.section].data_subfolder -le '2') {
                 Remove-ClientTorrent $client $existing_torrent.hash
             }
             elseif ($null -ne $new_topic_title ) {
@@ -422,7 +452,7 @@ if ( $new_torrents_keys ) {
                 # Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' из необновляемого раздела' )
                 continue
             }
-            if ( !$ConnectDetails.sid ) { Initialize-Forum $ConnectDetails }
+            if ( !$settings.connection.sid ) { Initialize-Forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             # if ( $null -eq $new_tracker_data.topic_title ) {
             #     Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
@@ -430,24 +460,24 @@ if ( $new_torrents_keys ) {
                 $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
             }
             # }
-            $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиент ' + $client.Name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
+            $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиент ' + $client.name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
-                if ( !$added[ $client.Name ] ) { $added[ $client.Name ] = @{} }
-                if ( !$added[ $client.Name ][ $new_tracker_data.section ] ) { $added[ $client.Name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
-                $added[ $client.Name][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
+                if ( !$added[ $client ] ) { $added[ $client ] = @{} }
+                if ( !$added[ $client ][ $new_tracker_data.section ] ) { $added[ $client ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
+                $added[ $client][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
             }
-            $save_path = $section_details[$new_tracker_data.section].data_folder
-            if ( $subfolder_kind -eq '1' ) {
+            $save_path = $settings.sections[$new_tracker_data.section].data_folder
+            if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '1' ) {
                 $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_tracker_data.topic_id # добавляем ID к имени папки для сохранения
             }       
-            elseif ( $subfolder_kind -eq '2' ) {
+            elseif ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '2' ) {
                 $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_torrent_key  # добавляем hash к имени папки для сохранения
             }
-            $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$section_details[$new_tracker_data.section].client] )
-            if ( $ssd -and $ssd[$section_details[$new_tracker_data.section].client] ) {
+            $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$settings.sections[$new_tracker_data.section].client] )
+            if ( $ssd -and $ssd[$settings.sections[$new_tracker_data.section].client] ) {
                 if ( $on_ssd -eq $false ) {
-                    Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$section_details[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
+                    Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
                     Set-ClientSetting $client 'temp_path_enabled' $true
                     Set-ClientSetting $client 'preallocate_all' $false
                 }
@@ -456,10 +486,8 @@ if ( $new_torrents_keys ) {
                     Set-ClientSetting $client 'preallocate_all' $false
                 }
             }
-            Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $section_details[$new_tracker_data.section].label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+            Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $settings.sections[$new_tracker_data.section].label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
             if ( $masks ) {
-                # Write-Log 'Заданы маски, начинаем работу с метками при необходимости'
-                # Write-Log "DEBUG:`nmask_passed: $mask_passed`nmask_label: $mask_label"
                 If ( $mask_passed -eq $true -and $mask_label ) {
                     Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы раздача "подхватилась"'
                     Start-Sleep -Seconds 2
@@ -489,14 +517,14 @@ if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report
     $obsolete_keys = $hash_to_id.Keys | Where-Object { !$tracker_torrents[$_] } | Where-Object { $refreshed_ids -notcontains $hash_to_id[$_] } | `
         Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] }
     if ( $skip_obsolete ) {
-        $obsolete_keys = $obsolete_keys | Where-Object { $clients[$id_to_info[$hash_to_id[$_]].client_key].Name -notin $skip_obsolete }
+        $obsolete_keys = $obsolete_keys | Where-Object { $settings.clients[$id_to_info[$hash_to_id[$_]].client_key] -notin $skip_obsolete }
     }
     $obsolete_torrents = $clients_torrents | Where-Object { $_.hash -in $obsolete_keys } | Where-Object { $_.topic_id -ne '' }
     $obsolete_torrents | ForEach-Object {
         If ( !$obsolete ) { $obsolete = @{} }
-        Write-Log ( "Левая раздача " + $_.topic_id + ' в клиенте ' + $clients[$_.client_key].Name )
-        if ( !$obsolete[$clients[$_.client_key].Name] ) { $obsolete[ $clients[$_.client_key].Name] = [System.Collections.ArrayList]::new() }
-        $obsolete[$clients[$_.client_key].Name] += ( $_.topic_id )
+        Write-Log ( "Левая раздача " + $_.topic_id + ' в клиенте ' + $_.client_key )
+        if ( !$obsolete[$settings.clients[$_.client_key]] ) { $obsolete[ $settings.clients[$_.client_key]] = [System.Collections.ArrayList]::new() }
+        $obsolete[$settings.clients[$_.client_key]] += ( $_.topic_id )
     }
 }
 
@@ -505,9 +533,9 @@ if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_broken -and $report_b
     Write-Log 'Ищем проблемные раздачи.'
     $clients_torrents | Where-Object { $_.state -in ( 'missingFiles', 'error' ) } | ForEach-Object {
         if ( !$broken ) { $broken = @{ } }
-        Write-Log ( "Проблемная раздача " + $_.topic_id + ' в клиенте ' + $clients[$_.client_key].Name )
-        if ( !$broken[$clients[$_.client_key].Name] ) { $broken[ $clients[$_.client_key].Name] = [System.Collections.ArrayList]::new() }
-        $broken[$clients[$_.client_key].Name] += ( $_.topic_id )
+        Write-Log ( "Проблемная раздача " + $_.topic_id + ' в клиенте ' + $_.client_key )
+        if ( !$broken[$settings.clients[$_.client_key]] ) { $broken[ $settings.clients[$_.client_key]] = [System.Collections.ArrayList]::new() }
+        $broken[$settings.clients[$_.client_key]] += ( $_.topic_id )
     }
 }
 
