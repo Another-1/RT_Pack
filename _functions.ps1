@@ -123,7 +123,7 @@ function Test-Setting ( $setting, [switch]$required, $default, [switch]$no_ini_w
         'down_tag'              = @{ prompt = 'Тэг для скачиваемых раздач'; type = 'string' }
         'seed_tag'              = @{ prompt = 'Тег для завершённых раздач'; type = 'string' }
         'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота Кузи в /about_me)'; type = 'string' }
-        'id_subfolder'          = @{ prompt = 'Создавать папки по ID?'; type = 'YN' }
+        'id_subfolder'          = @{ prompt = 'Создавать папки по ID если нет?'; type = 'YN' }
     }
     $changed = $false
     # if ( $json_section ) {

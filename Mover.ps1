@@ -47,7 +47,7 @@ $path_from = Select-Path 'from'
 $path_to = Select-Path 'to'
 $category = Get-String -prompt 'Укажите категорию (при необходимости)'
 $max_size = ( Get-String -obligatory -prompt 'Максимальный объём к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb
-# $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write
+$id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write
 Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
