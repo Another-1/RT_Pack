@@ -26,9 +26,20 @@ if ( $tg_token -ne '') {
     $tg_chat = Test-Setting 'tg_chat' -required
 }
 
-$ini_path = Join-Path $tlo_path 'data' 'config.ini'
-Write-Log 'Читаем настройки Web-TLO'
-$ini_data = Get-IniContent $ini_path
+if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
+    $settings = Get-Content -Path ( Join-Path $PSScriptRoot 'settings.json') | ConvertFrom-Json -AsHashtable
+    $standalone = $true
+}
+else {
+    try {
+        . ( Join-Path $PSScriptRoot _settings.ps1 )
+        $settings = [ordered]@{}
+        $settings.interface = @{}
+        $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
+        $standalone = $false
+    }
+    catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
+}
 
 $clients = Get-Clients
 $clients_torrents = Get-ClientsTorrents -clients $clients -mess_sender 'Marker' -noIDs

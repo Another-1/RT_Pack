@@ -271,6 +271,7 @@ function Get-OldBlacklist( [switch]$verbose ) {
 }
 
 function Get-Clients ( $clients, [switch]$LocalOnly ) {
+    if ( !$settings ) { $settings = [ordered]@{} }
     $settings.clients = [ordered]@{}
     Write-Log 'Получаем из TLO данные о клиентах'
     $client_count = $ini_data['other'].qt.ToInt16($null)
@@ -973,7 +974,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
             break
         }
         catch {
-            Write-Log 'Похоже, наткнулись на обовление API, подождём минуту и начнём заново' -Red
+            Write-Log 'Похоже, наткнулись на обновление API, подождём минуту и начнём заново' -Red
             $counter++
             Start-Sleep -Seconds 60
             Write-Log "Попытка $counter"
