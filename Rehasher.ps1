@@ -1,6 +1,20 @@
 Write-Output 'Подгружаем настройки'
 $separator = $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
-try { . ( $PSScriptRoot + $separator + '_settings.ps1' ) } catch {}
+if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
+    # $debug = 1
+    $settings = Get-Content -Path ( Join-Path $PSScriptRoot 'settings.json') | ConvertFrom-Json -AsHashtable
+    $standalone = $true
+}
+else {
+    try {
+        . ( Join-Path $PSScriptRoot _settings.ps1 )
+        $settings = [ordered]@{}
+        $settings.interface = @{}
+        $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
+        $standalone = $false
+    }
+    catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
+}
 
 $str = 'Подгружаем функции' 
 if ( $use_timestamp -ne 'Y' ) { Write-Output $str } else { Write-Output ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
@@ -35,28 +49,23 @@ if ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine 
     exit
 }
 
-Test-Module 'PsIni' 'для чтения настроек TLO'
+# Test-Module 'PsIni' 'для чтения настроек TLO'
 Test-Module 'PSSQLite' 'для работы с базой TLO'
 
 $min_repeat_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $frequency * 24 * 60 * 60 ) # количество секунд между повторными рехэшами одной раздачи
 $min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay * 24 * 60 * 60 ) # количество секунд до первого рехэша новых раздач
-
-Write-Log 'Читаем настройки Web-TLO'
-
-$ini_path = Join-Path $tlo_path 'data' 'config.ini'
-try { $ini_data = Get-IniContent $ini_path } catch {}
-
-if ( $null -eq $settings ) { $settings = @{} }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 -or $null -eq $settings.clients ) {
     Get-Clients $settings
     $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
 }
 
+
 Write-Log 'Исключаем уже хэшируемые и стояшие в очереди на рехэш'
 $before = $clients_torrents.count
 $clients_torrents = $clients_torrents | Where-Object { $_.state -ne 'checkingUP' }
-Write-Log ( 'Исключено раздач: ' + ( $before - $clients_torrents.count ) )
+$already_hashing = $before - $clients_torrents.count
+Write-Log ( "Исключено раздач: $already_hashing" )
 
 $db_data = @{}
 $database_path = $PSScriptRoot + $separator + 'rehashes.db'
@@ -157,7 +166,7 @@ foreach ( $torrent in $full_data_sorted ) {
         }
     }
     Write-Log 'Отправляем в рехэш'
-    Start-Rehash $settings.clients[$torrent.client_key] $torrent.hash
+    Start-Rehash -client $settings.clients[$torrent.client_key] -hash $torrent.hash -move_up:($already_hashing -gt 0 )
     if ( !$db_data[$torrent.hash] ) {
         Invoke-SqliteQuery -Query "INSERT INTO rehash_dates (hash, rehash_date) VALUES (@hash, @epoch )" -SqlParameters @{ hash = $torrent.hash; epoch = ( Get-Date -UFormat %s ) }-SQLiteConnection $conn
     }

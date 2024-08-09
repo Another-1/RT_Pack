@@ -831,10 +831,16 @@ function Get-IniSectionDetails ( $settings, $sections ) {
     }
 }
 
-function Start-Rehash ( $client, $hash ) {
+function Start-Rehash ( $client, $hash, [switch]$move_up ) {
     $Params = @{ hashes = $hash }
     $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/recheck'
     Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
+    if ( $move_up.IsPresent) {
+        Start-Sleep -Seconds 1
+        Write-Log 'Поднимаем раздачу в начало очереди'
+        $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/topPrio'
+        Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
+    }
 }
 
 Function DeGZip-File {
