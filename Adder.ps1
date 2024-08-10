@@ -108,6 +108,7 @@ if ( $update_trigger -and $psversionTable.Platform.ToLower() -like '*win*') {
 }
 
 if ( !$settings.connection -and $standlone -ne $true ) {
+    if ( !$settings.connection ) { $settings.connection = [ordered]@{} }
     Set-ConnectDetails $settings
     Set-Proxy( $settings )
 }
