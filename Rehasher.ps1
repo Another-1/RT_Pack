@@ -49,8 +49,16 @@ if ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine 
     exit
 }
 
-# Test-Module 'PsIni' 'для чтения настроек TLO'
+Test-Module 'PsIni' 'для чтения настроек TLO'
 Test-Module 'PSSQLite' 'для работы с базой TLO'
+
+if ( $standalone -eq $true ) { $settings.interface.use_timestamp = Test-Setting 'use_timestamp' -json_path 'interface' -required } else { $settings.interface.use_timestamp = Test-Setting 'use_timestamp' -required }
+if ( $standalone -eq $false ) {
+    $tlo_path = Test-Setting 'tlo_path' -required
+    $ini_path = Join-Path $tlo_path 'data' 'config.ini'
+    Write-Log 'Читаем настройки Web-TLO'
+    $ini_data = Get-IniContent $ini_path
+}
 
 $min_repeat_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $frequency * 24 * 60 * 60 ) # количество секунд между повторными рехэшами одной раздачи
 $min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay * 24 * 60 * 60 ) # количество секунд до первого рехэша новых раздач
