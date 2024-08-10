@@ -72,7 +72,7 @@ if ( $client.sid ) {
     foreach ( $torrent in $torrents_list) {
         $i++
         $new_path = $torrent.save_path.replace( $path_from, $path_to )
-        if ( $new_path -notlike "*$($torrent.topic_id)*" ) {
+        if ( $id_subfolder -eq 'Y' -and $new_path -notlike "*$($torrent.topic_id)*" ) {
             $new_path = Join-Path $new_path $torrent.topic_id
         }
         if ( $new_path -ne $torrent.save_path ) {
