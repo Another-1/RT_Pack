@@ -64,7 +64,7 @@ $min_repeat_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $frequency * 24 
 $min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay * 24 * 60 * 60 ) # количество секунд до первого рехэша новых раздач
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 -or $null -eq $settings.clients ) {
-    Get-Clients $settings
+    Get-Clients
     $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
 }
 

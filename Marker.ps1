@@ -48,8 +48,8 @@ if ( $standalone -eq $false ) {
     $ini_data = Get-IniContent $ini_path
 }
 
-$clients = Get-Clients
-$clients_torrents = Get-ClientsTorrents -clients $clients -mess_sender 'Marker' -noIDs
+Get-Clients
+$clients_torrents = Get-ClientsTorrents -mess_sender 'Marker' -noIDs
 $seed_cnt = 0
 $down_cnt = 0
 
@@ -57,7 +57,7 @@ foreach ( $torrent in $clients_torrents ) {
     if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', 'pausedDL') ) {
         if ( $torrent.tags -notlike "*$down_tag*" ) {
             Write-Log "Метим раздачу $($torrent.name) меткой $down_tag"
-            Set-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $down_tag
+            Set-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $down_tag
             $torrent.state = 'OK'
         }
         $down_cnt++
@@ -65,17 +65,17 @@ foreach ( $torrent in $clients_torrents ) {
     elseif ( $torrent.state -in ( 'queuedUP', 'stalledUP', 'forcedUP', 'pausedUP', 'uploading' ) ) {
         if ( $torrent.tags -like "*$down_tag*" ) {
             Write-Log "Снимаем с раздачи $($torrent.name) метку $down_tag"
-            Remove-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent
+            Remove-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent
         }
         if ( $torrent.tags -notlike "*$seed_tag*" ) {
             Write-Log "Метим раздачу $($torrent.name) меткой $seed_tag"
-            Set-Comment -client $clients[$torrent.client_key] -torrent $torrent -label $seed_tag -silent
+            Set-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $seed_tag -silent
             $seed_cnt++            
         }
         if ( $torrent.state -eq 'forcedUP' ) {
             Write-Log "Перевожу раздачу $($torrent.name) в статус Seeding"
             $start_keys = @($torrent.hash)
-            Start-Torrents -hashes $start_keys -client $clients[$torrent.client_key]
+            Start-Torrents -hashes $start_keys -client $settings.clients[$torrent.client_key]
         }
     }
 }

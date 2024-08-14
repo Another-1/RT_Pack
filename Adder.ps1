@@ -188,7 +188,7 @@ else {
 }
 
 if ( $standalone -ne $true ) {
-    Get-Clients( $section_numbers )
+    Get-Clients
     Write-Log 'Достаём из TLO подробности о разделах'
     Get-IniSectionDetails $settings $sections
 }

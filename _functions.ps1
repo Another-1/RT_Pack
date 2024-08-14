@@ -270,7 +270,7 @@ function Get-OldBlacklist( [switch]$verbose ) {
     return $oldblacklist
 }
 
-function Get-Clients ( $clients, [switch]$LocalOnly ) {
+function Get-Clients ( [switch]$LocalOnly ) {
     if ( !$settings ) { $settings = [ordered]@{} }
     $settings.clients = [ordered]@{}
     Write-Log 'Получаем из TLO данные о клиентах'
