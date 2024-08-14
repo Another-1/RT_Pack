@@ -41,6 +41,13 @@ else {
     catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
 }
 
+if ( $standalone -eq $false ) {
+    $tlo_path = Test-Setting 'tlo_path' -required
+    $ini_path = Join-Path $tlo_path 'data' 'config.ini'
+    Write-Log 'Читаем настройки Web-TLO'
+    $ini_data = Get-IniContent $ini_path
+}
+
 $clients = Get-Clients
 $clients_torrents = Get-ClientsTorrents -clients $clients -mess_sender 'Marker' -noIDs
 $seed_cnt = 0
