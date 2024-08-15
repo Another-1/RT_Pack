@@ -334,10 +334,10 @@ if ( $new_torrents_keys ) {
             $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
-                if ( !$refreshed[ $client ] ) { $refreshed[ $client] = @{} }
-                if ( !$refreshed[ $client ][ $new_tracker_data.section] ) { $refreshed[ $client ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
+                if ( !$refreshed[ $client.name ] ) { $refreshed[ $client.name ] = @{} }
+                if ( !$refreshed[ $client.name ][ $new_tracker_data.section] ) { $refreshed[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
                 if ( $ssd ) {
-                    $refreshed[ $client][ $new_tracker_data.section ] += [PSCustomObject]@{
+                    $refreshed[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{
                         id       = $new_tracker_data.topic_id
                         comment  = ( $on_ssd ? ' SSD' : ' HDD' ) + ' ' + $existing_torrent.save_path[0]
                         name     = $new_tracker_data.topic_title
@@ -346,7 +346,7 @@ if ( $new_torrents_keys ) {
                     }
                 }
                 else {
-                    $refreshed[ $client][ $new_tracker_data.section ] += [PSCustomObject]@{
+                    $refreshed[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{
                         id       = $new_tracker_data.topic_id
                         comment  = ''
                         name     = $new_tracker_data.topic_title
@@ -464,9 +464,9 @@ if ( $new_torrents_keys ) {
             $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиент ' + $client.name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
-                if ( !$added[ $client ] ) { $added[ $client ] = @{} }
-                if ( !$added[ $client ][ $new_tracker_data.section ] ) { $added[ $client ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
-                $added[ $client][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
+                if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
+                if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
+                $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
             }
             $save_path = $settings.sections[$new_tracker_data.section].data_folder
             if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '1' ) {

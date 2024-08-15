@@ -692,7 +692,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
             foreach ( $client in $refreshed.Keys ) {
                 if ( !$first ) { $message += "`n" }
                 $first = $false
-                $message += "Обновлены в клиенте <b>$($client.name)</b>`n"
+                $message += "Обновлены в клиенте <b>$client</b>`n"
                 $refreshed[$client].keys | Sort-Object | ForEach-Object {
                     $refreshed[$client][$_] | ForEach-Object { $message += ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" ) }
                 }
@@ -704,7 +704,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
             foreach ( $client in $added.Keys ) {
                 if ( !$first ) { $message += "`n" }
                 $first = $false
-                $message += "Добавлены в клиент <b>$($client.name)</b>`n"
+                $message += "Добавлены в клиент <b>$client</b>`n"
                 $added[$client].keys | Sort-Object | ForEach-Object {
                     $added[$client][$_] | ForEach-Object { $message += ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + "`n" + $_.name + ' (' + ( to_kmg $_.size 1 ) + ')' + "`n`n") }
                 }
