@@ -515,10 +515,11 @@ if ( $new_torrents_keys ) {
 Remove-Variable -Name obsolete -ErrorAction SilentlyContinue
 if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report_obsolete -eq 'Y' ) {
     Write-Log 'Ищем неактуальные раздачи.'
-    $obsolete_keys = $hash_to_id.Keys | Where-Object { !$tracker_torrents[$_] } | Where-Object { $refreshed_ids -notcontains $hash_to_id[$_] } | `
-        Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] }
+    $obsolete_keys = @($hash_to_id.Keys | Where-Object { !$tracker_torrents[$_] } | Where-Object { $refreshed_ids -notcontains $hash_to_id[$_] } | `
+        Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] } )
     if ( $skip_obsolete ) {
-        $obsolete_keys = $obsolete_keys | Where-Object { $settings.clients[$id_to_info[$hash_to_id[$_]].client_key] -notin $skip_obsolete }
+        # $obsolete_keys = $obsolete_keys | Where-Object { $settings.clients[$id_to_info[$hash_to_id[$_]].client_key] -notin $skip_obsolete }
+        $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -notin $skip_obsolete }
     }
     $obsolete_torrents = $clients_torrents | Where-Object { $_.hash -in $obsolete_keys } | Where-Object { $_.topic_id -ne '' }
     $obsolete_torrents | ForEach-Object {

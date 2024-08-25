@@ -513,15 +513,6 @@ function ConvertTo-1251 ( $inp ) {
     return [System.Web.HttpUtility]::UrlEncode($sourceEncoding.GetBytes($inp)) #.ToUpper()
 }
 
-# function ConvertTo-1251 ( $inp ) {
-#     $targetEncoding = [System.Text.Encoding]::UTF8
-#     $sourceEncoding = [System.Text.Encoding]::GetEncoding("Windows-1251")
-#     $bytes = $sourceEncoding.GetBytes( $inp )
-#     # $convertedBytes = [System.Text.Encoding]::Convert($sourceEncoding, $targetEncoding, $bytes)
-#     return $targetEncoding.GetString($bytes)
-# }
-
-
 function Send-Forum ( $mess, $post_id ) {
     if ( !$settings.connection ) {
         Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
