@@ -1207,7 +1207,7 @@ function Get-ClientApiVersions ( $clients ) {
         Initialize-Client $client
         $client.api_version = [version]( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.port + '/api/v2/app/webapiVersion' ) -WebSession $client.sid ).content
         Write-Log "У клиента $( $client.name ) версия API $($client.api_version.ToString())"
-        if ( $client.api_verion -lt [version]'12.11.0.0' ) {
+        if ( $client.api_version -lt [version]'2.11.0' ) {
             $client.start_command = 'resume'
             $client.stop_command = 'pause'
             $client.stopped_state = 'pausedUP'

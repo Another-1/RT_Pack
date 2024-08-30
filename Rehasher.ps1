@@ -245,4 +245,3 @@ if ( $report_rehasher -eq 'Y' ) {
 
 
 $conn.Close()
-# Remove-Item -Path ( $PSScriptRoot + $separator + 'rehasher.lck') | Out-Null
