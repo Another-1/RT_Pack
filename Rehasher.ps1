@@ -7,10 +7,12 @@ if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
 }
 else {
     try {
-        . ( Join-Path $PSScriptRoot _settings.ps1 )
-        $settings = [ordered]@{}
-        $settings.interface = @{}
-        $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
+        if ( !$settings ) {
+            . ( Join-Path $PSScriptRoot _settings.ps1 )
+            $settings = [ordered]@{}
+            $settings.interface = @{}
+            $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
+        }
         $standalone = $false
     }
     catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
@@ -63,8 +65,9 @@ if ( $standalone -eq $false ) {
 $min_repeat_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $frequency * 24 * 60 * 60 ) # количество секунд между повторными рехэшами одной раздачи
 $min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay * 24 * 60 * 60 ) # количество секунд до первого рехэша новых раздач
 
-if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 -or $null -eq $settings.clients ) {
+if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     Get-Clients
+    Get-ClientApiVersions $settings.clients
     $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
 }
 
@@ -139,7 +142,7 @@ if ( $mix_clients -eq 'Y') {
     $done = 0
     $max_qty = ( $per_client.GetEnumerator() | ForEach-Object { $_.Value.count } | Measure-Object -Maximum ).Maximum
     for ( $j = 0; $j -lt $max_qty ; $j++) {
-        foreach ( $k in 0..$i ) {
+        foreach ( $k in 1..$i ) {
             try {
                 $full_resorted += $per_client[$k][$j]
                 $done ++ 
@@ -155,7 +158,7 @@ if ( $mix_clients -eq 'Y') {
 
 $sum_cnt = 0
 $sum_size = 0
-Write-Log "Найдено $($full_data_sorted.count) раздач, которые пора рехэшить"
+Write-Log "Найдено $($full_data_sorted.count) раздач, которые пора рехэшить. Общий объём $(to_kmg( $full_data_sorted | Measure-Object -Property size -Sum ).Sum)"
 foreach ( $torrent in $full_data_sorted ) {
     if ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
         Write-Log 'Выполняется Adder или Controller, подождём...' -Red
@@ -166,8 +169,8 @@ foreach ( $torrent in $full_data_sorted ) {
     if ( $wait_finish -eq 'Y' ) {
         Write-Log ( 'Будем рехэшить раздачу "' + $torrent.name + '" в клиенте ' + $torrent.client_key + ' размером ' + ( to_kmg $torrent.size 2 ))
         $prev_state = ( Get-ClientTorrents $settings.clients[$torrent.client_key] -mess_sender 'Rehasher' -hash $torrent.hash ).state
-        if ( $prev_state -eq 'pausedUP') { Write-Log 'Раздача уже остановлена, так и запишем' } else { Write-Log 'Раздача запущена, предварительно остановим' }
-        if ( $prev_state -ne 'pausedUP' ) {
+        if ( $prev_state -eq $settings.clients[$torrent.client_key].stopped_state ) { Write-Log 'Раздача уже остановлена, так и запишем' } else { Write-Log 'Раздача запущена, предварительно остановим' }
+        if ( $prev_state -ne $settings.clients[$torrent.client_key].stopped_state ) {
             # Write-Log ( 'Останавливаем раздачу"' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
             Write-Log 'Останавливаем раздачу'
             Stop-Torrents $torrent.hash $settings.clients[$torrent.client_key]
@@ -205,7 +208,7 @@ foreach ( $torrent in $full_data_sorted ) {
         }
         else {
             Write-Log ( 'Раздача "' + $torrent.name + '" в порядке' ) -Green
-            if ( $prev_state -ne 'pausedUP' ) { 
+            if ( $prev_state -ne $settings.clients[$torrent.client_key].stopped_state ) { 
                 Write-Log 'Запускаем раздачу обратно'
                 Start-Torrents $torrent.hash $settings.clients[$torrent.client_key]
             }

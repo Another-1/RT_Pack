@@ -49,12 +49,13 @@ if ( $standalone -eq $false ) {
 }
 
 Get-Clients
+Get-ClientApiVersions -clients $settings.clients
 $clients_torrents = Get-ClientsTorrents -mess_sender 'Marker' -noIDs
 $seed_cnt = 0
 $down_cnt = 0
 
 foreach ( $torrent in $clients_torrents ) {
-    if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', 'pausedDL') ) {
+    if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', $settings.clients[$torrent.client_key].stopped_state_dl ) ) {
         if ( $torrent.tags -notlike "*$down_tag*" ) {
             Write-Log "Метим раздачу $($torrent.name) меткой $down_tag"
             Set-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $down_tag
@@ -62,7 +63,7 @@ foreach ( $torrent in $clients_torrents ) {
         }
         $down_cnt++
     }
-    elseif ( $torrent.state -in ( 'queuedUP', 'stalledUP', 'forcedUP', 'pausedUP', 'uploading' ) ) {
+    elseif ( $torrent.state -in ( 'queuedUP', 'stalledUP', 'forcedUP', 'uploading', $settings.clients[$torrent.client_key].stopped_state ) ) {
         if ( $torrent.tags -like "*$down_tag*" ) {
             Write-Log "Снимаем с раздачи $($torrent.name) метку $down_tag"
             Remove-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent

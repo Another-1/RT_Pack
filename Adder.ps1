@@ -202,6 +202,8 @@ if ( $settings.adder.get_blacklist -eq 'N' -and $standalone -ne $true ) {
     Write-Log "В чёрных списках $spell"
 }
 
+Get-ClientApiVersions $settings.clients
+
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
     if ( !$settings.adder.avg_seeds -and $standalone -ne $true ) {
         $settings.adder.avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' ) 

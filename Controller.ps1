@@ -23,11 +23,23 @@ else {
     $standalone = $false
 }
 
-if ( $standalone -eq $true ) { $settings.controller.old_starts_per_run = Test-Setting '$settings.controller.old_starts_per_run' }
-else { $old_starts_per_run = Test-Setting 'old_starts_per_run'; $settings.controller.old_starts_per_run = $old_starts_per_run }
-if ( $standalone -eq $true ) { $settings.controller.min_stop_to_start = Test-Setting 'settings.controller.min_stop_to_start' }
-else { $min_stop_to_start = Test-Setting 'min_stop_to_start'; $settings.controller.min_stop_to_start = $min_stop_to_start }
-if ( $standalone -eq $false ) { $settings.controller.global_seeds = $ini_data['topics_control'].peers }
+if ( $standalone -eq $true ) {
+    $settings.controller.old_starts_per_run = Test-Setting '$settings.controller.old_starts_per_run'
+}
+else {
+    $old_starts_per_run = Test-Setting 'old_starts_per_run'; $settings.controller.old_starts_per_run = $old_starts_per_run
+}
+
+if ( $standalone -eq $true ) {
+    $settings.controller.min_stop_to_start = Test-Setting 'settings.controller.min_stop_to_start'
+}
+else {
+    $min_stop_to_start = Test-Setting 'min_stop_to_start'; $settings.controller.min_stop_to_start = $min_stop_to_start
+}
+
+if ( $standalone -eq $false ) {
+    $settings.controller.global_seeds = $ini_data['topics_control'].peers
+}
 
 $settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = ( $settings.sections[$_].control_peers -ne '' ? $settings.sections[$_].control_peers : -2 ) }
 $settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds }
@@ -65,6 +77,7 @@ Set-Proxy( $settings )
 if ( !$tracker_torrents) {
     Write-Log 'Автономный запуск, надо сходить на трекер за актуальными сидами и ID'
     $tracker_torrents = Get-RepTorrents -sections $settings.sections.keys -call_from 'Controller'
+    Get-ClientApiVersions
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients_torrents = Get-ClientsTorrents 'Controller'
@@ -90,7 +103,7 @@ if ( !$api_seeding -or $debug -eq $false ) {
             state            = $_.state
             seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
         }
-        if ( $_.state -eq 'pausedUP' ) {
+        if ( $_.state -eq $settings.clients[$_.client_key].stopped_state ) {
             $paused_sort.Add( [PSCustomObject]@{ hash = $_.infohash_v1; client = $_.client_key; seeder_last_seen = $states[$_.infohash_v1].seeder_last_seen } ) | Out-Null
         }
     }
@@ -100,17 +113,17 @@ $batch_size = 400
 
 $started = 0
 $stopped = 0
-foreach ( $client in $settings.clients.keys ) {
-    Write-Log ( 'Регулируем клиент ' + $client + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
+foreach ( $client_key in $settings.clients.keys ) {
+    Write-Log ( 'Регулируем клиент ' + $client_key + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
 
     $start_keys = @()
     $stop_keys = @()
-    $states.Keys | Where-Object { $states[$_].client -eq $client } | ForEach-Object {
+    $states.Keys | Where-Object { $states[$_].client -eq $client_key } | ForEach-Object {
         try { 
             # if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $section_seeds[$tracker_torrents[$_].section] ) {
-            if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $settings.sections[$tracker_torrents[$_].section].control_peers ) {
+            if ( $states[$_].state -eq $settings.clients[$client_key].stopped_state -and $tracker_torrents[$_].seeders -lt $settings.sections[$tracker_torrents[$_].section].control_peers ) {
                 if ( $start_keys.count -eq $batch_size ) {
-                    Start-Torrents $start_keys $settings.clients[$client]
+                    Start-Torrents $start_keys $settings.clients[$client_key]
                     $started += $start_keys.count
                     $start_keys = @()
                 }
@@ -123,7 +136,7 @@ foreach ( $client in $settings.clients.keys ) {
             ) {
 
                 if ( $stop_keys.count -eq $batch_size ) {
-                    Stop-Torrents $stop_keys $settings.clients[$client]
+                    Stop-Torrents $stop_keys $settings.clients[$client_key]
                     $stopped += $stop_keys.count
                     $stop_keys = @()
                 }
@@ -133,11 +146,11 @@ foreach ( $client in $settings.clients.keys ) {
         catch { } # на случай поглощённых раздач.
     }
     if ( $start_keys.count -gt 0) {
-        Start-Torrents $start_keys $settings.clients[$client]
+        Start-Torrents $start_keys $settings.clients[$client_key]
         $started += $start_keys.count
     }
     if ( $stop_keys.count -gt 0) {
-        Stop-Torrents $stop_keys $settings.clients[$client]
+        Stop-Torrents $stop_keys $settings.clients[$client_key]
         $stopped += $stop_keys.count
     }
 }
@@ -146,7 +159,7 @@ $lv_str1 = Get-Spell $min_stop_to_start 1 'days'
 $lv_str2 = Get-Spell $old_starts_per_run 1 'torrents'
 Write-Log "Ищем раздачи, остановленные более чем $lv_str1 в количестве не более $lv_str2"
 
-$paused_sort = @( ( $paused_sort | Where-Object { $states[$_.hash].state -eq 'pausedUP' -and $_.seeder_last_seen -le $ok_to_start } | Sort-Object -Property client | Sort-Object -Property seeder_last_seen -Stable ) | `
+$paused_sort = @( ( $paused_sort | Where-Object { $states[$_.hash].state -eq $settings.clients[$_.client].stopped_state -and $_.seeder_last_seen -le $ok_to_start } | Sort-Object -Property client | Sort-Object -Property seeder_last_seen -Stable ) | `
         Select-Object -First $old_starts_per_run | Sort-Object -Property client )
 $lv_str = Get-Spell $paused_sort.count 1 'torrents'
 

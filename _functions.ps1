@@ -766,7 +766,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
 
 function Start-Torrents( $hashes, $client) {
     $Params = @{ hashes = ( $hashes -join '|' ) }
-    $url = $client.IP + ':' + $client.port + '/api/v2/torrents/resume'
+    $url = $client.IP + ':' + $client.port + '/api/v2/torrents/' + $client.start_command
     try {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
@@ -778,7 +778,7 @@ function Start-Torrents( $hashes, $client) {
 
 function Stop-Torrents( $hashes, $client) {
     $Params = @{ hashes = ( $hashes -join '|' ) }
-    $url = $client.IP + ':' + $client.port + '/api/v2/torrents/pause'
+    $url = $client.IP + ':' + $client.port + '/api/v2/torrents/' + $client.stop_command
     try {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
@@ -1197,5 +1197,27 @@ function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false) {
         $client.sid = $null
         Initialize-Client $client
         Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
+    }
+}
+
+function Get-ClientApiVersions ( $clients ) {
+    Write-Log 'Получаем версии API клиентов для правильной работы с ними'
+    foreach ( $client_key in ( $clients.keys | Where-Object { $null -eq $clients[$_].api_verion } ) ) {
+        $client = $clients[$client_key]
+        Initialize-Client $client
+        $client.api_version = [version]( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.port + '/api/v2/app/webapiVersion' ) -WebSession $client.sid ).content
+        Write-Log "У клиента $( $client.name ) версия API $($client.api_version.ToString())"
+        if ( $client.api_verion -lt [version]'12.11.0.0' ) {
+            $client.start_command = 'resume'
+            $client.stop_command = 'pause'
+            $client.stopped_state = 'pausedUP'
+            $client.stopped_state_dl = 'pausedDL'
+        }
+        else {
+            $client.start_command = 'start'
+            $client.stop_command = 'stop'
+            $client.stopped_state = 'stoppedUP'
+            $client.stopped_state_dl = 'stoppedDL'
+        }
     }
 }
