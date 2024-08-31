@@ -132,33 +132,41 @@ $full_data_sorted = $full_data_sorted | Sort-Object -Property size -Descending |
 
 if ( $mix_clients -eq 'Y') {
     Write-Log 'Тщательнейшим образом перемешиваем клиентов'
-    $per_client = @{}
-    $full_resorted = [System.Collections.ArrayList]::new()
-    foreach ( $i in  1..( $full_data_sorted | ForEach-Object { $settings.clients[$_.client_key].seqno } | Measure-Object -Maximum ).Maximum ) {
-        $this_client = ( $settings.clients.Keys | Where-Object { $settings.clients[$_].seqno -eq $i } ).ToString()
-        $per_client[$i] = $full_data_sorted | Where-Object { $_.client_key -eq $this_client }
-    }
+    if ( $full_data_sorted.count -gt 1 ) {
+        $per_client = @{}
+        $full_resorted = [System.Collections.ArrayList]::new()
+        foreach ( $i in  1..( $full_data_sorted | ForEach-Object { $settings.clients[$_.client_key].seqno } | Measure-Object -Maximum ).Maximum ) {
+            $this_client = ( $settings.clients.Keys | Where-Object { $settings.clients[$_].seqno -eq $i } ).ToString()
+            $per_client[$i] = $full_data_sorted | Where-Object { $_.client_key -eq $this_client }
+        }
     
-    $done = 0
-    $max_qty = ( $per_client.GetEnumerator() | ForEach-Object { $_.Value.count } | Measure-Object -Maximum ).Maximum
-    for ( $j = 0; $j -lt $max_qty ; $j++) {
-        foreach ( $k in 1..$i ) {
-            try {
-                $full_resorted += $per_client[$k][$j]
-                $done ++ 
+        $done = 0
+        $max_qty = ( $per_client.GetEnumerator() | ForEach-Object { $_.Value.count } | Measure-Object -Maximum ).Maximum
+        for ( $j = 0; $j -lt $max_qty ; $j++) {
+            foreach ( $k in 1..$i ) {
+                try {
+                    $full_resorted += $per_client[$k][$j]
+                    $done ++ 
+                }
+                catch {}
+                if ( $done -ge $max_rehash_qty ) { break }
             }
-            catch {}
             if ( $done -ge $max_rehash_qty ) { break }
         }
-        if ( $done -ge $max_rehash_qty ) { break }
-    }
-    $full_data_sorted = $full_resorted
-    Remove-Variable -Name full_resorted    
+        $full_data_sorted = $full_resorted
+        Remove-Variable -Name full_resorted
+    } 
 }
 
 $sum_cnt = 0
 $sum_size = 0
-Write-Log "Найдено $($full_data_sorted.count) раздач, которые пора рехэшить. Общий объём $(to_kmg( $full_data_sorted | Measure-Object -Property size -Sum ).Sum)"
+if ( $full_data_sorted.count -gt 0 ) {
+    Write-Log "Найдено $($full_data_sorted.count) раздач, которые пора рехэшить. Общий объём $(to_kmg( $full_data_sorted | Measure-Object -Property size -Sum ).Sum)"
+}
+else {
+    Write-Log 'Рехэшить пока нечего, выходим'
+}
+
 foreach ( $torrent in $full_data_sorted ) {
     if ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
         Write-Log 'Выполняется Adder или Controller, подождём...' -Red
@@ -242,6 +250,5 @@ if ( $report_rehasher -eq 'Y' ) {
         Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Rehasher' ) + " отработал, ничего делать не пришлось.`nБлижайший рехэш через $closest_span" ) -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
     }
 }
-
 
 $conn.Close()
