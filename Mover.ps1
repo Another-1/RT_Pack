@@ -41,7 +41,8 @@ $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 $ini_data = Get-IniContent $ini_path
 
 Get-Clients
-$client = Select-Client $clients
+# Get-ClientApiVersions $settings.clients
+$client = Select-Client
 Write-Log ( 'Выбран клиент ' + $client.Name )
 $path_from = Select-Path 'from'
 $path_to = Select-Path 'to'
@@ -55,7 +56,12 @@ if ( $client.sid ) {
     $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" } 
     if ( $max_size -eq -1 ) {
         Write-Log 'Сортируем по полезности и подразделу'
-        $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
+        # if ( $client.api_version -lt [version]'2.11.0' ) {
+            $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
+        # }
+        # else {
+        #     $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.popularity } -Descending -Stable
+        # }
     }
     else {
         Write-Log 'Сортируем по размеру'
