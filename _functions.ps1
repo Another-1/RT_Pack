@@ -997,7 +997,7 @@ function GetRepSectionsKeepers( $sections, $call_from, $max_keepers ) {
             $keepers[$_[0]]++
         }
     }
-    if ( $null -ne $max_keepers ) { $kept_ids = $keepers.keys | Where-Object { $keepers[$_] -le $max_keepers } }
+    if ( $null -ne $max_keepers ) { $kept_ids = $keepers.keys | Where-Object { $keepers[$_] -gt $max_keepers } }
     else { $kept_ids = $keepers.keys }
     return $kept_ids
 }

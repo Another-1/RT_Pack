@@ -460,7 +460,7 @@ if ( $new_torrents_keys ) {
                 # Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' из необновляемого раздела' )
                 continue
             }
-            if ( $kept -and $new.$new_tracker_data.topic_id -notin $kept ) {
+            if ( $kept -and $new.$new_tracker_data.topic_id -in $kept ) {
                 Write-Log "У раздачи $( $new_tracker_data.topic_id ) слишком много хранителей, пропускаем"
                 continue
             }
