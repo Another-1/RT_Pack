@@ -285,6 +285,11 @@ if ( $nul -ne $get_blacklist -and $get_blacklist.ToUpper() -eq 'N' ) {
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
+if ( $max_keepers -and !$kept ) {
+    Write-Log 'Указано ограничение на количество хранителей, необходимо подтянуть данные из отчётов по хранимым разделам'
+    $kept = GetRepSectionsKeepers -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -max_keepers $max_keepers
+}
+
 if ( $masks_db ) {
     Write-Log 'Отфильтровываем уже известные раздачи по маскам'
     # $new_torrents_keys = $new_torrents_keys | Where-Object { !$masks_db_plain[$tracker_torrents[$_].topic_id] }
@@ -453,6 +458,10 @@ if ( $new_torrents_keys ) {
             }
             if ( $new_tracker_data.section -in $skip_sections ) {
                 # Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' из необновляемого раздела' )
+                continue
+            }
+            if ( $kept -and $new.$new_tracker_data.topic_id -notin $kept ) {
+                Write-Log "У раздачи $( $new_tracker_data.topic_id ) слишком много хранителей, пропускаем"
                 continue
             }
             if ( !$settings.connection.sid ) { Initialize-Forum }

@@ -980,11 +980,33 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     }
     return $tracker_torrents
 }
+
+function GetRepSectionKeepers( $section, $call_from ) {
+    Write-Log "Выгружаем отчёты по подразделу $section"
+    $url = "/krs/api/v1/subforum/$section/reports?columns=status"
+    $content = ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json | Select-Object kept_releases -ExpandProperty kept_releases
+    return $content
+}
+
+function GetRepSectionsKeepers( $sections, $call_from, $max_keepers ) {
+    foreach ( $section in $sections ) {
+        $keepers = @{}
+        $section_keepers = GetRepSectionKeepers( $section )
+        $section_keepers | Where-Object { -bnot ( ( $_[1] -band 0b10 ) ) } | ForEach-Object {
+            if ( !$keepers[$_[0]] ) { $keepers[$_[0]] = 0 }
+            $keepers[$_[0]]++
+        }
+    }
+    if ( $null -ne $max_keepers ) { $kept_ids = $keepers.keys | Where-Object { $keepers[$_] -le $max_keepers } }
+    else { $kept_ids = $keepers.keys }
+    return $kept_ids
+}
+
 function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_seeds, $min_avg, $min_release_date, $min_seeders ) {
     $use_avg_seeds = ( $avg_seeds.IsPresent ? $true : ( $ini_data.sections.avg_seeders -eq '1' ) )
     $avg_days = $ini_data.sections.avg_seeders_period
     $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
-    $url = "/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders,topic_title$subst"
+    $url = "/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders,topic_title,keeper_seeders$subst"
     $content = ( Get-RepHTTP -url $url -headers $headers -call_from $call_from )
     $json = $content | ConvertFrom-Json
     $columns = @{}
@@ -1015,7 +1037,7 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
                 -and ( !$min_release_date -or ( $min_release_date -and $line.reg_time -le $min_release_date ) ) `
                 -and ( !$min_seeders -or ( $min_seeders -and $line.seeders -ge $min_seeders ) )
         ) {
-            $lines[$release[$hash_column]] = $line | Select-Object tor_status, reg_time, topic_poster, tor_size_bytes, keeping_priority, seeder_last_seen, seeders, topic_title, section, topic_id, avg_seeders
+            $lines[$release[$hash_column]] = $line | Select-Object tor_status, reg_time, topic_poster, tor_size_bytes, keeping_priority, seeder_last_seen, seeders, topic_title, section, topic_id, avg_seeders, keeper_seeders
         }
     }
     Write-Log ( "По разделу $section получено раздач: $($lines.count)" ) # -skip_timestamp -nologfile
