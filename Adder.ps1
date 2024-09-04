@@ -10,7 +10,7 @@ if ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine 
     exit
 }
 
-$ProgressPreference = 'SilentlyContinue'
+# $ProgressPreference = 'SilentlyContinue'
 Write-Output 'Подгружаем настройки'
 
 $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
@@ -214,6 +214,8 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torr
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
+
+# $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
 
 $hash_to_id = @{}
 $id_to_info = @{}
@@ -460,7 +462,7 @@ if ( $new_torrents_keys ) {
                 # Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' из необновляемого раздела' )
                 continue
             }
-            if ( $kept -and $new.$new_tracker_data.topic_id -in $kept ) {
+            if ( $kept -and $new_tracker_data.topic_id -in $kept ) {
                 Write-Log "У раздачи $( $new_tracker_data.topic_id ) слишком много хранителей, пропускаем"
                 continue
             }
