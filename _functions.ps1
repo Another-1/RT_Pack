@@ -1109,7 +1109,12 @@ function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
             }
         }
         catch {
-            Write-Log "Ошибка $($error[0].Exception.Message)`nЖдём 10 секунд и пробуем ещё раз" -Red
+            if ( $error[0].Exception.Message -match 'time') {
+                Write-Log "Нет ответа...`nЖдём 10 секунд и пробуем ещё раз" -Red    
+            }
+            else {
+                Write-Log "Ошибка $($error[0].Exception.Message)`nЖдём 10 секунд и пробуем ещё раз" -Red
+            }
             Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
             If ( $retry_cnt -gt 10 ) { break }
         }
