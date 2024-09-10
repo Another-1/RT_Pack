@@ -472,6 +472,7 @@ function Initialize-Forum () {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url без прокси, напрямую" }
                 $answer = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck )
             }
+            if ( $request_details -eq 'Y' ) { Write-Log 'Ответ получен' }
             break
         }
         catch {
@@ -967,6 +968,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
             foreach ( $section in $sections ) {
                 $section_torrents = Get-RepSectionTorrents -section $section -ok_states $ok_states -call_from $call_from -avg_seeds:$avg_seeds.IsPresent -min_avg $min_avg -min_seeders $min_seeders -min_release_date $min_release_date
                 $section_torrents.keys | Where-Object { $null -eq $tracker_torrents[$_] } | ForEach-Object { $tracker_torrents[$_] = $section_torrents[$_] }
+                # Start-Sleep -Seconds 1
             }
             break
         }
@@ -988,13 +990,14 @@ function GetRepSectionKeepers( $section, $call_from ) {
     return $content
 }
 
-function GetRepSectionsKeepers( $sections, $call_from, $max_keepers ) {
+function GetRepKeptTorrents( $sections, $call_from, $max_keepers ) {
     foreach ( $section in $sections ) {
         $keepers = @{}
         $section_keepers = GetRepSectionKeepers( $section )
-        $section_keepers | Where-Object { -bnot ( ( $_[1] -band 0b10 ) ) } | ForEach-Object {
-            if ( !$keepers[$_[0]] ) { $keepers[$_[0]] = 0 }
-            $keepers[$_[0]]++
+        $section_keepers | Where-Object { -bnot ( $_[1] -band 0b10 ) } | ForEach-Object {
+            $id = $_[0].ToInt32($null)
+            if ( !$keepers[$id] ) { $keepers[$id] = 0 }
+            $keepers[$id]++
         }
     }
     if ( $null -ne $max_keepers ) { $kept_ids = $keepers.keys | Where-Object { $keepers[$_] -gt $max_keepers } }
@@ -1049,9 +1052,10 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
 }
 
 function Get-RepTopics( $call_from ) {
-    $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }
+    # $headers = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key )) }
     $url = "/krs/api/v1//subforum/report_topics"
-    return ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json -AsHashtable
+    # return ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json -AsHashtable
+    return ( Get-RepHTTP -url $url -call_from $call_from ) | ConvertFrom-Json -AsHashtable
 }
 function Get-ForumHTTP ( $url, $body, $headers, $call_from ) {
     return Get-HTTP -url "$( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.api_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_forum
@@ -1061,10 +1065,14 @@ function Get-ApiHTTP ( $url, $body, $headers, $call_from ) {
     return Get-HTTP -url "$( $settings.connection.api_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.api_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_api
 }
 
-function Get-RepHTTP ( $url, $body, $headers, $call_from ) {
-    if ( !$settings.connection.rep_auth ) { $settings.connection.rep_auth = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key )) } }
+function Get-RepHTTP ( $url, $body, $call_from ) {
+    $headers = @{}
+    # if ( !$settings.connection.rep_auth ) { $settings.connection.rep_auth = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key )) } }
+    $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
+    # $headers.'accept-encoding' = 'br'
 
-    return Get-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body $body -headers $settings.connection.rep_auth -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
+    # return Get-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body $body -headers $settings.connection.rep_auth -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
+    return Get-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
 }
 
 function Set-Proxy( $settings ) {
@@ -1084,15 +1092,20 @@ function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
             if ( $use_proxy -eq "Y" ) {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url используя прокси $($settings.connection.proxy.url )" }
                 if ( $settings.connection.proxy.credentials ) {
-                    return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)").Content
+                    $result = ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials -Body $body `
+                            -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -OperationTimeoutSeconds 20 ).Content
+                    return $result
                 }
                 else {
-                    return ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)").Content
+                    $result = ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -Body $body `
+                            -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -OperationTimeoutSeconds 20 ).Content
+                    return $result
                 }
             }
             else {
-                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url без прокси, напрямую" }
-                return ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" ).Content 
+                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url без прокси" }
+                $result = ( Invoke-WebRequest -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -OperationTimeoutSeconds 20 ).Content 
+                return $result
             }
         }
         catch {
