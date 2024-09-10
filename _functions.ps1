@@ -991,8 +991,8 @@ function GetRepSectionKeepers( $section, $call_from ) {
 }
 
 function GetRepKeptTorrents( $sections, $call_from, $max_keepers ) {
+    $keepers = @{}
     foreach ( $section in $sections ) {
-        $keepers = @{}
         $section_keepers = GetRepSectionKeepers( $section )
         $section_keepers | Where-Object { -bnot ( $_[1] -band 0b10 ) } | ForEach-Object {
             $id = $_[0].ToInt32($null)
