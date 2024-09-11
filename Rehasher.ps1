@@ -145,8 +145,10 @@ if ( $mix_clients -eq 'Y') {
         for ( $j = 0; $j -lt $max_qty ; $j++) {
             foreach ( $k in 1..$i ) {
                 try {
-                    $full_resorted += $per_client[$k][$j]
-                    $done ++ 
+                    if ( $per_client[$k][$j] ) {
+                        $full_resorted += $per_client[$k][$j]
+                        $done ++ 
+                    }
                 }
                 catch {}
                 if ( $done -ge $max_rehash_qty ) { break }
