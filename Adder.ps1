@@ -303,8 +303,8 @@ if ( $max_keepers -and !$kept ) {
     $kept = GetRepKeptTorrents -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -max_keepers $max_keepers
 }
 
-Write-Log 'Отфильтровываем раздачи, у которых слишком много хранителей'
 if ( $kept ) {
+    Write-Log 'Отфильтровываем раздачи, у которых слишком много хранителей'
     $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].topic_id -notin $kept }
 }
 Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
