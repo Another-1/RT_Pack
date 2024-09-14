@@ -77,9 +77,9 @@ Set-Proxy( $settings )
 if ( !$tracker_torrents) {
     Write-Log 'Автономный запуск, надо сходить на трекер за актуальными сидами и ID'
     $tracker_torrents = Get-RepTorrents -sections $settings.sections.keys -call_from 'Controller'
-    Get-ClientApiVersions
 }
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
+    Get-ClientApiVersions $settings.clients
     $clients_torrents = Get-ClientsTorrents 'Controller'
     $hash_to_id = @{}
     $id_to_info = @{}
@@ -102,6 +102,7 @@ if ( !$api_seeding -or $debug -eq $false ) {
             client           = $_.client_key
             state            = $_.state
             seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
+            save_path       = $_.save_path
         }
         if ( $_.state -eq $settings.clients[$_.client_key].stopped_state ) {
             $paused_sort.Add( [PSCustomObject]@{ hash = $_.infohash_v1; client = $_.client_key; seeder_last_seen = $states[$_.infohash_v1].seeder_last_seen } ) | Out-Null
@@ -127,8 +128,10 @@ foreach ( $client_key in $settings.clients.keys ) {
                     $started += $start_keys.count
                     $start_keys = @()
                 }
-                $start_keys += $_
-                $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
+                if ( -not( $busy_disks -and $states[$_].save_path[0] -in $busy_disks[$client_key] )) {
+                    $start_keys += $_
+                    $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
+                }
             }
             elseif ( ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced -eq 'Y' )) `
                     -and $tracker_torrents[$_].seeders -gt ( $settings.sections[$tracker_torrents[$_].section].control_peers ) `

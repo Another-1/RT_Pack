@@ -676,92 +676,136 @@ function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
     Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
 }
 
+function Add-TGMessage ( $tg_data ) {
+    if ( $tg_data.message.Length -gt 3500 ) {
+        $tg_data.messages += $message
+        $tg_data.message = ''
+    }
+    $tg_data.message += $tg_data.line
+}
+
 function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_id, $mess_sender ) {
+    $tg_data = @{}
+    $tg_data.messages = [System.Collections.ArrayList]::new()
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 -or $broken.Count -gt 0 ) {
         if ( $brief_reports -ne 'Y') {
-            $message = ''
+            $tg_data.message = ''
             $first = $true
             foreach ( $client in $refreshed.Keys ) {
-                if ( !$first ) { $message += "`n" }
+                if ( !$first ) { $tg_data.message += "`n" }
                 $first = $false
-                $message += "Обновлены в клиенте <b>$client</b>`n"
+                $tg_data.$line = "Обновлены в клиенте <b>$client</b>`n"
+                Add-TGMessage $tg_data
                 $refreshed[$client].keys | Sort-Object | ForEach-Object {
-                    $refreshed[$client][$_] | ForEach-Object { $message += ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" ) }
-                }
-            }
-
-            if ( $message -ne '' ) { $message += "`n`n" }
-
-            $first = $true
-            foreach ( $client in $added.Keys ) {
-                if ( !$first ) { $message += "`n" }
-                $first = $false
-                $message += "Добавлены в клиент <b>$client</b>`n"
-                $added[$client].keys | Sort-Object | ForEach-Object {
-                    $added[$client][$_] | ForEach-Object { $message += ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + "`n" + $_.name + ' (' + ( to_kmg $_.size 1 ) + ')' + "`n`n") }
-                }
-            }
-
-            if ( $message -ne '' -and $obsolete.count -gt 0 ) { $message += "`n" }
-            $first = $true
-            foreach ( $client in $obsolete.Keys ) {
-                if ( !$first ) { $message += "`n" }
-                $first = $false
-                $message += "Лишние в клиенте $($client.name) :`n"
-                $obsolete[$client] | ForEach-Object {
-                    $message += "https://rutracker.org/forum/viewtopic.php?t=$_`n"
-                    if ( $id_to_info[$_].name ) {
-                        $message += ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
+                    $refreshed[$client][$_] | ForEach-Object {
+                        # Add-TGMessage ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" )
+                        $tg_data.line + ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" )
+                        Add-TGMessage $tg_data
                     }
                 }
             }
 
-            if ( $message -ne '' -and $broken.count -gt 0 ) { $message += "`n" }
+            if ( $tg_data.message -ne '' ) { $tg_data.message += "`n`n" }
+            # if ( $message -ne '' ) { Add-TGMessage $messages $message "`n`n" }
+
+            $first = $true
+            foreach ( $client in $added.Keys ) {
+                if ( !$first ) { $tg_data.message += "`n" }
+                $first = $false
+                $tg_data.line = "Добавлены в клиент <b>$client</b>`n"
+                Add-TGMessage $tg_data
+                # Add-TGMessage "Добавлены в клиент <b>$client</b>`n"
+                $added[$client].keys | Sort-Object | ForEach-Object {
+                    $added[$client][$_] | ForEach-Object {
+                        $tg_data.line = ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + "`n" + $_.name + ' (' + ( to_kmg $_.size 1 ) + ')' + "`n`n")
+                        Add-TGMessage $tg_data
+                        # Add-TGMessage ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + "`n" + $_.name + ' (' + ( to_kmg $_.size 1 ) + ')' + "`n`n" )
+                    }
+                }
+            }
+
+            if ( $tg_data.message -ne '' -and $obsolete.count -gt 0 ) { $tg_data.message += "`n" }
+            $first = $true
+            foreach ( $client in $obsolete.Keys ) {
+                if ( !$first ) { $tg_data.message += "`n" }
+                $first = $false
+                $tg_data.line = "Лишние в клиенте $($client.name) :`n"
+                Add-TGMessage $tg_data
+                # Add-TGMessage "Лишние в клиенте $($client.name) :`n"
+                $obsolete[$client] | ForEach-Object {
+                    $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$_`n"
+                    Add-TGMessage $tg_data
+                    # Add-TGMessage "https://rutracker.org/forum/viewtopic.php?t=$_`n"
+                    if ( $id_to_info[$_].name ) {
+                        $tg_data.line = ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
+                        Add-TGMessage $tg_data
+                        # Add-TGMessage ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
+                    }
+                }
+            }
+
+            if ( $tg_data.message -ne '' -and $broken.count -gt 0 ) { $tg_data.message += "`n" }
             $first = $true
             foreach ( $client in $broken.Keys ) {
-                if ( !$first ) { $message += "`n" }
+                if ( !$first ) { $tg_data.message += "`n" }
                 $first = $false
-                $message += "Проблемные в клиенте $($client.name) :`n"
+                $tg_data.message += "Проблемные в клиенте $($client.name) :`n"
                 $broken[$client] | ForEach-Object {
-                    $message += "https://rutracker.org/forum/viewtopic.php?t=$_`n"
+                    $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$_`n"
+                    Add-TGMessage $tg_data
+                    # Add-TGMessage "https://rutracker.org/forum/viewtopic.php?t=$_`n"
                     if ( $id_to_info[$_].name ) {
-                        $message += ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
+                        # Add-TGMessage ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
+                        $tg_data.line = $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n"
+                        Add-TGMessage $tg_data
                     }
                 }
             }
         }
         else {
-            $message = ''
+            $tg_data.message = ''
             $keys = (  $refreshed.keys + $added.keys + $obsolete.Keys ) | Sort-Object -Unique
             [double]$added_b = 0
             [double]$refreshed_b = 0
             foreach ( $client in $keys ) {
-                if ( $message -ne '' ) { $message += "`n" }
-                $message += "<u>Клиент <b>$client</b></u>`n"
+                if ( $tg_data.message -ne '' ) { $tg_data.message += "`n" }
+                # Add-TGMessage "<u>Клиент <b>$client</b></u>`n"
+                $tg_data.line = "<u>Клиент <b>$client</b></u>`n"
+                Add-TGMessage $tg_data
                 if ( $refreshed -and $refreshed[$client] ) {
                     $stat = ( $refreshed[$client].keys | ForEach-Object { $refreshed[$client][$_] }) | Measure-Object -Property new_size -Sum
                     $stat_was = ( $refreshed[$client].keys | ForEach-Object { $refreshed[$client][$_] }) | Measure-Object -Property old_size -Sum
-                    $message += "Обновлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
+                    $tg_data.line = "Обновлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
+                    Add-TGMessage $tg_data
+                    # Add-TGMessage "Обновлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
                     $refreshed_b += ( $stat.Sum - $stat_was.Sum )
                 }
                 if ( $added -and $added[$client] ) {
                     $stat = ( $added[$client].keys | ForEach-Object { $added[$client][$_] }) | Measure-Object -Property size -Sum
-                    $message += "Добавлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
+                    # Add-TGMessage "Добавлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
+                    $tg_data.line = "Добавлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
+                    Add-TGMessage $tg_data
                     $added_b += $stat.Sum
                 }
                 if ( $obsolete -and $obsolete[$client] ) {
-                    $message += ( "Лишних: " + $obsolete[$client].count + "`n" )
+                    $tg_data.line = "Лишних: " + $obsolete[$client].count + "`n"
+                    Add-TGMessage $tg_data
                 }
             }
             $was = ( $clients_torrents | Measure-Object -Property size -Sum ).Sum
             $now = $was + $refreshed_b + $added_b
-            $message += "`n<u><b>Итого</b></u>`nБыло: $(to_kmg $was 3 )`nСтало: $( to_kmg $now 3 )"
+            # Add-TGMessage "`n<u><b>Итого</b></u>`nБыло: $(to_kmg $was 3 )`nСтало: $( to_kmg $now 3 )"
+            $tg_data.line = "`n<u><b>Итого</b></u>`nБыло: $(to_kmg $was 3 )`nСтало: $( to_kmg $now 3 )"
+            Add-TGMessage $tg_data
         }
-        Send-TGMessage -message $message -token $token -chat_id $chat_id -mess_sender $mess_sender
+        # Send-TGMessage -message $message -token $token -chat_id $chat_id -mess_sender $mess_sender
     }
     else {
-        $message = 'Ничего делать не понадобилось'
-        Send-TGMessage -message $message -token $token -chat_id $chat_id -mess_sender $mess_sender
+        $tg_data.message = 'Ничего делать не понадобилось'
+    }
+    $tg_data.messages += $tg_data.message
+    $tg_data.messages | ForEach-Object {
+        Send-TGMessage -message $_ -token $token -chat_id $chat_id -mess_sender $mess_sender
     }
 }
 
