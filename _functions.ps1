@@ -312,13 +312,13 @@ function Initialize-Client ( $client, $mess_sender = '', [switch]$verbose, [swit
                 Write-Log ( 'Клиент вернул ошибку авторизации: ' + $result.Content ) -Red
                 exit
             }
-            Write-Log 'Успешная авторизация'
+            if ( $verbose ) { Write-Log 'Успешная авторизация' }
             $client.sid = $sid
         }
         catch {
             Write-Log ( '[client] Не удалось авторизоваться в клиенте, прерываем. Ошибка: {0}.' -f $Error[0] ) -Red
             if ( $tg_token -ne '' ) {
-                Send-TGMessage ( 'Нет связи с клиентом ' + $client.Name + '. Процесс остановлен.' ) $tg_token $tg_chat $mess_sender
+                Send-TGMessage "Нет связи с клиентом ' + $( $client.Name ) + ' при вызыве из $( (Get-PSCallStack)[1].Command ). Процесс остановлен." $tg_token $tg_chat $mess_sender
             }
             Exit
         }
@@ -427,7 +427,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
             }
             catch {
                 $i++
-                Initialize-Client -client $client -mess_sender $mess_sender -force
+                Initialize-Client -client $client -mess_sender $mess_sender -force -verbose
                 Start-Sleep -Seconds 1
             }
         }
@@ -440,7 +440,7 @@ Function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
     $param = @{ json = ( @{ $param = $value } | ConvertTo-Json -Compress ) }
     try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
     catch {
-        Initialize-Client $client -mess_sender $mess_sender
+        Initialize-Client -client $client -mess_sender $mess_sender -verbose
         Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null 
     }
 }
@@ -816,7 +816,7 @@ function Start-Torrents( $hashes, $client, $mess_sender ) {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
     catch {
-        Initialize-Client -client $client -force -mess_sender $mess_sender
+        Initialize-Client -client $client -force -mess_sender $mess_sender -verbose
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
 }
@@ -828,7 +828,7 @@ function Stop-Torrents( $hashes, $client, $mess_sender ) {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
     catch {
-        Initialize-Client -client $client -force -mess_sender $mess_sender
+        Initialize-Client -client $client -force -mess_sender $mess_sender -verbose
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
 
@@ -911,7 +911,7 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender 
         Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
     }
     catch {
-        Initialize-Client $client -force -mess_sender $mess_sender
+        Initialize-Client -client $client -force -mess_sender $mess_sender
     }
 }
 
@@ -1279,7 +1279,7 @@ function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false, $m
     }
     catch {
         $client.sid = $null
-        Initialize-Client $client -mess_sender $mess_sender -force
+        Initialize-Client -client $client -mess_sender $mess_sender -force -verbose
         Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
     }
 }
@@ -1288,7 +1288,7 @@ function Get-ClientApiVersions ( $clients, $mess_sender ) {
     Write-Log 'Получаем версии API клиентов для правильной работы с ними'
     foreach ( $client_key in ( $clients.keys | Where-Object { $null -eq $clients[$_].api_verion } ) ) {
         $client = $clients[$client_key]
-        Initialize-Client $client -mess_sender $mess_sender
+        Initialize-Client $client -mess_sender $mess_sender -verbose
         $client.api_version = [version]( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.port + '/api/v2/app/webapiVersion' ) -WebSession $client.sid ).content
         Write-Log "У клиента $( $client.name ) версия API $($client.api_version.ToString())"
         if ( $client.api_version -lt [version]'2.11.0' ) {

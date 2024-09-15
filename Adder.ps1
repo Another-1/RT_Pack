@@ -202,7 +202,6 @@ if ( $settings.adder.get_blacklist -eq 'N' -and $standalone -ne $true ) {
     Write-Log "В чёрных списках $spell"
 }
 
-Write-Log 'Получаем версии API клиентов'
 Get-ClientApiVersions $settings.clients -mess_sender 'Adder'
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
