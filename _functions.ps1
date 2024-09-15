@@ -318,7 +318,7 @@ function Initialize-Client ( $client, $mess_sender = '', [switch]$verbose, [swit
         catch {
             Write-Log ( '[client] Не удалось авторизоваться в клиенте, прерываем. Ошибка: {0}.' -f $Error[0] ) -Red
             if ( $tg_token -ne '' ) {
-                Send-TGMessage "Нет связи с клиентом ' + $( $client.Name ) + ' при вызыве из $( (Get-PSCallStack)[10..1].Command | Where-Object { $null -ne $_ } | Join-String -Separator ' -> ' ). Процесс остановлен." $tg_token $tg_chat $mess_sender
+                Send-TGMessage "Нет связи с клиентом $( $client.Name ) при вызыве из $( (Get-PSCallStack)[(( Get-PSCallStack ).count - 2)..1].Command | Where-Object { $null -ne $_ } | Join-String -Separator ' → ' ). Процесс остановлен." $tg_token $tg_chat $mess_sender
             }
             Exit
         }
