@@ -139,7 +139,7 @@ foreach ( $client_key in $settings.clients.keys ) {
             ) {
 
                 if ( $stop_keys.count -eq $batch_size ) {
-                    Stop-Torrents $stop_keys $settings.clients[$client_key]
+                    Stop-Torrents $stop_keys $settings.clients[$client_key] -mess_sender 'Controller'
                     $stopped += $stop_keys.count
                     $stop_keys = @()
                 }
@@ -149,11 +149,11 @@ foreach ( $client_key in $settings.clients.keys ) {
         catch { } # на случай поглощённых раздач.
     }
     if ( $start_keys.count -gt 0) {
-        Start-Torrents $start_keys $settings.clients[$client_key]
+        Start-Torrents -hashes $start_keys -client $settings.clients[$client_key] -mess_sender 'Controller'
         $started += $start_keys.count
     }
     if ( $stop_keys.count -gt 0) {
-        Stop-Torrents $stop_keys $settings.clients[$client_key]
+        Stop-Torrents -hashes $stop_keys -client $settings.clients[$client_key] -mess_sender 'Controller'
         $stopped += $stop_keys.count
     }
 }

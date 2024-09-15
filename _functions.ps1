@@ -427,7 +427,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
             }
             catch {
                 $i++
-                Initialize-Client $client $mress_sender -force
+                Initialize-Client -client $client -mess_sender $mess_sender -force
                 Start-Sleep -Seconds 1
             }
         }
@@ -435,12 +435,12 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
     Remove-Item $File
 }
 
-Function Set-ClientSetting ( $client, $param, $value ) {
+Function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
     $url = $client.ip + ':' + $client.Port + '/api/v2/app/setPreferences'
     $param = @{ json = ( @{ $param = $value } | ConvertTo-Json -Compress ) }
     try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
     catch {
-        Initialize-Client $client
+        Initialize-Client $client -mess_sender $mess_sender
         Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null 
     }
 }
@@ -809,26 +809,26 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
     }
 }
 
-function Start-Torrents( $hashes, $client) {
+function Start-Torrents( $hashes, $client, $mess_sender ) {
     $Params = @{ hashes = ( $hashes -join '|' ) }
     $url = $client.IP + ':' + $client.port + '/api/v2/torrents/' + $client.start_command
     try {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
     catch {
-        Initialize-Client -client $client -force
+        Initialize-Client -client $client -force -mess_sender $mess_sender
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
 }
 
-function Stop-Torrents( $hashes, $client) {
+function Stop-Torrents( $hashes, $client, $mess_sender ) {
     $Params = @{ hashes = ( $hashes -join '|' ) }
     $url = $client.IP + ':' + $client.port + '/api/v2/torrents/' + $client.stop_command
     try {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
     catch {
-        Initialize-Client -client $client -force
+        Initialize-Client -client $client -force -mess_sender $mess_sender
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
 
@@ -901,7 +901,7 @@ Function DeGZip-File {
     $inp.Close()
 }
 
-function Set-Comment ( $client, $torrent, $label, [switch]$silent ) {
+function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender ) {
     if (!$silent) {
         Write-Log ( "Метим раздачу меткой '$label'" )
     }
@@ -911,7 +911,7 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent ) {
         Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
     }
     catch {
-        Initialize-Client $client -force
+        Initialize-Client $client -force -mess_sender $mess_sender
     }
 }
 
@@ -924,8 +924,8 @@ function Remove-Comment ( $client, $torrent, $label, [switch]$silent ) {
     Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
 }
 
-function Switch-Filtering ( $client, $enable = $true ) {
-    Set-ClientSetting $client 'ip_filter_enabled' $enable
+function Switch-Filtering ( $client, $enable = $true, $mess_sender ) {
+    Set-ClientSetting $client 'ip_filter_enabled' $enable -mess_sender $mess_sender
 }
 
 function Get-DB_ColumnNames ($conn) {
@@ -1268,7 +1268,7 @@ function Get-String ( [switch]$obligatory, $prompt ) {
     if ( $choice ) { return $choice } else { return '' }
 }
 
-function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false) {
+function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false, $mess_sender ) {
     if ( $verbose ) { Write-Host ( 'Перемещаем ' + $torrent.name + ' в ' + $new_path) }
     $data = @{
         hashes   = $torrent.hash
@@ -1279,16 +1279,16 @@ function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false) {
     }
     catch {
         $client.sid = $null
-        Initialize-Client $client
+        Initialize-Client $client -mess_sender $mess_sender -force
         Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
     }
 }
 
-function Get-ClientApiVersions ( $clients ) {
+function Get-ClientApiVersions ( $clients, $mess_sender ) {
     Write-Log 'Получаем версии API клиентов для правильной работы с ними'
     foreach ( $client_key in ( $clients.keys | Where-Object { $null -eq $clients[$_].api_verion } ) ) {
         $client = $clients[$client_key]
-        Initialize-Client $client
+        Initialize-Client $client -mess_sender $mess_sender
         $client.api_version = [version]( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.port + '/api/v2/app/webapiVersion' ) -WebSession $client.sid ).content
         Write-Log "У клиента $( $client.name ) версия API $($client.api_version.ToString())"
         if ( $client.api_version -lt [version]'2.11.0' ) {

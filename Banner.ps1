@@ -36,9 +36,9 @@ try {
         foreach ( $client_key in $clients.Keys ) {
             Initialize-Client $clients[$client_key]
             Write-Log ( 'Обновляем фильтр в клиенте ' + $clients[$client_key].Name )
-            Switch-Filtering $clients[$client_key] $false
+            Switch-Filtering -client $clients[$client_key] -enable $false -mess_sender 'Banner'
             Start-Sleep -Seconds 1
-            Switch-Filtering $clients[$client_key] $true
+            Switch-Filtering $clients[$client_key] -enable $true -mess_sender 'Banner'
             Write-Log 'Готово'
         }
         if ( $tg_token -and $tg_token -ne '' ) {

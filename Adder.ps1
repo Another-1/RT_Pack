@@ -202,7 +202,8 @@ if ( $settings.adder.get_blacklist -eq 'N' -and $standalone -ne $true ) {
     Write-Log "В чёрных списках $spell"
 }
 
-Get-ClientApiVersions $settings.clients
+Write-Log 'Получаем версии API клиентов'
+Get-ClientApiVersions $settings.clients -mess_sender 'Adder'
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
     if ( !$settings.adder.avg_seeds -and $standalone -ne $true ) {
@@ -512,7 +513,7 @@ if ( $new_torrents_keys ) {
                     Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы раздача "подхватилась"'
                     Start-Sleep -Seconds 2
                     $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                    Set-Comment -client $client -torrent $client_torrent -label $mask_label
+                    Set-Comment -client $client -torrent $client_torrent -label $mask_label -mess_sender 'Adder'
                 }
                 elseif ( !$mask_label ) { Write-Log 'Метка масок не задана, простановка метки маски не требуется' }
                 elseif ( $mask_passed -eq $false ) { Write-Log 'Маска не пройдена, но раздача добавлена. Такого не должно было произойти. Где-то косяк' }
