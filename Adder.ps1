@@ -531,8 +531,8 @@ if ( $new_torrents_keys ) {
     }
 } # по наличию новых раздач.
 
-Write-Log "Добавлено: $(Get-Spell -qty $added.Count -spelling 1 -entity 'torrents' )"
-Write-Log "Обновлено: $(Get-Spell -qty $refreshed.Count -entity 'torrents' )"
+Write-Log "Добавлено: $(Get-Spell -qty ( ( $added.keys | ForEach-Object { $added[$_] } ).values.id.count ) -spelling 1 -entity 'torrents' )"
+Write-Log "Обновлено: $(Get-Spell -qty ( ( $refreshed.keys | ForEach-Object { $added[$_] } ).values.id.count ) -spelling 1 -entity 'torrents' )"
 
 Remove-Variable -Name obsolete -ErrorAction SilentlyContinue
 if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report_obsolete -eq 'Y' ) {

@@ -678,7 +678,7 @@ function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
 
 function Add-TGMessage ( $tg_data ) {
     if ( $tg_data.message.Length -gt 3500 ) {
-        $tg_data.messages += $message
+        $tg_data.messages += $tg_data.message.Clone()
         $tg_data.message = ''
     }
     $tg_data.message += $tg_data.line
@@ -804,8 +804,10 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
         $tg_data.message = 'Ничего делать не понадобилось'
     }
     $tg_data.messages += $tg_data.message
+    $first_post = $true
     $tg_data.messages | ForEach-Object {
-        Send-TGMessage -message $_ -token $token -chat_id $chat_id -mess_sender $mess_sender
+        Send-TGMessage -message $_ -token $token -chat_id $chat_id -mess_sender ( $first_post -eq $true ? $mess_sender : '' )
+        $first_post = $false
     }
 }
 
