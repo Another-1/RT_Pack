@@ -309,6 +309,8 @@ if ( $kept ) {
 }
 Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 
+$new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $tracker_torrents[$_].tor_size_bytes }
+
 $added = @{}
 $refreshed = @{}
 
