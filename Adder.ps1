@@ -309,14 +309,12 @@ if ( $kept ) {
 }
 Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 
-$new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $tracker_torrents[$_].tor_size_bytes }
-
 $added = @{}
 $refreshed = @{}
 
 if ( $new_torrents_keys ) {
     Write-Log 'Сортируем новые раздачи по клиентам'
-    $new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $settings.sections[$tracker_torrents[$_].section].client }
+    $new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $tracker_torrents[$_].tor_size_bytes } | Sort-Object -Property { $settings.sections[$tracker_torrents[$_].section].client } -Stable
     $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
     foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $settings.sections[$tracker_torrents[$_].section] -and ( !$never_obsolete -or $tracker_torrents[$_].section -notin $never_obsolete_array ) } ) {
         # Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
