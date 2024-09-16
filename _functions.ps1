@@ -681,7 +681,7 @@ function Add-TGMessage ( $tg_data ) {
         $tg_data.messages += $tg_data.message.Clone() 
         $tg_data.message = ''
     }
-    $tg_data.message += $tg_data.line.Clone()
+    $tg_data.message += $tg_data.line
 }
 
 function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_id, $mess_sender ) {
