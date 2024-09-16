@@ -699,7 +699,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
                 $refreshed[$client].keys | Sort-Object | ForEach-Object {
                     $refreshed[$client][$_] | ForEach-Object {
                         # Add-TGMessage ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" )
-                        $tg_data.line + ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" )
+                        $tg_data.line = ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" )
                         Add-TGMessage $tg_data
                     }
                 }
