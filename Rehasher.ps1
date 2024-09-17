@@ -67,7 +67,7 @@ $min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay 
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     Get-Clients
-    Get-ClientApiVersions $settings.clients
+    Get-ClientApiVersions $settings.clients -mess_sender 'Rehasher' -noIDs -completed
     $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
 }
 
