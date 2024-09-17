@@ -694,7 +694,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
             foreach ( $client in $refreshed.Keys ) {
                 if ( !$first ) { $tg_data.message += "`n" }
                 $first = $false
-                $tg_data.$line = "Обновлены в клиенте <b>$client</b>`n"
+                $tg_data.line = "Обновлены в клиенте <b>$client</b>`n"
                 Add-TGMessage $tg_data
                 $refreshed[$client].keys | Sort-Object | ForEach-Object {
                     $refreshed[$client][$_] | ForEach-Object {
