@@ -18,7 +18,7 @@ else {
         $sections = Get-IniSections
         Get-IniSectionDetails $settings $sections
     }
-    if ( $control_override -and !$settings.controller.$control_override ) { $settings.controller.$control_override = $control_override }
+    if ( $control_override -and !$settings.controller.control_override ) { $settings.controller.control_override = $control_override }
     if ( !$settings.connection ) { Set-ConnectDetails( $settings ) }
     $standalone = $false
 }
@@ -59,8 +59,8 @@ Write-Log 'Строим таблицы'
 $ok_to_start = (Get-Date).ToUniversalTime().AddDays( 0 - $settings.controller.min_stop_to_start )
 if ( $settings.controller.control_override -and (Get-Date).hour -in $settings.controller.control_override.hours ) { 
     foreach ( $section in @($settings.sections.Keys) ) {
-        if ( $settings.controller.control_override.client[$settings.clients[$settings.sections[$section].client]] ) {
-            $settings.sections[$section].control_peers = $settings.controller.control_override.client[$clients[$settings.sections[$section].client]]
+        if ( $settings.controller.control_override.client[$settings.sections[$section].client] ) {
+            $settings.sections[$section].control_peers = $settings.controller.control_override.client[$settings.sections[$section].client]
         }
         elseif ( $settings.controller.control_override.global ) {
             $settings.sections[$section].control_peers = $settings.controller.control_override.global
@@ -132,6 +132,7 @@ foreach ( $client_key in $settings.clients.keys ) {
                     $start_keys += $_
                     $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
                 }
+                else { write-Log "Раздача $_ на слишком занятом сейчас диске" }
             }
             elseif ( ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced -eq 'Y' )) `
                     -and $tracker_torrents[$_].seeders -gt ( $settings.sections[$tracker_torrents[$_].section].control_peers ) `
