@@ -16,11 +16,11 @@ else {
     }
     catch {
         Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' )
-        $settings = [ordered]@{}
-        $settings.interface = @{}
-        $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
-        $standalone = $false
     }
+    $settings = [ordered]@{}
+    $settings.interface = @{}
+    $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
+    $standalone = $false
 }
 
 if ( $use_timestamp -eq 'Y' ) { $use_timestamp = 'N' }
