@@ -1,3 +1,5 @@
+param ([switch]$verbose )
+
 Write-Host 'Проверяем версию Powershell...'
 If ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
     Write-Host 'У вас слишком древний Powershell, обновитесь с https://github.com/PowerShell/PowerShell#get-powershell ' -ForegroundColor Red
@@ -90,7 +92,7 @@ if ( $client.sid ) {
                 Write-Log 'Достигнут максимальный объём'
                 break
             }
-            Set-SaveLocation $client $torrent $new_path
+            Set-SaveLocation $client $torrent $new_path -verbose:$verbose.IsPresent
             Write-Progress -Activity 'Moving' -Status $torrent.name -PercentComplete ( $i * 100 / $torrents_list.Count )
             Start-Sleep -Milliseconds 100
         }
