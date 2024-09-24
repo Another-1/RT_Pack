@@ -27,10 +27,10 @@ else {
     }
     catch {
         Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' )
-        $settings = [ordered]@{}
-        $settings.interface = @{}
-        $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
     }
+    $settings = [ordered]@{}
+    $settings.interface = @{}
+    $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
 }
 
 $str = 'Подгружаем функции'
