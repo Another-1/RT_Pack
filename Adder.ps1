@@ -23,12 +23,14 @@ if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
 else {
     try {
         . ( Join-Path $PSScriptRoot _settings.ps1 )
+        $standalone = $false
+    }
+    catch {
+        Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' )
         $settings = [ordered]@{}
         $settings.interface = @{}
         $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
-        $standalone = $false
     }
-    catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
 }
 
 $str = 'Подгружаем функции'
@@ -49,7 +51,7 @@ if ( !$debug ) {
 
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
 Write-Log 'Проверяем наличие всех нужных настроек'
-if ( !$settings.telegram) { $settings.telegram = [ordered]@{} }
+if ( !$settings.telegram ) { $settings.telegram = [ordered]@{} }
 $json_section = ( $standalone -eq $true ? 'telegram' : '' )
 $settings.telegram.tg_token = Test-Setting 'tg_token' -json_section $json_section
 if ( $tg_token -ne '' -or $settings.telegram.tg_token -ne '' ) {
@@ -101,10 +103,10 @@ if ( $update_stats -eq 'Y' -and $standalone -ne $true ) {
 }
 
 if ( $update_trigger -and $psversionTable.Platform.ToLower() -like '*win*') {
-     $database_path = Join-Path $PSScriptRoot 'updates.db'
-     Write-Log 'Подключаемся к БД обновлений раздач'
-     $up_conn = Open-Database $database_path
-     Invoke-SqliteQuery -Query 'CREATE TABLE IF NOT EXISTS updates (id INT PRIMARY KEY NOT NULL, cnt INT)' -SQLiteConnection $up_conn
+    $database_path = Join-Path $PSScriptRoot 'updates.db'
+    Write-Log 'Подключаемся к БД обновлений раздач'
+    $up_conn = Open-Database $database_path
+    Invoke-SqliteQuery -Query 'CREATE TABLE IF NOT EXISTS updates (id INT PRIMARY KEY NOT NULL, cnt INT)' -SQLiteConnection $up_conn
 }
 
 if ( !$settings.connection -and $standlone -ne $true ) {
@@ -538,7 +540,7 @@ Remove-Variable -Name obsolete -ErrorAction SilentlyContinue
 if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report_obsolete -eq 'Y' ) {
     Write-Log 'Ищем неактуальные раздачи.'
     $obsolete_keys = @($hash_to_id.Keys | Where-Object { !$tracker_torrents[$_] } | Where-Object { $refreshed_ids -notcontains $hash_to_id[$_] } | `
-        Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] } )
+            Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] } )
     if ( $skip_obsolete ) {
         # $obsolete_keys = $obsolete_keys | Where-Object { $settings.clients[$id_to_info[$hash_to_id[$_]].client_key] -notin $skip_obsolete }
         $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -notin $skip_obsolete }
@@ -592,13 +594,13 @@ if ( $report_stalled -eq 'Y' ) {
     $month_ago = ( Get-Date -UFormat %s ).ToInt32($null) - 30 * 24 * 60 * 60
     $stalleds = @()
     $clients_torrents | Where-Object { $_.state -in ( 'stalledDL', 'forcedDL' ) -and $_.added_on -le $month_ago } | ForEach-Object {
-        $stalleds +=  @{ topic_id = $_.topic_id; hash = $_.infohash_v1; client_key = $_.client_key; trackers = $null }
+        $stalleds += @{ topic_id = $_.topic_id; hash = $_.infohash_v1; client_key = $_.client_key; trackers = $null }
     }
     Write-Log ( 'Найдено ' + $stalleds.count + ' некачашек' )
     foreach ( $stalled in $stalleds ) {
         $params = @{ hash = $stalled.hash }
         $stalled.trackers = ( Invoke-WebRequest -Uri ( $settings.clients[$stalled.client_key].IP + ':' + $settings.clients[$stalled.client_key].port + '/api/v2/torrents/trackers' ) -WebSession $settings.clients[$stalled.client_key].sid -Body $params -TimeoutSec 120 ).Content | `
-            ConvertFrom-Json |  Where-Object { $_.status -ne 0 }
+            ConvertFrom-Json | Where-Object { $_.status -ne 0 }
     }
 
     Write-Log 'Отсеиваем раздачи с ошибкой трекера'

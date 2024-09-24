@@ -54,7 +54,7 @@ if ( $client.sid ) {
     $i = 0
     $sum_size = 0
     $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" } 
-    if ( $max_size -eq -1 * 1Gb ) {
+    # if ( $max_size -eq -1 * 1Gb ) {
         Write-Log 'Сортируем по полезности и подразделу'
         # if ( $client.api_version -lt [version]'2.11.0' ) {
             $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
@@ -62,11 +62,11 @@ if ( $client.sid ) {
         # else {
         #     $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.popularity } -Descending -Stable
         # }
-    }
-    else {
-        Write-Log 'Сортируем по размеру'
-        $torrents_list = $torrents_list | Sort-Object -Property size
-    }
+    # }
+    # else {
+    #     Write-Log 'Сортируем по размеру'
+    #     $torrents_list = $torrents_list | Sort-Object -Property size
+    # }
 
     if ( $category -and $category -ne '' ) {
         $torrents_list = $torrents_list | Where-Object { $_.category -eq "${category}" }
