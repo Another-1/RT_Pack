@@ -13,12 +13,14 @@ if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
 else {
     try {
         . ( Join-Path $PSScriptRoot _settings.ps1 )
+    }
+    catch {
+        Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' )
         $settings = [ordered]@{}
         $settings.interface = @{}
         $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
         $standalone = $false
     }
-    catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
 }
 
 if ( $use_timestamp -eq 'Y' ) { $use_timestamp = 'N' }
@@ -37,6 +39,7 @@ if ( -not ( [bool](Get-InstalledModule -Name PsIni -ErrorAction SilentlyContinue
     Install-Module -Name PsIni -Scope CurrentUser -Force
 }
 
+$tlo_path = Test-Setting 'tlo_path' -required
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 $ini_data = Get-IniContent $ini_path
 
@@ -55,13 +58,13 @@ if ( $client.sid ) {
     $sum_size = 0
     $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" } 
     # if ( $max_size -eq -1 * 1Gb ) {
-        Write-Log 'Сортируем по полезности и подразделу'
-        # if ( $client.api_version -lt [version]'2.11.0' ) {
-            $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
-        # }
-        # else {
-        #     $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.popularity } -Descending -Stable
-        # }
+    Write-Log 'Сортируем по полезности и подразделу'
+    # if ( $client.api_version -lt [version]'2.11.0' ) {
+    $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
+    # }
+    # else {
+    #     $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.popularity } -Descending -Stable
+    # }
     # }
     # else {
     #     Write-Log 'Сортируем по размеру'

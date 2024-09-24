@@ -23,7 +23,6 @@ if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
 else {
     try {
         . ( Join-Path $PSScriptRoot _settings.ps1 )
-        $standalone = $false
     }
     catch {
         Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' )
@@ -31,6 +30,7 @@ else {
     $settings = [ordered]@{}
     $settings.interface = @{}
     $settings.interface.use_timestamp = ( $use_timestamp -eq 'Y' ? 'Y' : 'N' )
+    $standalone = $false
 }
 
 $str = 'Подгружаем функции'
