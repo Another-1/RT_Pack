@@ -59,6 +59,10 @@ Write-Log 'Строим таблицы'
 $ok_to_start = (Get-Date).ToUniversalTime().AddDays( 0 - $settings.controller.min_stop_to_start )
 if ( $settings.controller.control_override -and (Get-Date).hour -in $settings.controller.control_override.hours ) { 
     foreach ( $section in @($settings.sections.Keys) ) {
+        if ( !$settings.sections[$section].client ) {
+            Write-Log "Не указан клиент для подраздела $section" -Red
+            continue
+        }
         if ( $settings.controller.control_override.client[$settings.sections[$section].client] ) {
             $settings.sections[$section].control_peers = $settings.controller.control_override.client[$settings.sections[$section].client]
         }
