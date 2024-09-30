@@ -53,6 +53,7 @@ $path_from = Select-Path 'from'
 $path_to = Select-Path 'to'
 $category = Get-String -prompt 'Укажите категорию (при необходимости)'
 $max_size = ( Get-String -obligatory -prompt 'Максимальный суммарный объём всех раздач к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb
+$max_1_size = ( Get-String -obligatory -prompt 'Максимальный объём одной раздачи к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb
 $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write
 Initialize-Client $client
 if ( $client.sid ) {
@@ -76,6 +77,11 @@ if ( $client.sid ) {
     if ( $category -and $category -ne '' ) {
         $torrents_list = $torrents_list | Where-Object { $_.category -eq "${category}" }
     }
+    if ( $max_1_size -gt 0 ) {
+        $max_1_bytes = $max_1_size * 1Gb
+        $torrents_list = $torrents_list | Where-Object { $_.size -le $max_1_bytes }
+    }
+
     If ( $id_subfolder -eq 'Y' ) {
         Write-Log 'Получаем ID раздач из комментариев. Это может быть небыстро.'
         Get-TopicIDs -client $client -torrent_list $torrents_list
