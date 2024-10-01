@@ -245,9 +245,9 @@ Write-Log ( "Новых: $spell" )
 
 if ( $max_seeds -ne -1 ) {
     Write-Log "Отсеиваем с количеством сидов больше $max_seeds"
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds }
-    $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
-    Write-Log ( "Осталось : $spell" )
+    $new_torrents_keys_2 = $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds }
+    # $spell = Get-Spell $new_torrents_keys_2.count 1 'torrents'
+    # Write-Log ( "Осталось : $spell" )
 }
 
 if ( $get_hidden -and $get_hidden -eq 'N' ) {
@@ -308,8 +308,9 @@ if ( $max_keepers -and !$kept ) {
 if ( $kept ) {
     Write-Log 'Отфильтровываем раздачи, у которых слишком много хранителей'
     $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].topic_id -notin $kept }
+    $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
+    Write-Log ( "Осталось : $spell" )
 }
-Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 
 $added = @{}
 $refreshed = @{}
@@ -428,7 +429,7 @@ if ( $new_torrents_keys ) {
             }
             If ( $refreshed_label ) { Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label }
         }
-        elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) ) {
+        elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) -and $new_torrent_key -in $new_torrents_keys_2 ) {
             # $mask_passed = $true
             # сначала проверяем по базе неподходящих раздач в БД TLO
             Remove-Variable mask_passed -ErrorAction SilentlyContinue
