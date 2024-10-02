@@ -523,7 +523,7 @@ if ( $new_torrents_keys ) {
         }
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) `
                 -and $new_torrent_key -notin $new_torrents_keys_2 ) {
-                    # раздача слишком свежая для добавления (но нормальная для обновления, просто оказалось нечего обновлять)
+                    # раздача слишком многосидовая для добавления (но была бы нормальная для обновления, просто оказалось нечего обновлять)
                 }
         elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( (Get-Date).ToUniversalTime().AddDays( 0 - $min_days ) ) ) {
             Write-Log ( 'Раздача ' + $new_tracker_data.topic_id + ' слишком новая.' )
