@@ -128,7 +128,7 @@ foreach ( $client_key in $settings.clients.keys ) {
             # if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $section_seeds[$tracker_torrents[$_].section] ) {
             if ( $states[$_].state -eq $settings.clients[$client_key].stopped_state -and $tracker_torrents[$_].seeders -lt $settings.sections[$tracker_torrents[$_].section].control_peers ) {
                 if ( $start_keys.count -eq $batch_size ) {
-                    Start-Torrents $start_keys $settings.clients[$client_key]
+                    Start-Torrents $start_keys $settings.clients[$client_key] -mess_sender 'Controller'
                     $started += $start_keys.count
                     $start_keys = @()
                 }
