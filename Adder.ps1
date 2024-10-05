@@ -243,9 +243,12 @@ $new_torrents_keys = $tracker_torrents.keys | Where-Object { $null -eq $hash_to_
 $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
 Write-Log ( "Новых: $spell" )
 
+$new_torrents_keys_2 = @()
 if ( $max_seeds -ne -1 ) {
-    Write-Log "Отсеиваем с количеством сидов больше $max_seeds"
+    Write-Log "Отсеиваем (только от добавления) раздачи с количеством сидов больше $max_seeds"
     $new_torrents_keys_2 = $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds }
+    Write-Log ( 'Отсеялось раздач: ' + ( $new_torrents_keys.count - $new_torrents_keys_2.count ) )
+
     # $spell = Get-Spell $new_torrents_keys_2.count 1 'torrents'
     # Write-Log ( "Осталось : $spell" )
 }
