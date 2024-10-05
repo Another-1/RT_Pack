@@ -252,6 +252,7 @@ if ( $max_seeds -ne -1 ) {
     # $spell = Get-Spell $new_torrents_keys_2.count 1 'torrents'
     # Write-Log ( "Осталось : $spell" )
 }
+else { $new_torrents_keys_2 = $new_torrents_keys }
 
 if ( $get_hidden -and $get_hidden -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи из скрытых и праздничных разделов'
