@@ -201,7 +201,7 @@ Function Set-ConnectDetails ( $settings ) {
 
     if ( !$settings.connection ) { $settings.connection = [ordered]@{} }
     $settings.connection.login = $ini_data.'torrent-tracker'.login
-    $settings.connection.password = $ini_data.'torrent-tracker'.password
+    $settings.connection.password = $ini_data.'torrent-tracker'.password.replace( '\\', '\' )
     $settings.connection.forum_url = $ini_data.'torrent-tracker'.forum_url
     $settings.connection.forum_ssl = ( $ini_data.'torrent-tracker'.forum_ssl -eq '1' ? 'Y' : 'N' )
     $settings.connection.user_id = $ini_data.'torrent-tracker'.user_id
@@ -365,15 +365,18 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
     return $torrents_list
 }
 
-function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$noIDs) {
+function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$noIDs ) {
     $clients_torrents = @()
     foreach ($clientkey in $settings.clients.Keys ) {
         $client = $settings.clients[ $clientkey ]
         Initialize-Client $client $mess_sender -verbose
         $client_torrents = Get-ClientTorrents -client $client -client_key $clientkey -verbose -completed:$completed -mess_sender $mess_sender
-        if ( $noIDs.IsPresent -eq $false ) { Get-TopicIDs $client $client_torrents }
+        if ( $noIDs.IsPresent -eq $false ) {
+            Get-TopicIDs -client $client -torrent_list $client_torrents -conn $db_conn
+        }
         $clients_torrents += $client_torrents
     }
+    if ( $db_conn ) { $db_conn.Close() }
     return $clients_torrents
 }
 
@@ -382,6 +385,9 @@ function Get-TopicIDs ( $client, $torrent_list ) {
     if ( $torrent_list.count -gt 0 ) {
         $torrent_list | ForEach-Object {
             if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int64]$tracker_torrents[$_.hash.toUpper()].topic_id }
+            if ( ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) -and $null -ne $db_hash_to_id ) {
+                $_.topic_id = $db_hash_to_id[$_.hash]  
+            }
             if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
                 $Params = @{ hash = $_.hash }
                 try {
@@ -398,15 +404,16 @@ function Get-TopicIDs ( $client, $torrent_list ) {
     }
 }
 
-function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = '', [switch]$Skip_checking ) {
+function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = '', [switch]$Skip_checking, [switch]$addToTop ) {
     $Params = @{
-        torrents      = Get-Item $file
-        savepath      = $path
-        category      = $category
-        name          = 'torrents'
-        root_folder   = 'false'
-        paused        = $Paused
-        skip_checking = $Skip_checking
+        torrents        = Get-Item $file
+        savepath        = $path
+        category        = $category
+        name            = 'torrents'
+        root_folder     = 'false'
+        paused          = $Paused
+        skip_checking   = $Skip_checking
+        addToTopOfQueue = $addToTop
     }
 
     Write-Log 'Отправляем скачанный torrent-файл в клиент'
@@ -550,15 +557,15 @@ function Send-Forum ( $mess, $post_id ) {
 
 
 function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
-    if ( !$settings.connection.sid ) { Initialize-Forum }
-    $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl.php?t=' + $Id
+    # if ( !$settings.connection.sid ) { Initialize-Forum }
+    $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl.php?t=' + $Id + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
     if ( $null -eq $save_path ) { $Path = Join-Path $PSScriptRoot ( $Id.ToString() + '.torrent' ) } else { $path = Join-Path $save_path ( $Id.ToString() + '.torrent' ) }
     $i = 1
     Write-Log 'Скачиваем torrent-файл с форума'
     while ( $i -le 10 ) {
         try { 
             if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
-                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url используя прокси $($settings.connection.proxy.url )" }
+                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $get_url используя прокси $($settings.connection.proxy.url )" }
                 if ( $settings.connection.proxy.credentials ) {
                     Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -OutFile $Path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials
                 }
@@ -612,28 +619,28 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
     $lock_file = "$PSScriptRoot\in_progress.lck"
     $in_progress = Test-Path -Path $lock_file
     # If ( ( ( Get-Date($MoscowTime) -UFormat %H ).ToInt16( $nul ) + 2 ) % 2 -eq 0 -or ( $check -eq $false ) ) {
-        if ( !$in_progress ) {
-            if ( $wait ) {
-                Write-Log 'Подождём 5 минут, вдруг быстро скачаются добавленные/обновлённые.'
-                Start-Sleep -Seconds 300
-            }
-            New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
-            try {
-                Write-Log 'Обновляем БД TLO'
-                . $php_path ( Join-Path $tlo_path 'cron' 'update.php' )
-                Write-Log 'Обновляем списки других хранителей'
-                . $php_path ( Join-Path $tlo_path 'cron' 'keepers.php' )
-                if ( $send_report ) {
-                    Send-Report
-                }
-            }
-            finally {
-                Remove-Item $lock_file -ErrorAction SilentlyContinue
+    if ( !$in_progress ) {
+        if ( $wait ) {
+            Write-Log 'Подождём 5 минут, вдруг быстро скачаются добавленные/обновлённые.'
+            Start-Sleep -Seconds 300
+        }
+        New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
+        try {
+            Write-Log 'Обновляем БД TLO'
+            . $php_path ( Join-Path $tlo_path 'cron' 'update.php' )
+            Write-Log 'Обновляем списки других хранителей'
+            . $php_path ( Join-Path $tlo_path 'cron' 'keepers.php' )
+            if ( $send_report ) {
+                Send-Report
             }
         }
-        else {
-            Write-Log "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -ForegroundColor Red
+        finally {
+            Remove-Item $lock_file -ErrorAction SilentlyContinue
         }
+    }
+    else {
+        Write-Log "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -ForegroundColor Red
+    }
     # }
 }
 
@@ -1280,9 +1287,14 @@ function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false, $m
         Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
     }
     catch {
-        $client.sid = $null
-        Initialize-Client -client $client -mess_sender $mess_sender -force -verbose
-        Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
+        if ( $error[0].Exception.Message -match 'path') {
+            Write-Log "Не удалось переместить торрент в $new_path" -Red
+        }
+        else {
+            $client.sid = $null
+            Initialize-Client -client $client -mess_sender $mess_sender -force -verbose
+            Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
+        }
     }
 }
 
