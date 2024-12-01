@@ -438,7 +438,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
                 if ( $error[0] -like '*is not a valid torrent file*')  {
                     $badTorrFolder = Join-Path $PSScriptRoot 'BadTorrents'
                     New-Item -Path $badTorrFolder -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
-                    Copy-item $file $badTorrFolder
+                    Copy-item $file $badTorrFolder -Force -ErrorAction SilentlyContinue
                     Write-Log "Торрент-файл $($file.name) перемещён в папку $badTorrFolder для анализа"
                 }
                 continue
