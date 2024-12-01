@@ -92,7 +92,7 @@ if ( $client.sid ) {
         $torrents_list = $torrents_list | Where-Object { $_.size -le $max_1_bytes }
     }
 
-    If ( $id_subfolder -eq 'Y' ) {
+    If ( $id_subfolder.ToUpper() -eq 'Y' ) {
         Write-Log 'Получаем ID раздач из комментариев. Это может быть небыстро.'
         Get-TopicIDs -client $client -torrent_list $torrents_list
     }
