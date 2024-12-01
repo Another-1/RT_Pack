@@ -435,6 +435,11 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
             catch {
                 $i++
                 Write-Log "Ошибка при добавлении раздачи в клиент $($client.name): $($error[0]) " -Red
+                if ( $error[0] -like '*is not a valid torrent file*')  {
+                    $badTorrFolder = Join-Path $PSScriptRoot 'BadTorrents'
+                    New-Item -Path $badTorrFolder -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
+                    Copy-item $file $badTorrFolder
+                }
                 continue
                 # Initialize-Client -client $client -mess_sender $mess_sender -force -verbose
                 # Start-Sleep -Seconds 1
