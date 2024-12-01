@@ -1,4 +1,4 @@
-param ([switch]$verbose )
+param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size )
 
 Write-Host 'Проверяем версию Powershell...'
 If ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
@@ -47,13 +47,22 @@ $ini_data = Get-IniContent $ini_path
 
 Get-Clients
 # Get-ClientApiVersions $settings.clients
-$client = Select-Client
+if ( $client_name ) {
+        $client = $settings.clients[$client_name ]
+        if ( !$client ) {
+            Write-Log "Не найден клиент $client_name" -Red
+            exit
+        }
+}
+else {
+    $client = Select-Client
+}
 Write-Log ( 'Выбран клиент ' + $client.Name )
-$path_from = Select-Path 'from'
-$path_to = Select-Path 'to'
-$category = Get-String -prompt 'Укажите категорию (при необходимости)'
-$max_size = ( Get-String -obligatory -prompt 'Максимальный суммарный объём всех раздач к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb
-$max_1_size = ( Get-String -obligatory -prompt 'Максимальный объём одной раздачи к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb
+if ( !$path_from ) { $path_from = Select-Path 'from' }
+if ( !$path_to ) { $path_to = Select-Path 'to' }
+if ( !$category ) { $category = Get-String -prompt 'Укажите категорию (при необходимости)' }
+if ( !$max_size ) { $max_size = ( Get-String -obligatory -prompt 'Максимальный суммарный объём всех раздач к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb }
+if ( !$max_1_size ) { $max_1_size = ( Get-String -obligatory -prompt 'Максимальный объём одной раздачи к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb }
 $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write
 Initialize-Client $client
 if ( $client.sid ) {
@@ -62,17 +71,7 @@ if ( $client.sid ) {
     $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" } 
     # if ( $max_size -eq -1 * 1Gb ) {
     Write-Log 'Сортируем по полезности и подразделу'
-    # if ( $client.api_version -lt [version]'2.11.0' ) {
     $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
-    # }
-    # else {
-    #     $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.popularity } -Descending -Stable
-    # }
-    # }
-    # else {
-    #     Write-Log 'Сортируем по размеру'
-    #     $torrents_list = $torrents_list | Sort-Object -Property size
-    # }
 
     if ( $category -and $category -ne '' ) {
         $torrents_list = $torrents_list | Where-Object { $_.category -eq "${category}" }

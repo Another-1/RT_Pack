@@ -41,8 +41,8 @@ if ( $standalone -eq $false ) {
     $settings.controller.global_seeds = $ini_data['topics_control'].peers
 }
 
-$settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = ( $settings.sections[$_].control_peers -ne '' ? $settings.sections[$_].control_peers : -2 ) }
-$settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds }
+$settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = ( $settings.sections[$_].control_peers -ne '' ? $settings.sections[$_].control_peers : -2 ).ToInt32($null) }
+$settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds.ToInt32($null) }
 # $settings.sections.count; pause
 if ( !$debug ) {
     Write-Log 'Проверяем актуальность Controller и _functions' 
@@ -139,8 +139,7 @@ foreach ( $client_key in $settings.clients.keys ) {
                 else { write-Log "Раздача $_ на слишком занятом сейчас диске" }
             }
             elseif ( ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced -eq 'Y' )) `
-                    -and $tracker_torrents[$_].seeders -gt ( $settings.sections[$tracker_torrents[$_].section].control_peers ) `
-                    # -and $states[$_].seeder_last_seen -gt $ok_to_stop
+                    -and $tracker_torrents[$_].seeders -gt ( $settings.sections[$tracker_torrents[$_].section].control_peers + $( $null -eq $hysteresis ? 0 : $hysteresis ) )
             ) {
 
                 if ( $stop_keys.count -eq $batch_size ) {
@@ -153,11 +152,11 @@ foreach ( $client_key in $settings.clients.keys ) {
         }
         catch { } # на случай поглощённых раздач.
     }
-    if ( $start_keys.count -gt 0) {
+    if ( $start_keys.count -gt 0 ) {
         Start-Torrents -hashes $start_keys -client $settings.clients[$client_key] -mess_sender 'Controller'
         $started += $start_keys.count
     }
-    if ( $stop_keys.count -gt 0) {
+    if ( $stop_keys.count -gt 0 ) {
         Stop-Torrents -hashes $stop_keys -client $settings.clients[$client_key] -mess_sender 'Controller'
         $stopped += $stop_keys.count
     }

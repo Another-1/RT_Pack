@@ -19,3 +19,6 @@ Migrator.ps1
 *.new
 *.was
 *.journal
+Supporter.ps1
+posts/*.*
+last_post.txt

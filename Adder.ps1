@@ -484,7 +484,7 @@ if ( $new_torrents_keys ) {
             }
 
             ### DEBUG ###
-            # if ( $client.name -eq 'NAS-NEW' -and $new_tracker_data.section -eq '1242' ) { continue }
+            if ( $client.name -eq 'NAS-NEW' -and $new_tracker_data.section -eq '1574' ) { continue }
 
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
@@ -613,30 +613,29 @@ if ( $update_trigger ) {
 }
 
 if ( $report_stalled -eq 'Y' ) {
-    Write-Log 'Отправляем список некачашек'
+    Write-Log 'Ищем некачашки'
     $month_ago = ( Get-Date -UFormat %s ).ToInt32($null) - 30 * 24 * 60 * 60
     $stalleds = @()
     $clients_torrents | Where-Object { $_.state -in ( 'stalledDL', 'forcedDL' ) -and $_.added_on -le $month_ago } | ForEach-Object {
         $stalleds += @{ topic_id = $_.topic_id; hash = $_.infohash_v1; client_key = $_.client_key; trackers = $null }
     }
-    Write-Log ( 'Найдено ' + $stalleds.count + ' некачашек' )
-    foreach ( $stalled in $stalleds ) {
-        $params = @{ hash = $stalled.hash }
-        $stalled.trackers = ( Invoke-WebRequest -Uri ( $settings.clients[$stalled.client_key].IP + ':' + $settings.clients[$stalled.client_key].port + '/api/v2/torrents/trackers' ) -WebSession $settings.clients[$stalled.client_key].sid -Body $params -TimeoutSec 120 ).Content | `
-            ConvertFrom-Json | Where-Object { $_.status -ne 0 }
-    }
-
     if ( $stalleds.count -gt 0 ) {
-        Write-Log 'Отсеиваем раздачи с ошибкой трекера'
+        Write-Log ( 'Найдено ' + $stalleds.count + ' некачашек' )
+        foreach ( $stalled in $stalleds ) {
+            $params = @{ hash = $stalled.hash }
+            $stalled.trackers = ( Invoke-WebRequest -Uri ( $settings.clients[$stalled.client_key].IP + ':' + $settings.clients[$stalled.client_key].port + '/api/v2/torrents/trackers' ) -WebSession $settings.clients[$stalled.client_key].sid -Body $params -TimeoutSec 120 ).Content | `
+                ConvertFrom-Json | Where-Object { $_.status -ne 0 }
+        }
+
+        Write-Log 'Отсеиваем некачашки с ошибкой трекера'
         $stalleds = $stalleds | Where-Object { $_.status -ne 4 }
         Write-Log ( 'Осталось ' + $stalleds.count + ' некачашек' )
-    }
 
-    if ( $stalleds.count -gt 0 ) {
         $params = @{
             'help_load' = ( $stalleds.topic_id -join ',')
             'help_pwd'  = $stalled_pwd
         }
+        Write-Log 'Отправляем список некачашек'
         Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params -ErrorVariable send_result | Out-Null
         if ( $send_result.count -eq 0 ) {
             Write-Log ( 'Отправлено ' + $stalleds.count + ' некачашек' )
