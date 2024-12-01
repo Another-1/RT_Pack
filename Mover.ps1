@@ -48,11 +48,11 @@ $ini_data = Get-IniContent $ini_path
 Get-Clients
 # Get-ClientApiVersions $settings.clients
 if ( $client_name ) {
-        $client = $settings.clients[$client_name ]
-        if ( !$client ) {
-            Write-Log "Не найден клиент $client_name" -Red
-            exit
-        }
+    $client = $settings.clients[$client_name ]
+    if ( !$client ) {
+        Write-Log "Не найден клиент $client_name" -Red
+        exit
+    }
 }
 else {
     $client = Select-Client
@@ -61,8 +61,19 @@ Write-Log ( 'Выбран клиент ' + $client.Name )
 if ( !$path_from ) { $path_from = Select-Path 'from' }
 if ( !$path_to ) { $path_to = Select-Path 'to' }
 if ( $null -eq $category ) { $category = Get-String -prompt 'Укажите категорию (при необходимости)' }
-if ( !$max_size ) { $max_size = ( Get-String -obligatory -prompt 'Максимальный суммарный объём всех раздач к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb }
-if ( !$max_1_size ) { $max_1_size = ( Get-String -obligatory -prompt 'Максимальный объём одной раздачи к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb }
+if ( !$max_size ) {
+    $max_size = ( Get-String -obligatory -prompt 'Максимальный суммарный объём всех раздач к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb 
+}
+else {
+    $max_size = $max_size.ToInt16( $null ) * 1Gb
+}
+if ( !$max_1_size ) {
+    $max_1_size = ( Get-String -obligatory -prompt 'Максимальный объём одной раздачи к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb
+}
+else {
+    $max_1_size = $max_1_size.ToInt16( $null ) * 1Gb
+}
+
 if ( !$id_subfolder ) { $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write }
 Initialize-Client $client
 if ( $client.sid ) {
