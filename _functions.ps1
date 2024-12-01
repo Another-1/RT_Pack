@@ -422,7 +422,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
     $abort = $false
     $i = 1
     while ( $added_ok -eq $false -and $abort -eq $false ) {
-        if ( $i -gt 10) {
+        if ( $i -gt 1 ) {
             Write-Log "Не удалось добавить раздачу" -Red
             $abort = $true
         }
@@ -434,8 +434,10 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
             }
             catch {
                 $i++
-                Initialize-Client -client $client -mess_sender $mess_sender -force -verbose
-                Start-Sleep -Seconds 1
+                Write-Log "Ошибка при добавлении раздачи в клиент $($client.name): $($error[0]) " -Red
+                continue
+                # Initialize-Client -client $client -mess_sender $mess_sender -force -verbose
+                # Start-Sleep -Seconds 1
             }
         }
     }
