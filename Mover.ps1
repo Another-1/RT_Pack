@@ -75,6 +75,9 @@ else {
 }
 
 if ( !$id_subfolder ) { $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write }
+
+Write-Log "Указаны параметры:`nКлиент: $($client.Name)`nИсходный кусок пути: $path_from`nЦелевой кусок пути: $path_to`nКатегория: $category`nСуммарный объём: $max_size`nОбъём раздачи: $max_1_size`nСоздавать подкаталоги: $id_subfolder"
+
 Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
@@ -96,6 +99,8 @@ if ( $client.sid ) {
         Write-Log 'Получаем ID раздач из комментариев. Это может быть небыстро.'
         Get-TopicIDs -client $client -torrent_list $torrents_list
     }
+    Write-Log "Предстоит переместить $( Get-Spell -qty $torrents_list.Count -spelling 2 -entity 'torrents' )"
+    pause
     foreach ( $torrent in $torrents_list) {
         $i++
         $new_path = $torrent.save_path.replace( $path_from, $path_to )
