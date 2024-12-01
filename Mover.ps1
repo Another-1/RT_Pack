@@ -1,4 +1,4 @@
-param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size )
+param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $id_subfolder )
 
 Write-Host 'Проверяем версию Powershell...'
 If ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
@@ -60,10 +60,10 @@ else {
 Write-Log ( 'Выбран клиент ' + $client.Name )
 if ( !$path_from ) { $path_from = Select-Path 'from' }
 if ( !$path_to ) { $path_to = Select-Path 'to' }
-if ( !$category ) { $category = Get-String -prompt 'Укажите категорию (при необходимости)' }
+if ( $null -eq $category ) { $category = Get-String -prompt 'Укажите категорию (при необходимости)' }
 if ( !$max_size ) { $max_size = ( Get-String -obligatory -prompt 'Максимальный суммарный объём всех раздач к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb }
 if ( !$max_1_size ) { $max_1_size = ( Get-String -obligatory -prompt 'Максимальный объём одной раздачи к перемещению, Гб (при необходимости, -1 = без ограничений)' ).ToInt16($null) * 1Gb }
-$id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write
+if ( !$id_subfolder ) { $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write }
 Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
