@@ -439,6 +439,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
                     $badTorrFolder = Join-Path $PSScriptRoot 'BadTorrents'
                     New-Item -Path $badTorrFolder -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
                     Copy-item $file $badTorrFolder
+                    Write-Log "Торрент-файл $($file.name) перемещён в папку $badTorrFolder для анализа"
                 }
                 continue
                 # Initialize-Client -client $client -mess_sender $mess_sender -force -verbose
