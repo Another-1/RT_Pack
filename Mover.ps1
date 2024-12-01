@@ -100,7 +100,6 @@ if ( $client.sid ) {
         Get-TopicIDs -client $client -torrent_list $torrents_list
     }
     Write-Log "Предстоит переместить $( Get-Spell -qty $torrents_list.Count -spelling 2 -entity 'torrents' )"
-    pause
     foreach ( $torrent in $torrents_list) {
         $i++
         $new_path = $torrent.save_path.replace( $path_from, $path_to )
