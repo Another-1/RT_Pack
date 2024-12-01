@@ -341,10 +341,11 @@ if ( $new_torrents_keys ) {
             Write-Log ( "Раздача " + $new_tracker_data.topic_id + ' обнаружена в клиенте ' + $existing_torrent.client_key )
         }
         else {
-            $client = $settings.clients[$settings.sections[$new_tracker_data.section].client]
-            if (!$client) {
-                $client = $settings.clients[$settings.sections[$new_tracker_data.section].client]
+            if ( !$settings.sections[$new_tracker_data.section].client ) {
+                Write-Log "Не указан клиент для подраздела $($new_tracker_data.section)" -Red
+                continue
             }
+            $client = $settings.clients[$settings.sections[$new_tracker_data.section].client]
         }
         
         if ( $new_tracker_data.topic_poster -in $priority_releasers.keys ) {
