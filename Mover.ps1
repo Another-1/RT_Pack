@@ -111,7 +111,6 @@ if ( $client.sid ) {
                 Write-Log 'Достигнут максимальный объём'
                 break
             }
-            # [switch]$verbose.IsPresent = $true
             Set-SaveLocation -client $client -torrent $torrent -new_path $new_path -verbose:$( $verbose.IsPresent ) -old_path $torrent.save_path -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
             Write-Progress -Activity 'Moving' -Status $torrent.name -PercentComplete ( $i * 100 / $torrents_list.Count )
             Start-Sleep -Milliseconds 100

@@ -1301,7 +1301,7 @@ function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false, $m
     catch {
         if ( $null -ne $error[0].Exception.Message ) {
             # if ( $error[0].Exception.Message -match 'path') {
-            Write-Log "Не удалось переместить торрент в $new_path. Ошибка $($error[0].Exception.Message)" -Red
+            Write-Log "Не удалось переместить торрент в $new_path. Ошибка $($error[0].ErrorDetails.Message), $($error[0].Exception.Message)" -Red
         }
         # else {
         #     $client.sid = $null
