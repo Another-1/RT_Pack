@@ -438,7 +438,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
                 if (  $error[0] -like '*is not a valid torrent file*' -or $error[0] -like '*допустимым торрент-файлом*') {
                     $badTorrFolder = Join-Path $PSScriptRoot 'BadTorrents'
                     New-Item -Path $badTorrFolder -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
-                    Copy-item $file $badTorrFolder -Force -ErrorAction SilentlyContinue
+                    Copy-Item $file $badTorrFolder -Force -ErrorAction SilentlyContinue
                     Write-Log "Торрент-файл $($file.name) перемещён в папку $badTorrFolder для анализа"
                 }
                 continue
@@ -1285,24 +1285,32 @@ function Get-String ( [switch]$obligatory, $prompt ) {
     if ( $choice ) { return $choice } else { return '' }
 }
 
-function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false, $mess_sender ) {
+function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false, $mess_sender, $old_path ) {
+    $error.Clear()
     if ( $verbose ) { Write-Host ( 'Перемещаем ' + $torrent.name + ' в ' + $new_path) }
     $data = @{
         hashes   = $torrent.hash
         location = $new_path
     }
     try {
+        if ( $verbose.IsPresent ) {
+            Write-Log "Отправляем команду на перемещение торрента $torrent.name из папки $old_path в папку $new_path"
+        }
         Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
     }
     catch {
-        if ( $error[0].Exception.Message -match 'path') {
-            Write-Log "Не удалось переместить торрент в $new_path" -Red
+        if ( $null -ne $error[0].Exception.Message ) {
+            # if ( $error[0].Exception.Message -match 'path') {
+            Write-Log "Не удалось переместить торрент в $new_path. Ошибка $($error[0].Exception.Message)" -Red
         }
-        else {
-            $client.sid = $null
-            Initialize-Client -client $client -mess_sender $mess_sender -force -verbose
-            Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
-        }
+        # else {
+        #     $client.sid = $null
+        #     $error.Clear()
+        #     Initialize-Client -client $client -mess_sender $mess_sender -force -verbose
+        #     Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
+        #     if ( $nul -ne $error[0] ) {
+        #     }
+        # }
     }
 }
 
