@@ -135,7 +135,7 @@ function Test-Setting ( $setting, [switch]$required, $default, [switch]$no_ini_w
     else {
         $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
     }
-    if ( $current_var ) { $current = $current_var.Value }
+    if ( $current_var -and $null -ne $current_var.Value ) { $current = $current_var.Value }
     else {
         if ( $default -and $default -ne '' ) { $set_names[$setting].default = $default }
         do {
