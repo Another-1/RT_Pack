@@ -1287,7 +1287,6 @@ function Get-String ( [switch]$obligatory, $prompt ) {
 
 function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false, $mess_sender, $old_path ) {
     $error.Clear()
-    if ( $verbose ) { Write-Host ( 'Перемещаем ' + $torrent.name + ' в ' + $new_path) }
     $data = @{
         hashes   = $torrent.hash
         location = $new_path
