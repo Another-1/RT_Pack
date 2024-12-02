@@ -98,7 +98,7 @@ if ( $client.sid ) {
         Write-Log 'Получаем ID раздач из комментариев. Это может быть небыстро.'
         Get-TopicIDs -client $client -torrent_list $torrents_list
     }
-    Write-Log "Предстоит переместить $( Get-Spell -qty $torrents_list.Count -spelling 2 -entity 'torrents' )"
+    # Write-Log "Предстоит переместить $( Get-Spell -qty $torrents_list.Count -spelling 2 -entity 'torrents' )"
     foreach ( $torrent in $torrents_list) {
         $i++
         $new_path = $torrent.save_path.replace( $path_from, $path_to )
@@ -109,6 +109,7 @@ if ( $client.sid ) {
             $sum_size += $torrent.size
             if ( $max_size -gt 0 -and $sum_size -gt $max_size ) {
                 Write-Log 'Достигнут максимальный объём'
+                $sum_size = $sum_size - $torrent.size
                 break
             }
             $verbose = $true
@@ -118,4 +119,5 @@ if ( $client.sid ) {
         }
     }
     Write-Progress -Activity 'Moving' -Completed
+    Write-Log "Итого перемещено $( to_kmg -bytes $sum_size -precision 2 )"
 }
