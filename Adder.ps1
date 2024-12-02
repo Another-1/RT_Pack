@@ -368,6 +368,39 @@ if ( $new_torrents_keys ) {
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
                 if ( !$refreshed[ $client.name ] ) { $refreshed[ $client.name ] = @{} }
                 if ( !$refreshed[ $client.name ][ $new_tracker_data.section] ) { $refreshed[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
+                $refreshed_ids += $new_tracker_data.topic_id
+            }
+            # подмена временного каталога если раздача хранится на SSD.
+            if ( $ssd ) {
+                if ( $on_ssd -eq $true ) {
+                    Write-Log 'Отключаем преаллокацию'
+                    Set-ClientSetting $client 'preallocate_all' $false
+                    Start-Sleep -Milliseconds 100
+                }
+                else {
+                    Set-ClientSetting $client 'preallocate_all' $true
+                    Start-Sleep -Milliseconds 100
+                }
+                Set-ClientSetting $client 'temp_path_enabled' $false
+            }
+            $success = Add-ClientTorrent -client $client -file $new_torrent_file -path $existing_torrent.save_path -category $existing_torrent.category -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' )
+            if ( $success -eq $true ) {
+                Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
+                Start-Sleep -Seconds 5
+                $new_topic_info = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
+                $new_topic_title = $new_topic_info.name
+                if ( $null -ne $new_topic_title -and $new_topic_title -eq $existing_torrent.name -and $settings.sections[$new_tracker_data.section].data_subfolder -le '2') {
+                    Remove-ClientTorrent $client $existing_torrent.hash
+                }
+                elseif ($null -ne $new_topic_title ) {
+                    Remove-ClientTorrent $client $existing_torrent.hash -deleteFiles
+                }
+                Start-Sleep -Milliseconds 100 
+                $torrent_to_tag = [PSCustomObject]@{
+                    hash     = $new_torrent_key
+                    topic_id = $new_tracker_data.topic_id
+                }
+                If ( $refreshed_label ) { Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label }
                 if ( $ssd ) {
                     $refreshed[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{
                         id       = $new_tracker_data.topic_id
@@ -386,7 +419,6 @@ if ( $new_torrents_keys ) {
                         new_size = $new_tracker_data.tor_size_bytes
                     }
                 }
-                $refreshed_ids += $new_tracker_data.topic_id
                 if ( $update_trigger ) {
                     if ( !$disk_types ) { $disk_types = Get-DiskTypes }
                     if ( $disk_types -and $disk_types[ $existing_torrent.save_path[0] ] -eq 'HDD' ) {
@@ -404,44 +436,8 @@ if ( $new_torrents_keys ) {
                         }
                     }
                 }
-            }
-            # подмена временного каталога если раздача хранится на SSD.
-            if ( $ssd ) {
-                if ( $on_ssd -eq $true ) {
-                    Write-Log 'Отключаем преаллокацию'
-                    Set-ClientSetting $client 'preallocate_all' $false
-                    Start-Sleep -Milliseconds 100
-                }
-                else {
-                    Set-ClientSetting $client 'preallocate_all' $true
-                    Start-Sleep -Milliseconds 100
-                }
-                Set-ClientSetting $client 'temp_path_enabled' $false
-            }
-            Add-ClientTorrent -client $client -file $new_torrent_file -path $existing_torrent.save_path -category $existing_torrent.category -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' )
-            # While ($true) {
-            Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
-            Start-Sleep -Seconds 5
-            $new_topic_info = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
-            $new_topic_title = $new_topic_info.name
-            # на случай, если в pvc были устаревшие данные, и по старому хшу раздача не находится, будем считать, что имя совпало.
 
-            # if ( $null -eq $new_tracker_data.name ) { $new_tracker_data.name = $existing_torrent.name }
-            # if ( $null -ne $new_tracker_data.name ) { break }
-
-            # }
-            if ( $null -ne $new_topic_title -and $new_topic_title -eq $existing_torrent.name -and $settings.sections[$new_tracker_data.section].data_subfolder -le '2') {
-                Remove-ClientTorrent $client $existing_torrent.hash
             }
-            elseif ($null -ne $new_topic_title ) {
-                Remove-ClientTorrent $client $existing_torrent.hash -deleteFiles
-            }
-            Start-Sleep -Milliseconds 100 
-            $torrent_to_tag = [PSCustomObject]@{
-                hash     = $new_torrent_key
-                topic_id = $new_tracker_data.topic_id
-            }
-            If ( $refreshed_label ) { Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label }
         }
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) -and $new_torrent_key -in $new_torrents_keys_2 ) {
             # $mask_passed = $true
@@ -496,7 +492,6 @@ if ( $new_torrents_keys ) {
             if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
                 if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
                 if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
-                $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
             }
             $save_path = $settings.sections[$new_tracker_data.section].data_folder
             if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '1' ) {
@@ -517,24 +512,27 @@ if ( $new_torrents_keys ) {
                     Set-ClientSetting $client 'preallocate_all' $false
                 }
             }
-            Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $settings.sections[$new_tracker_data.section].label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' )
-            if ( $masks ) {
-                If ( $mask_passed -eq $true -and $mask_label ) {
-                    Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы раздача "подхватилась"'
+            $success = Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $settings.sections[$new_tracker_data.section].label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' )
+            if ( $success -eq $true ) {
+                if ( $masks ) {
+                    If ( $mask_passed -eq $true -and $mask_label ) {
+                        Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы раздача "подхватилась"'
+                        Start-Sleep -Seconds 2
+                        $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                        Set-Comment -client $client -torrent $client_torrent -label $mask_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                    }
+                    elseif ( !$mask_label ) { Write-Log 'Метка масок не задана, простановка метки маски не требуется' }
+                    elseif ( $mask_passed -eq $false ) { Write-Log 'Маска не пройдена, но раздача добавлена. Такого не должно было произойти. Где-то косяк' }
+                }
+                elseif ( $news_label ) {
+                    Write-Log 'Указана маска для новых раздач. Ждём 2 секунды чтобы раздача "подхватилась'
                     Start-Sleep -Seconds 2
                     $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                    Set-Comment -client $client -torrent $client_torrent -label $mask_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                }
-                elseif ( !$mask_label ) { Write-Log 'Метка масок не задана, простановка метки маски не требуется' }
-                elseif ( $mask_passed -eq $false ) { Write-Log 'Маска не пройдена, но раздача добавлена. Такого не должно было произойти. Где-то косяк' }
-            }
-            elseif ( $news_label ) {
-                Write-Log 'Указана маска для новых раздач. Ждём 2 секунды чтобы раздача "подхватилась'
-                Start-Sleep -Seconds 2
-                $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                Write-Log "Проставляем метку $news_label"
-                Set-Comment -client $client -torrent $client_torrent -label $news_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                    Write-Log "Проставляем метку $news_label"
+                    Set-Comment -client $client -torrent $client_torrent -label $news_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 
+                }
+                $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
             }
         }
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) `

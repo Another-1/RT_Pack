@@ -448,6 +448,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
         }
     }
     Remove-Item $File
+    Return $added_ok
 }
 
 Function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
