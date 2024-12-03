@@ -365,11 +365,6 @@ if ( $new_torrents_keys ) {
             }
             $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
-            if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
-                if ( !$refreshed[ $client.name ] ) { $refreshed[ $client.name ] = @{} }
-                if ( !$refreshed[ $client.name ][ $new_tracker_data.section] ) { $refreshed[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
-                $refreshed_ids += $new_tracker_data.topic_id
-            }
             # подмена временного каталога если раздача хранится на SSD.
             if ( $ssd ) {
                 if ( $on_ssd -eq $true ) {
@@ -401,6 +396,11 @@ if ( $new_torrents_keys ) {
                     topic_id = $new_tracker_data.topic_id
                 }
                 If ( $refreshed_label ) { Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label }
+                if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
+                    if ( !$refreshed[ $client.name ] ) { $refreshed[ $client.name ] = @{} }
+                    $refreshed_ids += $new_tracker_data.topic_id
+                    if ( !$refreshed[ $client.name ][ $new_tracker_data.section] ) { $refreshed[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
+                }
                 if ( $ssd ) {
                     $refreshed[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{
                         id       = $new_tracker_data.topic_id
@@ -489,10 +489,6 @@ if ( $new_torrents_keys ) {
             }
             $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиент ' + $client.name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
-            if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
-                if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
-                if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
-            }
             $save_path = $settings.sections[$new_tracker_data.section].data_folder
             if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '1' ) {
                 $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_tracker_data.topic_id # добавляем ID к имени папки для сохранения
@@ -532,7 +528,11 @@ if ( $new_torrents_keys ) {
                     Set-Comment -client $client -torrent $client_torrent -label $news_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 
                 }
-                $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
+                if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
+                    if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
+                    if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
+                    $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
+                }
             }
         }
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) `
