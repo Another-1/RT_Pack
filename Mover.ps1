@@ -119,5 +119,5 @@ if ( $client.sid ) {
         }
     }
     Write-Progress -Activity 'Moving' -Completed
-    Write-Log "Итого перемещено $( to_kmg -bytes $sum_size -precision 2 )"
+    Write-Log "Отправлено в очередь перемещения $( to_kmg -bytes $sum_size -precision 2 )"
 }
