@@ -222,6 +222,7 @@ foreach ( $torrent in $full_data_sorted ) {
                 Write-Log 'Запускаем раздачу обратно'
                 Start-Torrents $torrent.hash $settings.clients[$torrent.client_key]
             }
+            Clear-Comment $settings.clients[$torrent.client_key] $torrent 'Битая'
         }
     }
 

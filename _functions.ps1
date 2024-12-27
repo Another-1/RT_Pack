@@ -192,8 +192,10 @@ function Test-ForumWorkingHours ( [switch]$verbose ) {
         Write-Log ( 'Московское время ' + ( Get-Date($MoscowTime) -UFormat %H ) + ' ч ' + ( Get-Date($MoscowTime) -UFormat %M ) + ' мин' )
     }
     if ( ( Get-Date($MoscowTime) -UFormat %H ) -eq '04' ) {
-        Write-Log 'Профилактические работы на сервере' -ForegroundColor -Red
-        exit
+        if ( $use_working_minutes -ne 'Y' -or ( Get-Date($MoscowTime) -UFormat %M ) -in 35..45 ) {
+            Write-Log 'Профилактические работы на сервере' -ForegroundColor -Red
+            exit
+        }
     }
 }
 
@@ -930,6 +932,22 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender 
     }
     catch {
         Initialize-Client -client $client -force -mess_sender $mess_sender
+        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+    }
+}
+
+function Clear-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender ) {
+    if (!$silent) {
+        Write-Log ( "Снимаем с раздачу метку '$label', если она была" )
+    }
+    $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/removeTags'
+    $tag_body = @{ hashes = $torrent.hash; tags = $label }
+    try {
+        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+    }
+    catch {
+        Initialize-Client -client $client -force -mess_sender $mess_sender
+        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
     }
 }
 

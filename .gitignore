@@ -22,3 +22,5 @@ Migrator.ps1
 Supporter.ps1
 posts/*.*
 last_post.txt
+Charger.ps1
+Archiver.ps1

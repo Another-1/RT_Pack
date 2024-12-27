@@ -331,6 +331,8 @@ $refreshed = @{}
 if ( $new_torrents_keys ) {
     Write-Log 'Сортируем новые раздачи по клиентам'
     $new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $tracker_torrents[$_].tor_size_bytes } | Sort-Object -Property { $settings.sections[$tracker_torrents[$_].section].client } -Stable
+    $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
+    Write-Log "Рассортировали все $spell"
     $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
     foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $settings.sections[$tracker_torrents[$_].section] -and ( !$never_obsolete -or $tracker_torrents[$_].section -notin $never_obsolete_array ) } ) {
         # Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
@@ -481,7 +483,7 @@ if ( $new_torrents_keys ) {
             }
 
             ### DEBUG ###
-            if ( $client.name -eq 'NAS-NEW' -and $new_tracker_data.section -eq '1574' ) { continue }
+            # if ( $client.name -eq 'NAS-NEW' -and $new_tracker_data.section -eq '1574' ) { continue }
 
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
