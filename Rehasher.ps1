@@ -223,7 +223,7 @@ foreach ( $torrent in $full_data_sorted ) {
                 Write-Log 'Запускаем раздачу обратно'
                 Start-Torrents $torrent.hash $settings.clients[$torrent.client_key]
             }
-            if ( @( $tor_info.tags ) -contains 'Битая' ) { 
+            if ( $tor_info.tags -like '*Битая*' ) { 
                 Clear-Comment $settings.clients[$torrent.client_key] $torrent 'Битая'
             }
         }
