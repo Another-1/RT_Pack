@@ -938,7 +938,7 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender 
 
 function Clear-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender ) {
     if (!$silent) {
-        Write-Log ( "Снимаем с раздачу метку '$label', если она была" )
+        Write-Log ( "Снимаем с раздачу метку '$label'" )
     }
     $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/removeTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
