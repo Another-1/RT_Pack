@@ -41,6 +41,9 @@ if ( -not ( [bool](Get-InstalledModule -Name PsIni -ErrorAction SilentlyContinue
     Install-Module -Name PsIni -Scope CurrentUser -Force
 }
 
+if ( !$settings.others ) { $settings.others = [ordered]@{} }
+$settings.others.auto_update = Test-Setting 'auto_update' -required
+
 $tlo_path = Test-Setting 'tlo_path' -required
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 $ini_data = Get-IniContent $ini_path

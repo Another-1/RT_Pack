@@ -398,11 +398,11 @@ if ( $new_torrents_keys ) {
                     topic_id = $new_tracker_data.topic_id
                 }
                 If ( $refreshed_label ) { Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label }
-                if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
+                # if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
                     if ( !$refreshed[ $client.name ] ) { $refreshed[ $client.name ] = @{} }
                     $refreshed_ids += $new_tracker_data.topic_id
                     if ( !$refreshed[ $client.name ][ $new_tracker_data.section] ) { $refreshed[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
-                }
+                # }
                 if ( $ssd ) {
                     $refreshed[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{
                         id       = $new_tracker_data.topic_id
