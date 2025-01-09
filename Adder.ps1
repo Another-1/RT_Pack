@@ -661,7 +661,7 @@ If ( Test-Path -Path $report_flag_file ) {
 
 if ( $rss ) {
     Write-Log 'Обновляем RSS'
-    $rss_ids = ( ( (Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'.split( "`n" ) | select-string 't=\d+"' ).matches.value.replace( 't=','' ).replace( '"','') ).ToInt32($null)
+    $rss_ids = ( ( (Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'.split( "`n" ) | select-string 't=\d+"' ).matches.value.replace( 't=','' ).replace( '"','') ).ToInt64($null)
     foreach ( $id in $rss_ids) {
         if ( !$id_to_info[$id] ) {
             $new_torrent_file = Get-ForumTorrentFile $id
