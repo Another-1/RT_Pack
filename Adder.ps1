@@ -670,17 +670,29 @@ if ( $rss ) {
     #         $new_torrent_file = Get-ForumTorrentFile $id
     #         $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
     #     }
+    $rss_ids = @()
     $rss_data = ( Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'
     foreach ( $rss_record in $rss_data ) {
         $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
+        $rss_ids += $id
         if ( !$id_to_info[$id] ) {
             $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 - .+?</a>' ).matches.value.replace( '👤 - ', '' ).replace( '</a>', '')
             $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
             $new_torrent_file = Get-ForumTorrentFile $id
             $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
             Start-Sleep -Seconds 1
-            if ( $success -eq $true -and $rss.tag_user -eq 'Y' ) {
+            if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
                 Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
+            }
+        }
+    }
+    if ( $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
+        Write-Log 'Удаляем старые ненужные RSS-раздачи'
+        foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
+            if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) ) {
+                # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
+                $client = $settings.clients[$rss_torrent.client_key]
+                Remove-ClientTorrent -client $client -hash $rss_torrent.hash -deleteFiles
             }
         }
     }
