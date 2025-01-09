@@ -304,7 +304,7 @@ function Initialize-Client ( $client, $mess_sender = '', [switch]$verbose, [swit
         $loginheader = @{ Referer = 'http://' + $client.IP + ':' + $client.port }
         try {
             if ( $verbose ) { Write-Log ( 'Авторизуемся в клиенте ' + $client.Name ) }
-            $url = $($client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/auth/login'
+            $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/auth/login'
             $result = Invoke-WebRequest -Method POST -Uri $url -Headers $loginheader -Body $logindata -SessionVariable sid
             if ( $result.StatusCode -ne 200 ) {
                 Write-Log 'You are banned.' -Red
@@ -344,7 +344,7 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
     $i = 0
     while ( $true ) {
         try {
-            $json_content = ( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
+            $json_content = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
             $torrents_list = $json_content | ConvertFrom-Json | `
                 # Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client_key } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags | `
                 Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags | `
@@ -393,7 +393,7 @@ function Get-TopicIDs ( $client, $torrent_list ) {
             if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
                 $Params = @{ hash = $_.hash }
                 try {
-                    $comment = ( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.port + '/api/v2/torrents/properties' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json | Select-Object comment -ExpandProperty comment
+                    $comment = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/properties' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json | Select-Object comment -ExpandProperty comment
                     Start-Sleep -Milliseconds 10
                 }
                 catch { }
@@ -419,7 +419,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
     }
 
     Write-Log 'Отправляем скачанный torrent-файл в клиент'
-    $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/add'
+    $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/add'
     $added_ok = $false
     $abort = $false
     $i = 1
@@ -454,7 +454,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
 }
 
 Function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
-    $url = $client.ip + ':' + $client.Port + '/api/v2/app/setPreferences'
+    $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/app/setPreferences'
     $param = @{ json = ( @{ $param = $value } | ConvertTo-Json -Compress ) }
     try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
     catch {
@@ -674,7 +674,7 @@ function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles ) {
             hashes      = $hash
             deleteFiles = $deleteFiles
         }
-        Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/delete' ) -WebSession $client.sid -Body $request_delete -Method POST | Out-Null
+        Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/delete' ) -WebSession $client.sid -Body $request_delete -Method POST | Out-Null
     }
     catch {
         Write-Log "[delete] Почему-то не получилось удалить раздачу $torrent_id." -Red
@@ -831,7 +831,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
 
 function Start-Torrents( $hashes, $client, $mess_sender ) {
     $Params = @{ hashes = ( $hashes -join '|' ) }
-    $url = $client.IP + ':' + $client.port + '/api/v2/torrents/' + $client.start_command
+    $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/' + $client.start_command
     try {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
@@ -843,7 +843,7 @@ function Start-Torrents( $hashes, $client, $mess_sender ) {
 
 function Stop-Torrents( $hashes, $client, $mess_sender ) {
     $Params = @{ hashes = ( $hashes -join '|' ) }
-    $url = $client.IP + ':' + $client.port + '/api/v2/torrents/' + $client.stop_command
+    $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/' + $client.stop_command
     try {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
@@ -889,12 +889,12 @@ function Get-IniSectionDetails ( $settings, $sections ) {
 
 function Start-Rehash ( $client, $hash, [switch]$move_up ) {
     $Params = @{ hashes = $hash }
-    $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/recheck'
+    $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/recheck'
     Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     if ( $move_up.IsPresent) {
         Start-Sleep -Seconds 1
         Write-Log 'Поднимаем раздачу в начало очереди'
-        $url = $client.ip + ':' + $client.Port + '/api/v2/torrents/topPrio'
+        $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/topPrio'
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
 }
@@ -925,7 +925,7 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender 
     if (!$silent) {
         Write-Log ( "Метим раздачу меткой '$label'" )
     }
-    $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/addTags'
+    $tag_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/addTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
     try {
         Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
@@ -936,28 +936,34 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender 
     }
 }
 
-function Clear-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender ) {
-    if (!$silent) {
-        Write-Log ( "Снимаем с раздачу метку '$label'" )
-    }
-    $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/removeTags'
-    $tag_body = @{ hashes = $torrent.hash; tags = $label }
-    try {
-        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
-    }
-    catch {
-        Initialize-Client -client $client -force -mess_sender $mess_sender
-        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
-    }
-}
+# function Clear-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender ) {
+#     if (!$silent) {
+#         Write-Log ( "Снимаем с раздачу метку '$label'" )
+#     }
+#     $tag_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/removeTags'
+#     $tag_body = @{ hashes = $torrent.hash; tags = $label }
+#     try {
+#         Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+#     }
+#     catch {
+#         Initialize-Client -client $client -force -mess_sender $mess_sender
+#         Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+#     }
+# }
 
 function Remove-Comment ( $client, $torrent, $label, [switch]$silent ) {
     if (!$silent) {
-        Write-Log ( 'Снимаем метку ' + $label )
+        Write-Log ( 'Снимаем с раздачи метку ' + $label )
     }
-    $tag_url = $client.IP + ':' + $client.Port + '/api/v2/torrents/removeTags'
+    $tag_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/removeTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
-    Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+    try {
+        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+    }
+    catch {
+        Initialize-Client -client $client -force -mess_sender $mess_sender
+        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+    }
 }
 
 function Switch-Filtering ( $client, $enable = $true, $mess_sender ) {
@@ -1314,7 +1320,7 @@ function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false, $m
         if ( $verbose.IsPresent ) {
             Write-Log "Отправляем команду на перемещение торрента $torrent.name из папки $old_path в папку $new_path"
         }
-        Invoke-WebRequest -Uri ( $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
+        Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
     }
     catch {
         if ( $null -ne $error[0].Exception.Message ) {
@@ -1337,7 +1343,7 @@ function Get-ClientApiVersions ( $clients, $mess_sender ) {
     foreach ( $client_key in ( $clients.keys | Where-Object { $null -eq $clients[$_].api_verion } ) ) {
         $client = $clients[$client_key]
         Initialize-Client $client -mess_sender $mess_sender -verbose
-        $client.api_version = [version]( Invoke-WebRequest -Uri ( $client.IP + ':' + $client.port + '/api/v2/app/webapiVersion' ) -WebSession $client.sid ).content
+        $client.api_version = [version]( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/app/webapiVersion' ) -WebSession $client.sid ).content
         Write-Log "У клиента $( $client.name ) версия API $($client.api_version.ToString())"
         if ( $client.api_version -lt [version]'2.11.0' ) {
             $client.start_command = 'resume'

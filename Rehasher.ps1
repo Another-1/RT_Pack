@@ -224,7 +224,7 @@ foreach ( $torrent in $full_data_sorted ) {
                 Start-Torrents $torrent.hash $settings.clients[$torrent.client_key]
             }
             if ( $tor_info.tags -like '*Битая*' ) { 
-                Clear-Comment $settings.clients[$torrent.client_key] $torrent 'Битая'
+                Remove-Comment $settings.clients[$torrent.client_key] $torrent 'Битая'
             }
         }
     }
