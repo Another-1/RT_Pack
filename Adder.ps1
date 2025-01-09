@@ -689,7 +689,7 @@ if ( $rss ) {
     if ( $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
         Write-Log 'Удаляем старые ненужные RSS-раздачи'
         foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
-            if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) ) {
+            if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
                 # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                 $client = $settings.clients[$rss_torrent.client_key]
                 Remove-ClientTorrent -client $client -hash $rss_torrent.hash -deleteFiles
