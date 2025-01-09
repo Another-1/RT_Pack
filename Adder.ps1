@@ -399,9 +399,9 @@ if ( $new_torrents_keys ) {
                 }
                 If ( $refreshed_label ) { Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label }
                 # if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
-                    if ( !$refreshed[ $client.name ] ) { $refreshed[ $client.name ] = @{} }
-                    $refreshed_ids += $new_tracker_data.topic_id
-                    if ( !$refreshed[ $client.name ][ $new_tracker_data.section] ) { $refreshed[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
+                if ( !$refreshed[ $client.name ] ) { $refreshed[ $client.name ] = @{} }
+                $refreshed_ids += $new_tracker_data.topic_id
+                if ( !$refreshed[ $client.name ][ $new_tracker_data.section] ) { $refreshed[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
                 # }
                 if ( $ssd ) {
                     $refreshed[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{
@@ -570,6 +570,9 @@ if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report
         $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -notin $skip_obsolete }
     }
     $obsolete_torrents = $clients_torrents | Where-Object { $_.hash -in $obsolete_keys } | Where-Object { $_.topic_id -ne '' }
+    if ( $rss ) {
+        $obsolete_torrents = $obsolete_torrents | Where-Object { $_.category -ne $rss.category }
+    }
     $obsolete_torrents | ForEach-Object {
         If ( !$obsolete ) { $obsolete = @{} }
         Write-Log ( "Левая раздача " + $_.topic_id + ' в клиенте ' + $_.client_key )
@@ -661,11 +664,24 @@ If ( Test-Path -Path $report_flag_file ) {
 
 if ( $rss ) {
     Write-Log 'Обновляем RSS'
-    $rss_ids = ( ( (Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'.split( "`n" ) | select-string 't=\d+"' ).matches.value.replace( 't=','' ).replace( '"','') ).ToInt64($null)
-    foreach ( $id in $rss_ids) {
+    # $rss_ids = ( ( (Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'.split( "`n" ) | select-string 't=\d+"' ).matches.value.replace( 't=','' ).replace( '"','') ).ToInt64($null)
+    # foreach ( $id in $rss_ids) {
+    #     if ( !$id_to_info[$id] ) {
+    #         $new_torrent_file = Get-ForumTorrentFile $id
+    #         $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+    #     }
+    $rss_data = ( Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'
+    foreach ( $rss_record in $rss_data ) {
+        $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
         if ( !$id_to_info[$id] ) {
+            $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 - .+?</a>' ).matches.value.replace( '👤 - ', '' ).replace( '</a>', '')
+            $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
             $new_torrent_file = Get-ForumTorrentFile $id
             $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+            Start-Sleep -Seconds 1
+            if ( $success -eq $true -and $rss.tag_user -eq 'Y' ) {
+                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
+            }
         }
     }
 }
