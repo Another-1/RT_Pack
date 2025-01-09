@@ -280,7 +280,7 @@ function Get-Clients ( [switch]$LocalOnly ) {
     $i = 1
     $ini_data.keys | Where-Object { $_ -match '^torrent-client' -and $ini_data[$_].client -eq 'qbittorrent' } | ForEach-Object {
         if ( ( $_ | Select-String ( '\d+$' ) ).matches.value.ToInt16($null) -le $client_count ) {
-            $settings.clients[$ini_data[$_].comment] = [ordered]@{ IP = $ini_data[$_].hostname; port = $ini_data[$_].port; login = $ini_data[$_].login; password = $ini_data[$_].password; id = $ini_data[$_].id; seqno = $i; name = $ini_data[$_].comment }
+            $settings.clients[$ini_data[$_].comment] = [ordered]@{ IP = $ini_data[$_].hostname; port = $ini_data[$_].port; login = $ini_data[$_].login; password = $ini_data[$_].password; id = $ini_data[$_].id; seqno = $i; name = $ini_data[$_].comment; ssl = $ini_data[$_].ssl }
             $i++
         }
     } 
@@ -304,7 +304,7 @@ function Initialize-Client ( $client, $mess_sender = '', [switch]$verbose, [swit
         $loginheader = @{ Referer = 'http://' + $client.IP + ':' + $client.port }
         try {
             if ( $verbose ) { Write-Log ( 'Авторизуемся в клиенте ' + $client.Name ) }
-            $url = $client.IP + ':' + $client.port + '/api/v2/auth/login'
+            $url = $($client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/auth/login'
             $result = Invoke-WebRequest -Method POST -Uri $url -Headers $loginheader -Body $logindata -SessionVariable sid
             if ( $result.StatusCode -ne 200 ) {
                 Write-Log 'You are banned.' -Red
