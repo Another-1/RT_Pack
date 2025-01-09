@@ -658,3 +658,14 @@ If ( Test-Path -Path $report_flag_file ) {
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
 }
+
+if ( $rss ) {
+    Write-Log 'Обновляем RSS'
+    $rss_ids = ( ( (Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'.split( "`n" ) | select-string 't=\d+"' ).matches.value.replace( 't=','' ).replace( '"','') ).ToInt32($null)
+    foreach ( $id in $rss_ids) {
+        if ( !$id_to_info[$id] ) {
+            $new_torrent_file = Get-ForumTorrentFile $id
+            $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+        }
+    }
+}
