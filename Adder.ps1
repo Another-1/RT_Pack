@@ -1,4 +1,10 @@
-param ([switch]$delay )
+param (
+    [Parameter(Mandatory = $false)]
+    [int]$delay,
+
+    [Parameter(Mandatory = $false)]
+    [string]$topicId
+)
 
 if ( $delay ) {
     Write-Host 'Запуск после обновления, ждём 5 секунд чтобы старое окно точно закрылось.'
@@ -118,6 +124,47 @@ if ( !$settings.connection -and $standlone -ne $true ) {
     if ( !$settings.connection ) { $settings.connection = [ordered]@{} }
     Set-ConnectDetails $settings
     Set-Proxy( $settings )
+}
+
+# Обработка параметра -topicId
+if ($topicId) {
+    $torrentFilesReceived = 0;
+    $topicIds = $topicId.split(',')
+    foreach ($id in $topicIds) {
+        Write-Log "Получаем .torrent для раздачи $id..."
+        $new_torrent_file = Get-ForumTorrentFile $id
+        if (!$new_torrent_file) {
+            Write-Log "Ошибка: не могу получить torrent-файл для раздачи $($id)!"
+        }
+        else {
+            $minTorrentFileSizeBytes = 1000;
+            # Если размет .torrent-файла меньше определённого значения ($minTorrentFileSizeBytes), то это скорее всего сообщение об ошибке
+            $fileSizeBytes = -1;
+            if (Test-Path -path $new_torrent_file) {
+                $fileInfo = Get-Item $new_torrent_file
+                if ($fileInfo) { $fileSizeBytes = $fileInfo.Length; }
+            }
+            if ($fileSizeBytes -lt $minTorrentFileSizeBytes) {
+                if ($fileSizeBytes -ge 0) {
+                    $bakFname = "$new_torrent_file.bak";
+                    Write-Log "Получен файл $new_torrent_file размером менее $minTorrentFileSizeBytes, переименовываем в $bakFname"
+                    Rename-Item -Path $new_torrent_file -NewName $bakFname
+                }
+                else {
+                    Write-Log "Ошибка: не могу прочитать файл $($new_torrent_file)!"
+                }
+            }
+            else {
+                Write-Log "Сохранено в $new_torrent_file ($fileSizeBytes)."
+                $torrentFilesReceived++;
+            }
+        }
+    }
+    Write-Log "Сохранено $torrentFilesReceived torrent-файлов."
+    $exitCode = 1;
+    if ($torrentFilesReceived -ge 1) { $exitCode = 0 };
+    # Если получен хотя бы один нормальный torrent-файл, выходим с кодом 0, иначе выходим с кодом 1
+    exit $exitCode;
 }
 
 if ( $ini_data ) { $section_numbers = $ini_data.sections.subsections.split( ',' ) } else { $section_numbers = $settings.sections.keys }
