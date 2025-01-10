@@ -418,7 +418,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
     }
     if ( $path -and $null -ne $path ) { $Params.savepath = $path }
 
-    Write-Log 'Отправляем скачанный torrent-файл в клиент'
+    Write-Log "Отправляем скачанный torrent-файл раздачи $( $file.basename ) в клиент $( $client.name )"
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/add'
     $added_ok = $false
     $abort = $false
