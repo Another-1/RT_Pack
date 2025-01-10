@@ -383,8 +383,8 @@ function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$n
 }
 
 function Get-TopicIDs ( $client, $torrent_list ) {
-    Write-Log "Ищем ID раздач по $( $torrent_list.count -gt 1 ? 'хэшам' : 'хэшу ' + $torrent_list[0].hash ) от клиента $( $client.name ) в данных от трекера"
     if ( $torrent_list.count -gt 0 ) {
+        Write-Log "Ищем ID раздач по $( $torrent_list.count -gt 1 ? 'хэшам' : 'хэшу ' + $torrent_list[0].hash ) от клиента $( $client.name ) в данных от трекера"
         $torrent_list | ForEach-Object {
             if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int64]$tracker_torrents[$_.hash.toUpper()].topic_id }
             if ( ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) -and $null -ne $db_hash_to_id ) {
