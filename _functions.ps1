@@ -409,7 +409,6 @@ function Get-TopicIDs ( $client, $torrent_list ) {
 function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = '', [switch]$Skip_checking, [switch]$addToTop ) {
     $Params = @{
         torrents        = Get-Item $file
-        savepath        = $path
         category        = $category
         name            = 'torrents'
         root_folder     = 'false'
@@ -417,6 +416,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
         skip_checking   = $Skip_checking
         addToTopOfQueue = $addToTop
     }
+    if ( $path -and $null -ne $path ) { $Params.savepath = $path }
 
     Write-Log 'Отправляем скачанный torrent-файл в клиент'
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/add'

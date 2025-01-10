@@ -40,6 +40,8 @@ $str = 'Подгружаем функции'
 if ( $settings.interface.use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
 . ( Join-Path $PSScriptRoot _functions.ps1 )
 
+Test-ForumWorkingHours -verbose
+
 if ( !$debug ) {
     Test-PSVersion
     Test-Module 'PsIni' 'для чтения настроек TLO'
@@ -156,8 +158,6 @@ if ( $section_numbers.count -eq 0 ) {
     Write-Log 'Значит и делать ничего не надо, выходим.'
     exit
 }
-
-Test-ForumWorkingHours -verbose
 
 If ( Test-Path "$PSScriptRoot\_masks.ps1" ) {
     Write-Log 'Подтягиваем из БД TLO названия раздач из маскированных разделов по хранимым раздачам'
