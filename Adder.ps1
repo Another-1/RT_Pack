@@ -138,10 +138,10 @@ Write-Log "Разделов в работе: $( $section_numbers.count )"
 if ( $forced_sections ) { $settings.adder.forced_sections = $forced_sections }
 if ( $settings.adder.forced_sections ) {
     if ( $inverse_forced -eq 'Y' ) {
-        Write-Log 'Обнаружена инвертированная настройка forced_sections, отбрасывем лишние разделы'
+        Write-Log 'Обнаружена инвертированная настройка forced_sections, отбрасываем лишние разделы'
     }
     else {
-        Write-Log 'Обнаружена настройка forced_sections, отбрасывем лишние разделы'
+        Write-Log 'Обнаружена настройка forced_sections, отбрасываем лишние разделы'
     }
     $forced_sections = $settings.adder.forced_sections.Replace(' ', '')
     $forced_sections_array = @()
