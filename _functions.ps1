@@ -702,10 +702,10 @@ function Add-TGMessage ( $tg_data ) {
     $tg_data.message += $tg_data.line
 }
 
-function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_id, $mess_sender ) {
+function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $rss_del_cnt, $token, $chat_id, $mess_sender ) {
     $tg_data = @{}
     $tg_data.messages = [System.Collections.ArrayList]::new()
-    if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 -or $broken.Count -gt 0 ) {
+    if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 -or $broken.Count -gt 0 -or $rss_add_cnt -gt 0 -or $rss_del_cnt -gt 0 ) {
         if ( $brief_reports -ne 'Y') {
             $tg_data.message = ''
             $first = $true
@@ -795,12 +795,10 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
                     $stat_was = ( $refreshed[$client].keys | ForEach-Object { $refreshed[$client][$_] }) | Measure-Object -Property old_size -Sum
                     $tg_data.line = "Обновлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
                     Add-TGMessage $tg_data
-                    # Add-TGMessage "Обновлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
                     $refreshed_b += ( $stat.Sum - $stat_was.Sum )
                 }
                 if ( $added -and $added[$client] ) {
                     $stat = ( $added[$client].keys | ForEach-Object { $added[$client][$_] }) | Measure-Object -Property size -Sum
-                    # Add-TGMessage "Добавлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
                     $tg_data.line = "Добавлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
                     Add-TGMessage $tg_data
                     $added_b += $stat.Sum
@@ -815,6 +813,17 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $token, $chat_i
             # Add-TGMessage "`n<u><b>Итого</b></u>`nБыло: $(to_kmg $was 3 )`nСтало: $( to_kmg $now 3 )"
             $tg_data.line = "`n<u><b>Итого</b></u>`nБыло: $(to_kmg $was 3 )`nСтало: $( to_kmg $now 3 )"
             Add-TGMessage $tg_data
+        }
+        if ( $rss_add_cnt -gt 0 ) {
+            if ( $tg_data.message -ne '' ) { $tg_data.message += "`n" }
+            $tg_data.line = "Добавлено из RSS: $( Get-Spell -qty $rss_add_cnt -spelling 1 -entity 'torrents' )`n"
+            Add-TGMessage $tg_data
+}
+        if ( $rss_del_cnt -gt 0 ) {
+            if ( $tg_data.message -ne '' ) { $tg_data.message += "`n" }
+            $tg_data.line = "Удалено из RSS: $( Get-Spell -qty $rss_del_cnt -spelling 1 -entity 'torrents' )`n"
+            Add-TGMessage $tg_data
+
         }
         # Send-TGMessage -message $message -token $token -chat_id $chat_id -mess_sender $mess_sender
     }

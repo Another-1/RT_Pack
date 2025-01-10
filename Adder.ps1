@@ -592,6 +592,46 @@ if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_broken -and $report_b
     }
 }
 
+if ( $rss ) {
+    Write-Log 'Обновляем RSS'
+    # $rss_ids = ( ( (Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'.split( "`n" ) | select-string 't=\d+"' ).matches.value.replace( 't=','' ).replace( '"','') ).ToInt64($null)
+    # foreach ( $id in $rss_ids) {
+    #     if ( !$id_to_info[$id] ) {
+    #         $new_torrent_file = Get-ForumTorrentFile $id
+    #         $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+    #     }
+    $rss_ids = @()
+    $rss_data = ( Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'
+    $rss_add_cnt = 0
+    foreach ( $rss_record in $rss_data ) {
+        $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
+        $rss_ids += $id
+        if ( !$id_to_info[$id] ) {
+            $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 - .+?</a>' ).matches.value.replace( '👤 - ', '' ).replace( '</a>', '')
+            $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
+            $new_torrent_file = Get-ForumTorrentFile $id
+            $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+            Start-Sleep -Seconds 1
+            if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
+                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
+            }
+            $rss_add_cnt++
+        }
+    }
+    $rss_del_cnt = 0
+    if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
+        Write-Log 'Удаляем старые ненужные RSS-раздачи'
+        foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
+            if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
+                # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
+                $client = $settings.clients[$rss_torrent.client_key]
+                Remove-ClientTorrent -client $client -hash $rss_torrent.hash -deleteFiles
+                $rss_del_cnt++
+            }
+        }
+    }
+}
+
 if ( $control -eq 'Y' ) {
     Write-Log 'Запускаем встроенную регулировку'
     . ( Join-Path $PSScriptRoot Controller.ps1 )
@@ -605,8 +645,8 @@ elseif ( $update_stats -ne 'Y' -or !$php_path ) {
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
 }
 
-if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or ( $obsolete.Count -gt 0 -and $report_obsolete -eq 'Y' ) -or ( $broken.count -gt 0 -and $report_broken -eq 'Y' ) -or $notify_nowork -eq 'Y' ) -and $tg_token -ne '' -and $tg_chat -ne '' ) {
-    Send-TGReport -refreshed $refreshed -added $added -obsolete $obsolete -broken $broken -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or ( $obsolete.Count -gt 0 -and $report_obsolete -eq 'Y' ) -or ( $broken.count -gt 0 -and $report_broken -eq 'Y' ) -or $notify_nowork -eq 'Y' -or $rss_add_cnt -gt 0 -or $rss_del_cnt -gt 0 ) -and $tg_token -ne '' -and $tg_chat -ne '' ) {
+    Send-TGReport -refreshed $refreshed -added $added -rss_add_cnt $rss_add_cnt -rss_del_cnt $rss_del_cnt -obsolete $obsolete -broken $broken -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
 elseif ( $report_nowork -eq 'Y' -and $tg_token -ne '' -and $tg_chat -ne '' ) { 
     Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' : ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) + ' отработал, ничего делать не пришлось.' ) -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
@@ -660,40 +700,4 @@ If ( Test-Path -Path $report_flag_file ) {
         Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # без паузы, так как это сработал флаг от предыдущего прогона.
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
-}
-
-if ( $rss ) {
-    Write-Log 'Обновляем RSS'
-    # $rss_ids = ( ( (Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'.split( "`n" ) | select-string 't=\d+"' ).matches.value.replace( 't=','' ).replace( '"','') ).ToInt64($null)
-    # foreach ( $id in $rss_ids) {
-    #     if ( !$id_to_info[$id] ) {
-    #         $new_torrent_file = Get-ForumTorrentFile $id
-    #         $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
-    #     }
-    $rss_ids = @()
-    $rss_data = ( Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'
-    foreach ( $rss_record in $rss_data ) {
-        $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
-        $rss_ids += $id
-        if ( !$id_to_info[$id] ) {
-            $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 - .+?</a>' ).matches.value.replace( '👤 - ', '' ).replace( '</a>', '')
-            $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
-            $new_torrent_file = Get-ForumTorrentFile $id
-            $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
-            Start-Sleep -Seconds 1
-            if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
-                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
-            }
-        }
-    }
-    if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
-        Write-Log 'Удаляем старые ненужные RSS-раздачи'
-        foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
-            if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
-                # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
-                $client = $settings.clients[$rss_torrent.client_key]
-                Remove-ClientTorrent -client $client -hash $rss_torrent.hash -deleteFiles
-            }
-        }
-    }
 }
