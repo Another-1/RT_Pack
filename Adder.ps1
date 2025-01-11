@@ -387,10 +387,10 @@ if ( $new_torrents_keys ) {
                 $new_topic_info = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
                 $new_topic_title = $new_topic_info.name
                 if ( $null -ne $new_topic_title -and $new_topic_title -eq $existing_torrent.name -and $settings.sections[$new_tracker_data.section].data_subfolder -le '2') {
-                    Remove-ClientTorrent $client $existing_torrent.hash
+                    Remove-ClientTorrent -client $client -torrent $existing_torrent
                 }
                 elseif ($null -ne $new_topic_title ) {
-                    Remove-ClientTorrent $client $existing_torrent.hash -deleteFiles
+                    Remove-ClientTorrent -client $client -torrent $existing_torrent -deleteFiles
                 }
                 Start-Sleep -Milliseconds 100 
                 $torrent_to_tag = [PSCustomObject]@{
@@ -592,13 +592,6 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
 }
 
 if ( $rss ) {
-    Write-Log 'Обновляем RSS'
-    # $rss_ids = ( ( (Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'.split( "`n" ) | select-string 't=\d+"' ).matches.value.replace( 't=','' ).replace( '"','') ).ToInt64($null)
-    # foreach ( $id in $rss_ids) {
-    #     if ( !$id_to_info[$id] ) {
-    #         $new_torrent_file = Get-ForumTorrentFile $id
-    #         $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
-    #     }
     $rss_ids = @()
     $rss_data = ( Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'
     $rss_add_cnt = 0
@@ -624,7 +617,7 @@ if ( $rss ) {
             if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
                 # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                 $client = $settings.clients[$rss_torrent.client_key]
-                Remove-ClientTorrent -client $client -hash $rss_torrent.hash -deleteFiles
+                Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
                 $rss_del_cnt++
             }
         }

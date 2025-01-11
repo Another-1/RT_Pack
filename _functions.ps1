@@ -660,14 +660,16 @@ function Send-Report () {
     . $php_path ( Join-Path $tlo_path 'cron' 'reports.php' )
 }
 
-function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles ) {
+function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles, $torrent = $null ) {
+    if ( $null -ne $torrent ) { $hash = $torrent.hash }
+    $text = ( $null -eq $torrent ? $hash : $torrent.name )
     try {
         if ( $deleteFiles -eq $true ) {
-            $text = 'Удаляем из клиента ' + $client.Name + ' раздачу ' + $hash + ' вместе с файлами'
+            $text = 'Удаляем из клиента ' + $client.Name + ' раздачу ' + $text + ' вместе с файлами'
             Write-Log $text
         }
         else {
-            $text = 'Удаляем из клиента ' + $client.Name + ' раздачу ' + $hash + ' без удаления файлов'
+            $text = 'Удаляем из клиента ' + $client.Name + ' раздачу ' + $text + ' без удаления файлов'
             Write-Log $text
         }
         $request_delete = @{
