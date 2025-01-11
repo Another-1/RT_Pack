@@ -58,3 +58,7 @@ if ($topicId) {
     # Если получен хотя бы один нормальный torrent-файл, выходим с кодом 0, иначе выходим с кодом 1
     exit $exitCode
 }
+else {
+    Write-Log "`nНе указано ни одного ID раздачи" -Red
+    Write-Log "`nПример правильного вызова:`ntorrent_file_downloader.ps1 103910,113457,117415`n"
+}
