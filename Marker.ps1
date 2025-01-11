@@ -56,8 +56,14 @@ $down_cnt = 0
 
 foreach ( $torrent in $clients_torrents ) {
     if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', $settings.clients[$torrent.client_key].stopped_state_dl ) ) {
+        if ( $torrent.tags -like "*$seed_tag*" ) {
+            Get-topicIDs -client $settings.clients[$torrent.client_key] -torrent_list @( $torrent )
+            Write-Log "Снимаем с раздачи $($torrent.topic_id) - $($torrent.name) метку '$seed_tag'"
+            Remove-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $seed_tag -silent
+        }
         if ( $torrent.tags -notlike "*$down_tag*" ) {
-            Write-Log "Метим раздачу $($torrent.name) меткой $down_tag"
+            Get-topicIDs -client $settings.clients[$torrent.client_key] -torrent_list @( $torrent )
+            Write-Log "Метим раздачу $($torrent.topic_id) - $($torrent.name) меткой '$down_tag'"
             Set-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $down_tag
             $torrent.state = 'OK'
         }
@@ -65,16 +71,19 @@ foreach ( $torrent in $clients_torrents ) {
     }
     elseif ( $torrent.state -in ( 'queuedUP', 'stalledUP', 'forcedUP', 'uploading', $settings.clients[$torrent.client_key].stopped_state ) ) {
         if ( $torrent.tags -like "*$down_tag*" ) {
-            Write-Log "Снимаем с раздачи $($torrent.name) метку $down_tag"
+            Get-topicIDs -client $settings.clients[$torrent.client_key] -torrent_list @( $torrent )
+            Write-Log "Снимаем с раздачи $($torrent.topic_id) - $($torrent.name) метку '$down_tag'"
             Remove-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent
         }
         if ( $torrent.tags -notlike "*$seed_tag*" ) {
-            Write-Log "Метим раздачу $($torrent.name) меткой $seed_tag"
+            Get-topicIDs -client $settings.clients[$torrent.client_key] -torrent_list @( $torrent )
+            Write-Log "Метим раздачу $($torrent.topic_id) - $($torrent.name) меткой '$seed_tag'"
             Set-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $seed_tag -silent
             $seed_cnt++            
         }
         if ( $torrent.state -eq 'forcedUP' ) {
-            Write-Log "Перевожу раздачу $($torrent.name) в статус Seeding"
+            Get-topicIDs -client $settings.clients[$torrent.client_key] -torrent_list @( $torrent )
+            Write-Log "Перевожу раздачу $($torrent.topic_id) - $($torrent.name) в статус Seeding"
             $start_keys = @($torrent.hash)
             Start-Torrents -hashes $start_keys -client $settings.clients[$torrent.client_key]
         }

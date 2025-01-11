@@ -382,9 +382,11 @@ function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$n
     return $clients_torrents
 }
 
-function Get-TopicIDs ( $client, $torrent_list ) {
+function Get-TopicIDs ( $client, $torrent_list, [switch]$verbose ) {
     if ( $torrent_list.count -gt 0 ) {
-        Write-Log "Ищем ID раздач по $( $torrent_list.count -gt 1 ? 'хэшам' : 'хэшу ' + $torrent_list[0].hash ) от клиента $( $client.name ) в данных от трекера"
+        if ( $verbose.IsPresent ) {
+            Write-Log "Ищем ID раздач по $( $torrent_list.count -gt 1 ? 'хэшам' : 'хэшу ' + $torrent_list[0].hash ) от клиента $( $client.name ) в данных от трекера"
+        }
         $torrent_list | ForEach-Object {
             if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int64]$tracker_torrents[$_.hash.toUpper()].topic_id }
             if ( ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) -and $null -ne $db_hash_to_id ) {
@@ -402,7 +404,9 @@ function Get-TopicIDs ( $client, $torrent_list ) {
             }
         }
         $success = ( $torrent_list | Where-Object { $_.topic_id } ).count
-        Write-Log ( 'Найдено ' + $success + ' штук ID' ) -Red:( $success -ne $torrent_list.Count )
+        if ( $verbose.IsPresent ) {
+            Write-Log ( 'Найдено ' + $success + ' штук ID' ) -Red:( $success -ne $torrent_list.Count )
+        }
     }
 }
 
@@ -820,7 +824,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             if ( $tg_data.message -ne '' ) { $tg_data.message += "`n" }
             $tg_data.line = "Добавлено из RSS: $( Get-Spell -qty $rss_add_cnt -spelling 1 -entity 'torrents' )`n"
             Add-TGMessage $tg_data
-}
+        }
         if ( $rss_del_cnt -gt 0 ) {
             if ( $tg_data.message -ne '' ) { $tg_data.message += "`n" }
             $tg_data.line = "Удалено из RSS: $( Get-Spell -qty $rss_del_cnt -spelling 1 -entity 'torrents' )`n"

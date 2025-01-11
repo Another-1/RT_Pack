@@ -595,6 +595,7 @@ if ( $rss ) {
     $rss_ids = @()
     $rss_data = ( Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'
     $rss_add_cnt = 0
+    if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
     foreach ( $rss_record in $rss_data ) {
         $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
         $rss_ids += $id
