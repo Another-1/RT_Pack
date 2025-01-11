@@ -6,6 +6,7 @@ try { . ( Join-Path $PSScriptRoot '_functions.ps1' ); Write-Output 'Функци
 $settings_file = Join-Path $PSScriptRoot '_settings.ps1'
 Write-Output "Подгружаем настройки из $settings_file"
 try { . $settings_file; Write-Output 'Настройки подгружены' } catch { Write-Host 'Не найден файл настроек' -ForegroundColor Red; exit 1 }
+$tlo_path = Test-Setting 'tlo_path' -required
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 Write-Log 'Читаем настройки Web-TLO'
 $ini_data = Get-IniContent $ini_path
