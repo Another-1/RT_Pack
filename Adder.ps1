@@ -59,7 +59,7 @@ Write-Log 'Проверяем наличие всех нужных настро�
 if ( !$settings.telegram ) { $settings.telegram = [ordered]@{} }
 $json_section = ( $standalone -eq $true ? 'telegram' : '' )
 $settings.telegram.tg_token = Test-Setting 'tg_token' -json_section $json_section
-if ( $tg_token -ne '' -or $settings.telegram.tg_token -ne '' ) {
+if ( $settings.telegram.tg_token -ne '' ) {
     $settings.telegram.tg_chat = Test-Setting 'tg_chat' -required -json_section $json_section
     $settings.telegram.alert_oldies = Test-Setting 'alert_oldies' -required -json_section $json_section
     $settings.telegram.report_nowork = Test-Setting 'report_nowork' -required -json_section $json_section
@@ -398,7 +398,6 @@ if ( $new_torrents_keys ) {
                     topic_id = $new_tracker_data.topic_id
                 }
                 If ( $refreshed_label ) { Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label }
-                # if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
                 if ( !$refreshed[ $client.name ] ) { $refreshed[ $client.name ] = @{} }
                 $refreshed_ids += $new_tracker_data.topic_id
                 if ( !$refreshed[ $client.name ][ $new_tracker_data.section] ) { $refreshed[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
@@ -434,7 +433,7 @@ if ( $new_torrents_keys ) {
                             Invoke-SqliteQuery -Query "UPDATE updates SET cnt = $current_cnt WHERE id = $($new_tracker_data.topic_id) " -SQLiteConnection $up_conn | Out-Null
                         }
                         if ( $current_cnt -ge $update_trigger) {
-                            Send-TGMessage -message "Рекомендуется перенести в клиенте <b>$($client.name)</b> на SSD раздачу $($new_tracker_data.topic_id) $($existing_torrent.name)" -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                            Send-TGMessage -message "Рекомендуется перенести в клиенте <b>$($client.name)</b> на SSD раздачу $($new_tracker_data.topic_id) $($existing_torrent.name)" -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
                         }
                     }
                 }
@@ -530,7 +529,7 @@ if ( $new_torrents_keys ) {
                     Set-Comment -client $client -torrent $client_torrent -label $news_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 
                 }
-                if ( $nul -ne $tg_token -and '' -ne $tg_token ) {
+                if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_token ) {
                     if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
                     if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
                     $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
@@ -558,7 +557,7 @@ Write-Log "Добавлено: $(Get-Spell -qty ( ( $added.keys | ForEach-Object
 Write-Log "Обновлено: $(Get-Spell -qty ( ( $refreshed.keys | ForEach-Object { $refreshed[$_] } ).values.id.count ) -spelling 1 -entity 'torrents' )"
 
 Remove-Variable -Name obsolete -ErrorAction SilentlyContinue
-if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report_obsolete -eq 'Y' ) {
+if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_token -and $settings.telegram.report_obsolete -and $settings.telegram.report_obsolete -eq 'Y' ) {
     Write-Log 'Ищем неактуальные раздачи.'
     if ( $forced_sections -and $db_hash_to_id ) {
         # $hash_to_id = $hash_to_id.keys{ key = $_; value = $hash_to_id[ ( $hash_to_id.keys | Where-Object { $db_hash_to_id[$_] } ) ] }
@@ -581,7 +580,7 @@ if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_obsolete -and $report
     }
 }
 
-if ( $nul -ne $tg_token -and '' -ne $tg_token -and $report_broken -and $report_broken -eq 'Y' ) {
+if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_token -and $report_broken -and $report_broken -eq 'Y' ) {
     Remove-Variable broken -ErrorAction SilentlyContinue
     Write-Log 'Ищем проблемные раздачи.'
     $clients_torrents | Where-Object { $_.state -in ( 'missingFiles', 'error' ) } | ForEach-Object {
@@ -645,11 +644,11 @@ elseif ( $update_stats -ne 'Y' -or !$php_path ) {
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
 }
 
-if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or ( $obsolete.Count -gt 0 -and $report_obsolete -eq 'Y' ) -or ( $broken.count -gt 0 -and $report_broken -eq 'Y' ) -or $notify_nowork -eq 'Y' -or $rss_add_cnt -gt 0 -or $rss_del_cnt -gt 0 ) -and $tg_token -ne '' -and $tg_chat -ne '' ) {
-    Send-TGReport -refreshed $refreshed -added $added -rss_add_cnt $rss_add_cnt -rss_del_cnt $rss_del_cnt -obsolete $obsolete -broken $broken -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or ( $obsolete.Count -gt 0 -and $settings.telegram.report_obsolete -eq 'Y' ) -or ( $broken.count -gt 0 -and $report_broken -eq 'Y' ) -or $notify_nowork -eq 'Y' -or $rss_add_cnt -gt 0 -or $rss_del_cnt -gt 0 ) -and $settings.telegram.tg_token -ne '' -and $settings.telegram.tg_chat -ne '' ) {
+    Send-TGReport -refreshed $refreshed -added $added -rss_add_cnt $rss_add_cnt -rss_del_cnt $rss_del_cnt -obsolete $obsolete -broken $broken -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
-elseif ( $report_nowork -eq 'Y' -and $tg_token -ne '' -and $tg_chat -ne '' ) { 
-    Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' : ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) + ' отработал, ничего делать не пришлось.' ) -token $tg_token -chat_id $tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+elseif ( $settings.telegram.report_nowork -eq 'Y' -and $settings.telegram.tg_token -ne '' -and $settings.telegram.tg_chat -ne '' ) { 
+    Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' : ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) + ' отработал, ничего делать не пришлось.' ) -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
 
 if ( $update_trigger ) {
