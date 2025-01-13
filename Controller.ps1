@@ -23,27 +23,37 @@ else {
     $standalone = $false
 }
 
-if ( $standalone -eq $true ) {
-    $settings.controller.old_starts_per_run = Test-Setting '$settings.controller.old_starts_per_run'
-}
-else {
-    $old_starts_per_run = Test-Setting 'old_starts_per_run'; $settings.controller.old_starts_per_run = $old_starts_per_run
-}
+# if ( $standalone -eq $true ) {
+#     $settings.controller.old_starts_per_run = Test-Setting '$settings.controller.old_starts_per_run'
+# }
+# else {
+# $old_starts_per_run = Test-Setting 'old_starts_per_run'; $settings.controller.old_starts_per_run = $old_starts_per_run
+# }
+$json_section = ( $standalone -eq $true ? 'controller' : '' )
+$settings.controller.old_starts_per_run = Test-Setting 'old_starts_per_run' -json_section $json_section
 
-if ( $standalone -eq $true ) {
-    $settings.controller.min_stop_to_start = Test-Setting 'settings.controller.min_stop_to_start'
-}
-else {
-    $min_stop_to_start = Test-Setting 'min_stop_to_start'; $settings.controller.min_stop_to_start = $min_stop_to_start
-}
+# if ( $standalone -eq $true ) {
+#     $settings.controller.min_stop_to_start = Test-Setting 'settings.controller.min_stop_to_start'
+# }
+# else {
+#     $min_stop_to_start = Test-Setting 'min_stop_to_start'; $settings.controller.min_stop_to_start = $min_stop_to_start
+# }
+$settings.controller.min_stop_to_start = Test-Setting 'min_stop_to_start' -json_section $json_section
 
 if ( $standalone -eq $false ) {
     $settings.controller.global_seeds = $ini_data['topics_control'].peers
+    $settings.controller.priority = $ini_data['topics_control'].priority
 }
 
-$settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = ( $settings.sections[$_].control_peers -ne '' ? $settings.sections[$_].control_peers : -2 ).ToInt32($null) }
-$settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds.ToInt32($null) }
-# $settings.sections.count; pause
+if ( $settings.controller.priority -eq '1' ) { # регулировка на уровне раздела
+    $settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = ( $settings.sections[$_].control_peers -ne '' ? $settings.sections[$_].control_peers : -2 ).ToInt32($null) }
+    $settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds.ToInt32($null) }
+}
+else { #регулировка на уровне клиента
+    $settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = $settings.clients[$settings.sections[$_].client].control_peers }
+    $settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds.ToInt32($null) }
+}
+
 if ( !$debug ) {
     Write-Log 'Проверяем актуальность Controller и _functions' 
     if ( ( Test-Version '_functions.ps1' 'Controller' ) -eq $true ) {
@@ -106,7 +116,7 @@ if ( !$api_seeding -or $debug -eq $false ) {
             client           = $_.client_key
             state            = $_.state
             seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
-            save_path       = $_.save_path
+            save_path        = $_.save_path
         }
         if ( $_.state -eq $settings.clients[$_.client_key].stopped_state ) {
             $paused_sort.Add( [PSCustomObject]@{ hash = $_.infohash_v1; client = $_.client_key; seeder_last_seen = $states[$_.infohash_v1].seeder_last_seen } ) | Out-Null

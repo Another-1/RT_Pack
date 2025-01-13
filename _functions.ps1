@@ -280,7 +280,17 @@ function Get-Clients ( [switch]$LocalOnly ) {
     $i = 1
     $ini_data.keys | Where-Object { $_ -match '^torrent-client' -and $ini_data[$_].client -eq 'qbittorrent' } | ForEach-Object {
         if ( ( $_ | Select-String ( '\d+$' ) ).matches.value.ToInt16($null) -le $client_count ) {
-            $settings.clients[$ini_data[$_].comment] = [ordered]@{ IP = $ini_data[$_].hostname; port = $ini_data[$_].port; login = $ini_data[$_].login; password = $ini_data[$_].password; id = $ini_data[$_].id; seqno = $i; name = $ini_data[$_].comment; ssl = $ini_data[$_].ssl }
+            $settings.clients[$ini_data[$_].comment] = [ordered]@{
+                IP       = $ini_data[$_].hostname
+                port     = $ini_data[$_].port
+                login    = $ini_data[$_].login
+                password = $ini_data[$_].password
+                id       = $ini_data[$_].id
+                seqno    = $i
+                name     = $ini_data[$_].comment
+                ssl      = $ini_data[$_].ssl
+                control_peers = $ini_data[$_].control_peers ? $ini_data[$_].control_peers.ToInt32($null) : -2
+            }
             $i++
         }
     } 

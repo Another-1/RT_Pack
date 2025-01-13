@@ -600,7 +600,7 @@ if ( $rss ) {
         $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
         $rss_ids += $id
         if ( !$id_to_info[$id] ) {
-            $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 - .+?</a>' ).matches.value.replace( '👤 - ', '' ).replace( '</a>', '')
+            $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 .+?</a>' ).matches.value.replace( '👤 ', '' ).replace( '</a>', '')
             $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
             $new_torrent_file = Get-ForumTorrentFile $id
             $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
