@@ -29,7 +29,7 @@ if ($topicId) {
             Write-Log "Ошибка: не могу получить torrent-файл для раздачи $($id)!"
         }
         else {
-            $minTorrentFileSizeBytes = 1000
+            $minTorrentFileSizeBytes = 400
             # Если размер .torrent-файла меньше определённого значения ($minTorrentFileSizeBytes), то это скорее всего сообщение об ошибке
             $fileSizeBytes = -1
             if (Test-Path -Path $new_torrent_file) {
