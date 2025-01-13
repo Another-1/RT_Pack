@@ -593,7 +593,8 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
 
 if ( $rss ) {
     $rss_ids = @()
-    $rss_data = ( Invoke-RestMethod -Uri 'http://rutr.my.to/ask_help.rss' ).description.'#cdata-section'
+    if ( !$rss.url ) { $rss.url ='https://rutr.my.to/ask_help.php' }
+    $rss_data = ( Invoke-RestMethod -Uri $rss.url ).description.'#cdata-section'
     $rss_add_cnt = 0
     if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
     foreach ( $rss_record in $rss_data ) {
