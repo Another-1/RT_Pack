@@ -593,8 +593,25 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
 
 if ( $rss ) {
     $rss_ids = @()
-    if ( !$rss.url ) { $rss.url ='https://rutr.my.to/ask_help.php' }
-    $rss_data = ( Invoke-RestMethod -Uri $rss.url ).description.'#cdata-section'
+    if ( !$rss.url ) { $rss.url = 'https://rutr.my.to/ask_help.php' }
+    $retry_cnt = 1
+    while ( $true ) {
+        try {
+            $rss_data = ( Invoke-RestMethod -Uri $rss.url ).description.'#cdata-section'
+            break
+        }
+        catch {
+            if ( $error[0].Exception.Message -match 'time') {
+                Write-Log "Нет ответа...`nЖдём 10 секунд и пробуем ещё раз" -Red    
+            }
+            else {
+                Write-Log "Ошибка $($error[0].Exception.Message)`nЖдём 10 секунд и пробуем ещё раз" -Red
+            }
+            Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
+            If ( $retry_cnt -gt 10 ) { break }
+        }
+    }
+
     $rss_add_cnt = 0
     if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
     foreach ( $rss_record in $rss_data ) {
@@ -603,6 +620,7 @@ if ( $rss ) {
         if ( !$id_to_info[$id] ) {
             $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 .+?</a>' ).matches.value.replace( '👤 ', '' ).replace( '</a>', '')
             $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
+            Write-Log "Добавляем раздачу $id для $keeper"
             $new_torrent_file = Get-ForumTorrentFile $id
             $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
             Start-Sleep -Seconds 1
@@ -619,6 +637,7 @@ if ( $rss ) {
             if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
                 # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                 $client = $settings.clients[$rss_torrent.client_key]
+                Write-Log "Удаляем раздачу $($rss_torrent.topic_id) - $($rss_torrent.name)"
                 Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
                 $rss_del_cnt++
             }
