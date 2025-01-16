@@ -246,11 +246,11 @@ $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
     }
 }
 
-Write-Log 'Ищем раздачи' # c новыми хэшами, которых ещё нет в клиентах
+Write-Log 'Ищем раздачи для анализа' # c новыми хэшами, которых ещё нет в клиентах
 
 $new_torrents_keys = $tracker_torrents.keys | Where-Object { $null -eq $hash_to_id[$_] }
 $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
-Write-Log ( "Новых: $spell" )
+Write-Log ( "Найдено: $spell" )
 
 $new_torrents_keys_2 = @()
 if ( $max_seeds -ne -1 ) {
@@ -329,7 +329,7 @@ $added = @{}
 $refreshed = @{}
 
 if ( $new_torrents_keys ) {
-    Write-Log 'Сортируем новые раздачи по клиентам'
+    Write-Log 'Сортируем раздачи по клиентам'
     $new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $tracker_torrents[$_].tor_size_bytes } | Sort-Object -Property { $settings.sections[$tracker_torrents[$_].section].client } -Stable
     $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
     Write-Log "Рассортировали все $spell, приступаем к анализу найденных раздач"
