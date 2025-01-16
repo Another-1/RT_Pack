@@ -246,7 +246,7 @@ $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
     }
 }
 
-Write-Log 'Ищем новые раздачи'
+Write-Log 'Ищем раздачи' # c новыми хэшами, которых ещё нет в клиентах
 
 $new_torrents_keys = $tracker_torrents.keys | Where-Object { $null -eq $hash_to_id[$_] }
 $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
@@ -332,10 +332,14 @@ if ( $new_torrents_keys ) {
     Write-Log 'Сортируем новые раздачи по клиентам'
     $new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $tracker_torrents[$_].tor_size_bytes } | Sort-Object -Property { $settings.sections[$tracker_torrents[$_].section].client } -Stable
     $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
-    Write-Log "Рассортировали все $spell"
-    $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
+    Write-Log "Рассортировали все $spell, приступаем к анализу найденных раздач"
+    
+    $ProgressPreference = 'Continue'
+    $cntr = 0
     foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $settings.sections[$tracker_torrents[$_].section] -and ( !$never_obsolete -or $tracker_torrents[$_].section -notin $never_obsolete_array ) } ) {
+        $cntr++
         # Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
+        Write-Progress -Activity 'Обработка' -Status $new_torrent_key -PercentComplete ( $cntr * 100 / $new_torrents_keys.count )
         $new_tracker_data = $tracker_torrents[$new_torrent_key]
         $existing_torrent = $id_to_info[ $new_tracker_data.topic_id ]
         if ( $existing_torrent ) {
@@ -552,6 +556,7 @@ if ( $new_torrents_keys ) {
         }
     }
 } # по наличию новых раздач.
+Write-Progress -Activity 'Проверяем, проверяем..' -Status 'Scanning' -Completed
 
 Write-Log "Добавлено: $(Get-Spell -qty ( ( $added.keys | ForEach-Object { $added[$_] } ).values.id.count ) -spelling 1 -entity 'torrents' )"
 Write-Log "Обновлено: $(Get-Spell -qty ( ( $refreshed.keys | ForEach-Object { $refreshed[$_] } ).values.id.count ) -spelling 1 -entity 'torrents' )"
@@ -611,35 +616,39 @@ if ( $rss ) {
             If ( $retry_cnt -gt 10 ) { break }
         }
     }
-
-    $rss_add_cnt = 0
-    if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
-    foreach ( $rss_record in $rss_data ) {
-        $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
-        $rss_ids += $id
-        if ( !$id_to_info[$id] ) {
-            $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 .+?</a>' ).matches.value.replace( '👤 ', '' ).replace( '</a>', '')
-            $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
-            Write-Log "Добавляем раздачу $id для $keeper"
-            $new_torrent_file = Get-ForumTorrentFile $id
-            $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
-            Start-Sleep -Seconds 1
-            if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
-                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
-            }
-            $rss_add_cnt++
-        }
+    if ( $retry_cnt -gt 10 ) {
+        Write-Log 'Не удалось скачать RSS-ленту, пропускаем обработку' -Red
     }
-    $rss_del_cnt = 0
-    if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
-        Write-Log 'Удаляем старые ненужные RSS-раздачи'
-        foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
-            if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
-                # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
-                $client = $settings.clients[$rss_torrent.client_key]
-                Write-Log "Удаляем раздачу $($rss_torrent.topic_id) - $($rss_torrent.name)"
-                Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
-                $rss_del_cnt++
+    else {
+        $rss_add_cnt = 0
+        if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
+        foreach ( $rss_record in $rss_data ) {
+            $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
+            $rss_ids += $id
+            if ( !$id_to_info[$id] ) {
+                $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 .+?</a>' ).matches.value.replace( '👤 ', '' ).replace( '</a>', '')
+                $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
+                Write-Log "Добавляем раздачу $id для $keeper"
+                $new_torrent_file = Get-ForumTorrentFile $id
+                $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+                Start-Sleep -Seconds 1
+                if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
+                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
+                }
+                $rss_add_cnt++
+            }
+        }
+        $rss_del_cnt = 0
+        if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
+            Write-Log 'Удаляем старые ненужные RSS-раздачи'
+            foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
+                if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
+                    # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
+                    $client = $settings.clients[$rss_torrent.client_key]
+                    Write-Log "Найдена старая ненужная раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
+                    Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                    $rss_del_cnt++
+                }
             }
         }
     }

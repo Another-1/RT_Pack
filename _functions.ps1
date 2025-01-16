@@ -676,7 +676,7 @@ function Send-Report () {
 
 function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles, $torrent = $null ) {
     if ( $null -ne $torrent ) { $hash = $torrent.hash }
-    $text = ( $null -eq $torrent ? $hash : $torrent.name )
+    $text = ( $null -eq $torrent ? $hash : $( $torrent.topic_id ? "$($torrent.topic_id) - $($torrent.name)" : $torrent.name ) )
     try {
         if ( $deleteFiles -eq $true ) {
             $text = 'Удаляем из клиента ' + $client.Name + ' раздачу ' + $text + ' вместе с файлами'
