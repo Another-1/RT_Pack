@@ -339,7 +339,7 @@ if ( $new_torrents_keys ) {
     foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $settings.sections[$tracker_torrents[$_].section] -and ( !$never_obsolete -or $tracker_torrents[$_].section -notin $never_obsolete_array ) } ) {
         $cntr++
         # Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
-        Write-Progress -Activity 'Обработка' -Status $new_torrent_key -PercentComplete ( $cntr * 100 / $new_torrents_keys.count )
+        Write-Progress -Activity 'Обработка найденных раздач' -Status $new_torrent_key -PercentComplete ( $cntr * 100 / $new_torrents_keys.count )
         $new_tracker_data = $tracker_torrents[$new_torrent_key]
         $existing_torrent = $id_to_info[ $new_tracker_data.topic_id ]
         if ( $existing_torrent ) {
@@ -556,7 +556,7 @@ if ( $new_torrents_keys ) {
         }
     }
 } # по наличию новых раздач.
-Write-Progress -Activity 'Проверяем, проверяем..' -Status 'Scanning' -Completed
+Write-Progress -Activity 'Обработка найденных раздач' -Status 'Scanning' -Completed
 
 Write-Log "Добавлено: $(Get-Spell -qty ( ( $added.keys | ForEach-Object { $added[$_] } ).values.id.count ) -spelling 1 -entity 'torrents' )"
 Write-Log "Обновлено: $(Get-Spell -qty ( ( $refreshed.keys | ForEach-Object { $refreshed[$_] } ).values.id.count ) -spelling 1 -entity 'torrents' )"
