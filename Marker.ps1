@@ -49,7 +49,14 @@ if ( $standalone -eq $false ) {
 }
 
 Get-Clients
-if ( $rss_mark.ToUpper() -eq 'N' ) { $settings.clients.Remove( $rss.client ) }
+if ( $rss_mark.ToUpper() -eq 'N' -and $rss ) { 
+    if ( $rss.client ) {
+        $settings.clients.Remove( $rss.client )
+    }
+    # else {
+    #     $settings.clients.Remove( ( $settings.clients.keys | Where-Object { $settings.clients[$_].IP -eq $rss.client_IP -and $settings.clients[$_].port -eq $rss.client_port } ) )
+    # }
+}
 Get-ClientApiVersions -clients $settings.clients
 $clients_torrents = Get-ClientsTorrents -mess_sender 'Marker' -noIDs
 $seed_cnt = 0
