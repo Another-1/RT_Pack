@@ -192,6 +192,9 @@ else {
 
 if ( $standalone -ne $true ) {
     Get-Clients
+    if ( $rss -and !$rss.client ) {
+        $settings.clients['RSS'] = @{ IP = $rss.client_IP; port = $rss.client_port; login = $rss.client_login; password = $rss.client_password; name = 'RSS'; ssl = 0}
+    }
     Write-Log 'Достаём из TLO подробности о разделах'
     Get-IniSectionDetails $settings $ini_sections
 }
@@ -620,9 +623,6 @@ if ( $rss ) {
         Write-Log 'Не удалось скачать RSS-ленту, пропускаем обработку' -Red
     }
     else {
-        if ( !$rss.client ) {
-            $settings.clients['RSS'] = @{ IP = $rss.client_IP; port = $rss.client_port; login = $rss.client_login; password = $rss.client_password }
-        }
 
         $rss_add_cnt = 0
         if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
