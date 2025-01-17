@@ -620,6 +620,10 @@ if ( $rss ) {
         Write-Log 'Не удалось скачать RSS-ленту, пропускаем обработку' -Red
     }
     else {
+        if ( !$rss.client ) {
+            $settings.clients['RSS'] = @{ IP = $rss.client_IP; port = $rss.client_port; login = $rss.client_login; password = $rss.client_password }
+        }
+
         $rss_add_cnt = 0
         if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
         foreach ( $rss_record in $rss_data ) {
