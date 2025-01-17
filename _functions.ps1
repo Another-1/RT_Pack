@@ -783,7 +783,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             foreach ( $client in $broken.Keys ) {
                 if ( !$first ) { $tg_data.message += "`n" }
                 $first = $false
-                $tg_data.message += "Проблемные в клиенте $($client.name) :`n"
+                $tg_data.message += "Ошибки в клиенте $($client.name) :`n"
                 $broken[$client] | ForEach-Object {
                     $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$_`n"
                     Add-TGMessage $tg_data
