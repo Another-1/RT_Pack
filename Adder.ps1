@@ -193,7 +193,7 @@ else {
 if ( $standalone -ne $true ) {
     Get-Clients
     if ( $rss -and !$rss.client ) {
-        $settings.clients['RSS'] = @{ IP = $rss.client_IP; port = $rss.client_port; login = $rss.client_login; password = $rss.client_password; name = 'RSS'; ssl = 0}
+        $settings.clients['RSS'] = @{ IP = $rss.client_IP; port = $rss.client_port; login = $rss.client_login; password = $rss.client_password; name = 'RSS'; ssl = 0 }
         $rss.client = 'RSS'
     }
     Write-Log 'Достаём из TLO подробности о разделах'
@@ -647,12 +647,22 @@ if ( $rss ) {
         if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
             Write-Log 'Удаляем старые ненужные RSS-раздачи'
             foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
-                if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
-                    # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
-                    $client = $settings.clients[$rss_torrent.client_key]
-                    Write-Log "Найдена старая ненужная раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
-                    Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
-                    $rss_del_cnt++
+                $client = $settings.clients[$rss_torrent.client_key]
+                if ( $client.name -eq $rss.client ) {
+                    if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
+                        # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
+                        Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
+                        Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                        $rss_del_cnt++
+                    }
+                    else {
+                        Get-ClientTrackerStatus -client $client -torrent_list @( $rss_torrent )
+                        if ( $rss_torrent.tracker_status -eq 4 ) {
+                            Write-Log "Найдена снесённая с трекера раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
+                            Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                            $rss_del_cnt++
+                        }
+                    }
                 }
             }
         }

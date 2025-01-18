@@ -281,14 +281,14 @@ function Get-Clients ( [switch]$LocalOnly ) {
     $ini_data.keys | Where-Object { $_ -match '^torrent-client' -and $ini_data[$_].client -eq 'qbittorrent' } | ForEach-Object {
         if ( ( $_ | Select-String ( '\d+$' ) ).matches.value.ToInt16($null) -le $client_count ) {
             $settings.clients[$ini_data[$_].comment] = [ordered]@{
-                IP       = $ini_data[$_].hostname
-                port     = $ini_data[$_].port
-                login    = $ini_data[$_].login
-                password = $ini_data[$_].password
-                id       = $ini_data[$_].id
-                seqno    = $i
-                name     = $ini_data[$_].comment
-                ssl      = $ini_data[$_].ssl
+                IP            = $ini_data[$_].hostname
+                port          = $ini_data[$_].port
+                login         = $ini_data[$_].login
+                password      = $ini_data[$_].password
+                id            = $ini_data[$_].id
+                seqno         = $i
+                name          = $ini_data[$_].comment
+                ssl           = $ini_data[$_].ssl
                 control_peers = $ini_data[$_].control_peers ? $ini_data[$_].control_peers.ToInt32($null) : -2
             }
             $i++
@@ -416,6 +416,27 @@ function Get-TopicIDs ( $client, $torrent_list, [switch]$verbose ) {
         $success = ( $torrent_list | Where-Object { $_.topic_id } ).count
         if ( $verbose.IsPresent ) {
             Write-Log ( 'Найдено ' + $success + ' штук ID' ) -Red:( $success -ne $torrent_list.Count )
+        }
+    }
+}
+
+function Get-ClientTrackerStatus ( $client, $torrent_list, [switch]$verbose ) {
+    if ( $torrent_list.count -gt 0 ) {
+        if ( $verbose.IsPresent ) {
+            Write-Log "Ищем трекеры раздач по $( $torrent_list.count -gt 1 ? 'хэшам' : 'хэшу ' + $torrent_list[0].hash ) в клиенте $( $client.name )"
+        }
+        $torrent_list | ForEach-Object {
+            $Params = @{ hash = $_.hash }
+            try {
+                # $_.tracker_status = `
+                $tracker = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/trackers' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json | Where-Object { $_.url -like '*rutracker.cx*' }
+                if ( $tracker.status -eq 4 -and $tracker.msg -eq 'Torrent not registered') {
+                    $_ | Add-Member -NotePropertyName tracker_status -Force -NotePropertyValue $tracker.status
+                    Start-Sleep -Milliseconds 10
+                }
+            }
+            catch { }
+            # $ending = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
         }
     }
 }
