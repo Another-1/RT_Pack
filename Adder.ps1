@@ -586,7 +586,7 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
     if ( $rss.client_IP ) {
         $obsolete_torrents = $obsolete_torrents | Where-Object { $_.client_key -in $settings.tlo_clients.keys }
     }
-    
+
     $obsolete_torrents | ForEach-Object {
         If ( !$obsolete ) { $obsolete = @{} }
         Write-Log ( "Левая раздача " + $_.topic_id + ' в клиенте ' + $_.client_key )
@@ -655,7 +655,7 @@ if ( $rss ) {
             foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
                 $client = $settings.clients[$rss_torrent.client_key]
                 if ( $client.name -eq $rss.client ) {
-                    if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
+                    if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP', 'pausedUP' ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
                         # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                         Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
                         Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
