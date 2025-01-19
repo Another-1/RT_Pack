@@ -192,6 +192,7 @@ else {
 
 if ( $standalone -ne $true ) {
     Get-Clients
+    $settings.tlo_clients = $settings.clients.Keys | ForEach-Object { @{ $_ = $settings.clients[$_] } } # чтобы при поиске левых раздач не анализировать внешние клиенты, которых нет в TLO.
     if ( $rss -and !$rss.client ) {
         $settings.clients['RSS'] = @{ IP = $rss.client_IP; port = $rss.client_port; login = $rss.client_login; password = $rss.client_password; name = 'RSS'; ssl = 0 }
         $rss.client = 'RSS'
@@ -581,6 +582,11 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
     if ( $rss ) {
         $obsolete_torrents = $obsolete_torrents | Where-Object { $_.category -ne $rss.category }
     }
+
+    if ( $rss.client_IP ) {
+        $obsolete_torrents = $obsolete_torrents | Where-Object { $_.client_key -in $settings.tlo_clients.keys }
+    }
+    
     $obsolete_torrents | ForEach-Object {
         If ( !$obsolete ) { $obsolete = @{} }
         Write-Log ( "Левая раздача " + $_.topic_id + ' в клиенте ' + $_.client_key )
