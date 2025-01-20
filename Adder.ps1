@@ -707,6 +707,7 @@ if ( $report_stalled -eq 'Y' ) {
         $stalleds += @{ topic_id = $_.topic_id; hash = $_.infohash_v1; client_key = $_.client_key; trackers = $null }
     }
     if ( $stalleds.count -gt 0 ) {
+        $stalleds = $stalleds | Sort-Object -Property topic_id -Unique
         Write-Log ( 'Найдено ' + $stalleds.count + ' некачашек' )
         foreach ( $stalled in $stalleds ) {
             $params = @{ hash = $stalled.hash }
@@ -719,7 +720,7 @@ if ( $report_stalled -eq 'Y' ) {
         Write-Log ( 'Осталось ' + $stalleds.count + ' некачашек' )
 
         $params = @{
-            'help_load' = ( ( $stalleds.topic_id | Sort-Object -Unique ) -join ',')
+            'help_load' = ( $stalleds.topic_id -join ',')
             'help_pwd'  = $stalled_pwd
         }
         Write-Log 'Отправляем список некачашек'
