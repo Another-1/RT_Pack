@@ -605,6 +605,7 @@ function Send-Forum ( $mess, $post_id ) {
 function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
     # if ( !$settings.connection.sid ) { Initialize-Forum }
     $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl.php?t=' + $Id + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
+    $user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0'
     if ( $null -eq $save_path ) { $Path = Join-Path $PSScriptRoot ( $Id.ToString() + '.torrent' ) } else { $path = Join-Path $save_path ( $Id.ToString() + '.torrent' ) }
     $i = 1
     Write-Log 'Скачиваем torrent-файл с форума'
@@ -613,14 +614,14 @@ function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
             if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $get_url используя прокси $($settings.connection.proxy.url )" }
                 if ( $settings.connection.proxy.credentials ) {
-                    Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -OutFile $Path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials
+                    Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -OutFile $Path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials -UserAgent $user_agent
                 }
                 else {
-                    Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -OutFile $Path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck
+                    Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -OutFile $Path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -UserAgent $user_agent
                 }
                 break
             }
-            else { Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -OutFile $Path -MaximumRedirection 999 -SkipHttpErrorCheck; break }
+            else { Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -OutFile $Path -MaximumRedirection 999 -SkipHttpErrorCheck -UserAgent $user_agent; break }
         }
         catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
     }
