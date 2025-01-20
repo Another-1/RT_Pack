@@ -631,7 +631,7 @@ function Get-ForumPost ( [int]$post ) {
     # if ( !$settings.connection.sid ) { Initialize-Forum }
     $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/viewtopic.php?p=' + $post
     $i = 1
-    Write-Log $get_url
+    Write-Log "`n$get_url"
     while ( $i -le 10 ) {
         try { 
             if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
