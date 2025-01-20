@@ -719,10 +719,11 @@ if ( $report_stalled -eq 'Y' ) {
         Write-Log ( 'Осталось ' + $stalleds.count + ' некачашек' )
 
         $params = @{
-            'help_load' = ( $stalleds.topic_id -join ',')
+            'help_load' = ( ( $stalleds.topic_id | Sort-Object -Unique ) -join ',')
             'help_pwd'  = $stalled_pwd
         }
         Write-Log 'Отправляем список некачашек'
+        Write-Log "Будет отправлено следующее:`n$($params.'help_load')"
         Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params -ErrorVariable send_result | Out-Null
         if ( $send_result.count -eq 0 ) {
             Write-Log ( 'Отправлено ' + $stalleds.count + ' некачашек' )

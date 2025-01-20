@@ -567,16 +567,20 @@ function ConvertTo-1251 ( $inp ) {
     return [System.Web.HttpUtility]::UrlEncode($sourceEncoding.GetBytes($inp)) #.ToUpper()
 }
 
-function Send-Forum ( $mess, $post_id ) {
+function Send-Forum ( $mess, $post_id, $topic_id = $null ) {
     if ( !$settings.connection ) {
         Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
         Exit
     }
     if ( !$settings.connection.sid ) { Initialize-Forum }
-
     $pos_url = "$( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.forum_url)/forum/posting.php"
     $headers = @{ 'User-Agent' = 'Mozilla/5.0' }
-    $body = "mode=editpost&p=$post_id&message=$mess&submit_mode=submit&form_token=$($settings.connection.token)"
+    if ( !$topic_id ) {
+        $body = "mode=editpost&p=$post_id&message=$mess&submit_mode=submit&form_token=$($settings.connection.token)"
+    }
+    else {
+        $body = "mode=reply&t=$topic_id&message=$mess&submit_mode=submit&form_token=$($settings.connection.token)"
+    }
     $i = 1
 
     while ($true) {
@@ -632,7 +636,7 @@ function Get-ForumPost ( [int]$post ) {
     # if ( !$settings.connection.sid ) { Initialize-Forum }
     $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/viewtopic.php?p=' + $post
     $i = 1
-    Write-Log "`n$get_url"
+    Write-Host "`n$get_url"
     while ( $i -le 10 ) {
         try { 
             if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
