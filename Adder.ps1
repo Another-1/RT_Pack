@@ -642,7 +642,7 @@ if ( $rss ) {
                 Write-Log "Добавляем раздачу $id для $keeper"
                 $new_torrent_file = Get-ForumTorrentFile $id
                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
-                Start-Sleep -Seconds 2
+                Start-Sleep -Seconds 3
                 if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
                     Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
                 }
