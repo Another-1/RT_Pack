@@ -627,6 +627,29 @@ function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
     if ( $null -eq $save_path ) { return Get-Item $Path }
 }
 
+function Get-ForumPost ( [int]$post ) {
+    # if ( !$settings.connection.sid ) { Initialize-Forum }
+    $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/viewtopic.php?p=' + $post
+    $i = 1
+    Write-Log $get_url
+    while ( $i -le 10 ) {
+        try { 
+            if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
+                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $get_url используя прокси $($settings.connection.proxy.url )" }
+                if ( $settings.connection.proxy.credentials ) {
+                    return ( Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials ).content
+                }
+                else {
+                    return ( Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck ).content
+                }
+            }
+            else { return ( Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -MaximumRedirection 999 -SkipHttpErrorCheck ).content }
+        }
+        catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
+    }
+}
+
+
 function to_kmg ($bytes, [int]$precision = 0) {
     foreach ($i in ("Bytes", "KB", "MB", "GB", "TB")) {
         if (($bytes -lt 1024) -or ($i -eq "TB")) {
