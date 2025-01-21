@@ -498,7 +498,7 @@ Function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
     }
 }
 
-function Initialize-Forum () {
+function Initialize-Forum ( $login = $null, $password = $null ) {
     if ( !$settings.connection ) {
         Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
         Exit
@@ -507,7 +507,12 @@ function Initialize-Forum () {
 
     $login_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/login.php'
     $headers = @{ 'User-Agent' = 'Mozilla/5.0' }
-    $payload = @{ 'login_username' = $settings.connection.login; 'login_password' = $settings.connection.password; 'login' = '%E2%F5%EE%E4' }
+    if ( !$login ) {
+        $payload = @{ 'login_username' = $settings.connection.login; 'login_password' = $settings.connection.password; 'login' = '%E2%F5%EE%E4' }
+    }
+    else {
+        $payload = @{ 'login_username' = $login; 'login_password' = $password; 'login' = '%E2%F5%EE%E4' }
+    }
     $i = 1
 
     while ($true) {
