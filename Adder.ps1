@@ -573,8 +573,12 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
         # $hash_to_id = $hash_to_id.keys{ key = $_; value = $hash_to_id[ ( $hash_to_id.keys | Where-Object { $db_hash_to_id[$_] } ) ] }
         $hash_to_id = $hash_to_id.keys | Where-Object { $tracker_torrents[$_] } | ForEach-Object { @{ $_ = $hash_to_id[$_] } }
     }
-    $obsolete_keys = @($hash_to_id.Keys | Where-Object { !$tracker_torrents[$_] } | Where-Object { $refreshed_ids -notcontains $hash_to_id[$_] } | `
-            Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] } )
+    $obsolete_keys = @($hash_to_id.Keys | Where-Object { !$tracker_torrents[$_] })
+    if ( $rss.client_ip ) {
+        $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -ne $rss.client }
+    }
+    $obsolete_keys = $obsolete_keys | Where-Object { $refreshed_ids -notcontains $hash_to_id[$_] } | `
+            Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] }
     if ( $skip_obsolete ) {
         $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -notin $skip_obsolete }
     }

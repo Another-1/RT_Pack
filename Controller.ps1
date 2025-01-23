@@ -128,7 +128,7 @@ $batch_size = 400
 
 $started = 0
 $stopped = 0
-if ( $rss ) {
+if (  $rss ) {
     $settings.clients.Remove( $rss.client ? $rss.client : 'RSS' )
 }
 foreach ( $client_key in $settings.clients.keys ) {

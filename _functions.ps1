@@ -647,13 +647,16 @@ function Get-ForumPost ( [int]$post ) {
             if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $get_url используя прокси $($settings.connection.proxy.url )" }
                 if ( $settings.connection.proxy.credentials ) {
-                    return ( Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials ).content
+                    # return ( Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials ).content
+                    return ( Invoke-WebRequest -Uri $get_url -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials ).content
                 }
                 else {
-                    return ( Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck ).content
+                    # return ( Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck ).content
+                    return ( Invoke-WebRequest -Uri $get_url -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck ).content
                 }
             }
-            else { return ( Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -MaximumRedirection 999 -SkipHttpErrorCheck ).content }
+            # else { return ( Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -MaximumRedirection 999 -SkipHttpErrorCheck ).content }
+            else { return ( Invoke-WebRequest -Uri $get_url -MaximumRedirection 999 -SkipHttpErrorCheck ).content }
         }
         catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
     }
