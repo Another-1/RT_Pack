@@ -1151,17 +1151,21 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     return $tracker_torrents
 }
 
-function GetRepSectionKeepers( $section, $call_from ) {
+function GetRepSectionKeepers( $section, $excluded = @(), $call_from ) {
     Write-Log "Выгружаем отчёты по подразделу $section"
     $url = "/krs/api/v1/subforum/$section/reports?columns=status"
-    $content = ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json | Select-Object kept_releases -ExpandProperty kept_releases
+    $content = ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json
+    if ( $excluded.count -gt 0 ) {
+        $content = $content | Where-Object { $_.keeper_id -notin $excluded }
+    }
+    $content = $content | Select-Object kept_releases -ExpandProperty kept_releases
     return $content
 }
 
-function GetRepKeptTorrents( $sections, $call_from, $max_keepers ) {
+function GetRepKeptTorrents( $sections, $call_from, $max_keepers, $excluded = @() ) {
     $keepers = @{}
     foreach ( $section in $sections ) {
-        $section_keepers = GetRepSectionKeepers( $section )
+        $section_keepers = GetRepSectionKeepers -section $section -excluded $excluded
         $section_keepers | Where-Object { -bnot ( $_[1] -band 0b10 ) } | ForEach-Object {
             $id = $_[0].ToInt32($null)
             if ( !$keepers[$id] ) { $keepers[$id] = 0 }
@@ -1235,11 +1239,7 @@ function Get-ApiHTTP ( $url, $body, $headers, $call_from ) {
 
 function Get-RepHTTP ( $url, $body, $call_from ) {
     $headers = @{}
-    # if ( !$settings.connection.rep_auth ) { $settings.connection.rep_auth = @{ Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key )) } }
     $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
-    # $headers.'accept-encoding' = 'br'
-
-    # return Get-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body $body -headers $settings.connection.rep_auth -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
     return Get-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
 }
 

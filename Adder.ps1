@@ -320,7 +320,11 @@ if ( $masks_db ) {
 
 if ( $max_keepers -and $max_keepers -gt -1 -and !$kept ) {
     Write-Log 'Указано ограничение на количество хранителей, необходимо подтянуть данные из отчётов по хранимым разделам'
-    $kept = GetRepKeptTorrents -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -max_keepers $max_keepers
+    if ( $ini_data.reports.exclude_keepers_ids -and $ini_data.reports.exclude_keepers_ids -ne '' ) {
+        $excluded_array = ( $ini_data.reports.exclude_keepers_ids -replace '[^0-9]','|' ).split( '|' )
+        Write-Log "При этом не доверяем хранителям $($excluded_array -join ', ') "
+    }
+    $kept = GetRepKeptTorrents -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -max_keepers $max_keepers -excluded $excluded_array
 }
 
 if ( $kept ) {
