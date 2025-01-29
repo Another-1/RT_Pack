@@ -620,7 +620,7 @@ if ( $rss ) {
     $retry_cnt = 1
     while ( $true ) {
         try {
-            $rss_data = ( Invoke-RestMethod -Uri $rss.url ).description.'#cdata-section'
+            $rss_data = ( Invoke-RestMethod -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).description.'#cdata-section'
             break
         }
         catch {

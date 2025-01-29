@@ -1128,7 +1128,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
         Write-Log 'Нет связи с API трекера, выходим' -Red
         exit
     }
-    $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
+    $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не оформлено', 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
     $tracker_torrents = @{}
     $counter = 0
     while ( $counter -lt 10 ) {
