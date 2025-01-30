@@ -610,30 +610,34 @@ function Send-Forum ( $mess, $post_id, $topic_id = $null ) {
     }
 }
 
+function Get-File ( $uri, $save_path, $user_agent, $headers = $null ){
+    $i = 1
+    while ( $i -le 10 ) {
+        try { 
+            if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
+                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $uri используя прокси $($settings.connection.proxy.url )" }
+                if ( $settings.connection.proxy.credentials ) {
+                    Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials -UserAgent $user_agent -Headers $headers
+                }
+                else {
+                    Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -UserAgent $user_agent -Headers $headers
+                }
+                break
+            }
+            else { Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -MaximumRedirection 999 -SkipHttpErrorCheck -UserAgent $user_agent -Headers $headers; break }
+        }
+        catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
+    }
+    
+}
 
 function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
     # if ( !$settings.connection.sid ) { Initialize-Forum }
     $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl.php?t=' + $Id + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
-    $user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0'
     if ( $null -eq $save_path ) { $Path = Join-Path $PSScriptRoot ( $Id.ToString() + '.torrent' ) } else { $path = Join-Path $save_path ( $Id.ToString() + '.torrent' ) }
-    $i = 1
     Write-Log 'Скачиваем torrent-файл с форума'
-    while ( $i -le 10 ) {
-        try { 
-            if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
-                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $get_url используя прокси $($settings.connection.proxy.url )" }
-                if ( $settings.connection.proxy.credentials ) {
-                    Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -OutFile $Path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials -UserAgent $user_agent
-                }
-                else {
-                    Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -OutFile $Path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -UserAgent $user_agent
-                }
-                break
-            }
-            else { Invoke-WebRequest -Uri $get_url -WebSession $settings.connection.sid -OutFile $Path -MaximumRedirection 999 -SkipHttpErrorCheck -UserAgent $user_agent; break }
-        }
-        catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
-    }
+    $user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0'
+    Get-File -Uri $get_url -save_path $Path -user_agent $user_agent
     if ( $null -eq $save_path ) { return Get-Item $Path }
 }
 
@@ -1440,4 +1444,20 @@ function Get-ClientApiVersions ( $clients, $mess_sender ) {
             $client.stopped_state_dl = 'stoppedDL'
         }
     }
+}
+
+function Expand-TarGz( $url, $tmp_dir, $destination, $headers = $null ) {
+    Write-Log "Качаем $url"
+    # Invoke-WebRequest -Uri $url -Headers $headers -OutFile ( Join-Path $tmp_dir 'arch.tar' )
+    Get-File -uri $url -headers $headers -save_path ( Join-Path $tmp_dir 'arch.tar' )
+    New-Item -Path $destination -ErrorAction SilentlyContinue -ItemType Directory | Out-Null
+    Remove-Item -Path ( Join-Path $destination '*.*')
+    Write-Log 'Распаковываем tar'
+    tar xf ( Join-Path $tmp_dir 'arch.tar' ) -C $destination
+    Remove-Item -Path ( Join-Path $tmp_dir 'arch.tar' )
+    Set-Location $destination
+    Write-Log 'Распаковываем gz'
+    Get-Item -Path '*.gz' | ForEach-Object { . 'C:\Program Files\7-Zip\7z.exe' x $_ | Out-Null }
+    Remove-Item -Path '*.gz'
+    Set-Location $PSScriptRoot
 }

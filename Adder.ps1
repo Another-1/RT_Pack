@@ -321,7 +321,7 @@ if ( $masks_db ) {
 if ( $max_keepers -and $max_keepers -gt -1 -and !$kept ) {
     Write-Log 'Указано ограничение на количество хранителей, необходимо подтянуть данные из отчётов по хранимым разделам'
     if ( $ini_data.reports.exclude_keepers_ids -and $ini_data.reports.exclude_keepers_ids -ne '' ) {
-        $excluded_array = ( $ini_data.reports.exclude_keepers_ids -replace '[^0-9]','|' ).split( '|' )
+        $excluded_array = ( $ini_data.reports.exclude_keepers_ids -replace '[^0-9]', '|' ).split( '|' )
         Write-Log "При этом не доверяем хранителям $($excluded_array -join ', ') "
     }
     $kept = GetRepKeptTorrents -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -max_keepers $max_keepers -excluded $excluded_array
@@ -582,7 +582,7 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
         $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -ne $rss.client }
     }
     $obsolete_keys = $obsolete_keys | Where-Object { $refreshed_ids -notcontains $hash_to_id[$_] } | `
-            Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] }
+        Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] }
     if ( $skip_obsolete ) {
         $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -notin $skip_obsolete }
     }
@@ -641,20 +641,26 @@ if ( $rss ) {
 
         $rss_add_cnt = 0
         if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
+        if ( $rss.ignored ) { $ignored = @($rss.ignored -split ( ',') ) }
         foreach ( $rss_record in $rss_data ) {
             $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
             $rss_ids += $id
             if ( !$id_to_info[$id] ) {
                 $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 .+?</a>' ).matches.value.replace( '👤 ', '' ).replace( '</a>', '')
-                $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
-                Write-Log "Добавляем раздачу $id для $keeper"
-                $new_torrent_file = Get-ForumTorrentFile $id
-                $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
-                Start-Sleep -Seconds 3
-                if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
-                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
+                if ( !$ignored -or $keeper -notin $ignored ) {
+                    $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
+                    Write-Log "Добавляем раздачу $id для $keeper"
+                    $new_torrent_file = Get-ForumTorrentFile $id
+                    $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+                    Start-Sleep -Seconds 3
+                    if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
+                        Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
+                    }
+                    $rss_add_cnt++
                 }
-                $rss_add_cnt++
+                else {
+                    Write-Log "Пропускаем раздачу $id для $keeper"
+                }
             }
         }
         $rss_del_cnt = 0
