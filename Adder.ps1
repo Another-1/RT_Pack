@@ -641,7 +641,7 @@ if ( $rss ) {
 
         $rss_add_cnt = 0
         if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
-        if ( $rss.ignored ) { $ignored = @($rss.ignored -split ( ',') ) }
+        if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace( '^\s+','') -replace( '\s+$','') ) }
         foreach ( $rss_record in $rss_data ) {
             $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
             $rss_ids += $id
