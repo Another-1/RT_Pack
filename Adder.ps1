@@ -656,6 +656,10 @@ if ( $rss ) {
                     if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
                         Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
                     }
+                    if ( $rss_record -match 'Форум ID - \d+</a><br />(.+?)</p>' ) {
+                        Start-Sleep -Seconds 1
+                        Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $matches[1] -silent
+                    }
                     $rss_add_cnt++
                 }
                 else {
