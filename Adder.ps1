@@ -616,11 +616,13 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
 
 if ( $rss ) {
     $rss_ids = @()
-    if ( !$rss.url ) { $rss.url = 'https://rutr.my.to/ask_help.php' }
+    if ( !$rss.url ) { $rss.url = 'https://rutr.my.to/ask_help.php&output=json' }
+    if ( $rss.url -notlike '*json') { $rss_url = $( $rss_url -match '\?' ? "$rss_url&output=json" : "$rss_url?output=json" ) }
     $retry_cnt = 1
     while ( $true ) {
         try {
-            $rss_data = ( Invoke-RestMethod -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).description.'#cdata-section'
+            # $rss_data = ( Invoke-RestMethod -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).description.'#cdata-section'
+            $rss_data = ( ( Invoke-WebRequest -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) | ConvertFrom-Json ).result
             break
         }
         catch {
@@ -641,32 +643,61 @@ if ( $rss ) {
 
         $rss_add_cnt = 0
         if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
-        if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace( '^\s+','') -replace( '\s+$','') ) }
+        if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace ( '^\s+', '') -replace ( '\s+$', '') ) }
+        # foreach ( $rss_record in $rss_data ) {
+        #     $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
+        #     $rss_ids += $id
+        #     if ( !$id_to_info[$id] ) {
+        #         $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 .+?</a>' ).matches.value.replace( '👤 ', '' ).replace( '</a>', '')
+        #         if ( !$ignored -or $keeper -notin $ignored ) {
+        #             $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
+        #             Write-Log "Добавляем раздачу $id для $keeper"
+        #             $new_torrent_file = Get-ForumTorrentFile $id
+        #             $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+        #             Start-Sleep -Seconds 3
+        #             if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
+        #                 Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
+        #             }
+        #             if ( $rss_record -match 'Форум ID - \d+</a><br />(.+?)</p>' ) {
+        #                 Start-Sleep -Seconds 1
+        #                 Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $matches[1] -silent
+        #             }
+        #             $rss_add_cnt++
+        #         }
+        #         else {
+        #             Write-Log "Пропускаем раздачу $id для $keeper"
+        #         }
+        #     }
+        # }
+
         foreach ( $rss_record in $rss_data ) {
-            $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
-            $rss_ids += $id
-            if ( !$id_to_info[$id] ) {
-                $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 .+?</a>' ).matches.value.replace( '👤 ', '' ).replace( '</a>', '')
-                if ( !$ignored -or $keeper -notin $ignored ) {
-                    $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
-                    Write-Log "Добавляем раздачу $id для $keeper"
-                    $new_torrent_file = Get-ForumTorrentFile $id
+            if ( !$id_to_info[$rss_record[1]] ) {
+                if ( !$ignored -or $rss_record[7] -notin $ignored ) {
+                    Write-Log "Добавляем раздачу $( $rss_record[1] ) для $( $rss_record[7] )"
+                    $rss_ids += $rss_record[1].ToInt64($null)
+                    $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
                     $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
                     Start-Sleep -Seconds 3
-                    if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
-                        Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
-                    }
-                    if ( $rss_record -match 'Форум ID - \d+</a><br />(.+?)</p>' ) {
+                    if ( $success -eq $true ) {
+                        if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
+                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] ) -silent # кто запросил
+                        }
                         Start-Sleep -Seconds 1
-                        Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $matches[1] -silent
+                        if ( $rss_record[5] -eq 1 ) {
+                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( 'восстановленная' ) -silent # восстановление?
+                        }
+                        else {
+                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[6] -le 3 ? 'Help' : 'Load' ) -silent # через что запросил
+                        }
+                        $rss_add_cnt++
                     }
-                    $rss_add_cnt++
                 }
                 else {
-                    Write-Log "Пропускаем раздачу $id для $keeper"
+                    Write-Log "Пропускаем раздачу $( $rss_record[1] ) для $( $rss_record[7] )"
                 }
             }
         }
+
         $rss_del_cnt = 0
         if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
             Write-Log 'Удаляем старые ненужные RSS-раздачи'
