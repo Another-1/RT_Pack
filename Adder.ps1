@@ -669,7 +669,6 @@ if ( $rss ) {
         #         }
         #     }
         # }
-
         foreach ( $rss_record in $rss_data ) {
             if ( !$id_to_info[$rss_record[1]] ) {
                 if ( !$ignored -or $rss_record[7] -notin $ignored ) {
