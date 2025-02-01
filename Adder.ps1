@@ -772,7 +772,7 @@ if ( $report_stalled -eq 'Y' ) {
             'help_pwd'  = $stalled_pwd
         }
         Write-Log 'Отправляем список некачашек'
-        Write-Log "Будет отправлено следующее:`n$($params.'help_load')"
+        Write-Log "Будет отправлено следующее: $($params.'help_load')"
         Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params -ErrorVariable send_result -UserAgent 'adder' | Out-Null
         if ( $send_result.count -eq 0 ) {
             Write-Log ( 'Отправлено ' + $stalleds.count + ' некачашек' )
