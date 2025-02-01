@@ -679,14 +679,14 @@ if ( $rss ) {
                     Start-Sleep -Seconds 3
                     if ( $success -eq $true ) {
                         if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
-                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] ) -silent # кто запросил
+                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] ) # кто запросил
                         }
                         Start-Sleep -Seconds 1
                         if ( $rss_record[5] -eq 1 ) {
-                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( '_восстановленная' ) -silent # восстановление?
+                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( '_восстановленная' ) # восстановление?
                         }
                         else {
-                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[6] -le 3 ? '_Help' : '_Load' ) -silent # через что запросил
+                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[6] -le 3 ? '_Help' : '_Load' ) # через что запросил
                         }
                         $rss_add_cnt++
                     }
