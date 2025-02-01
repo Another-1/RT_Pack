@@ -693,7 +693,7 @@ if ( $rss ) {
                         }
                         Start-Sleep -Seconds 1
                         if ( $rss_record[5] -eq 1 ) {
-                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( '_восстановленная' ) # восстановление?
+                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( '_Restored' ) # восстановление?
                         }
                         else {
                             Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[6] -le 3 ? '_Help' : '_Load' ) # через что запросил
