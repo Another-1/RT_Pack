@@ -343,7 +343,7 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
     if ( $completed ) {
         $Params.filter = 'completed'
     }
-    if ( $nul -ne $hash ) {
+    if ( $null -ne $hash ) {
         $Params.hashes = $hash
         # if ( $verbose -eq $true ) { Write-Log ( 'Получаем инфо о раздаче из клиента ' + $client_key ) }
         if ( $verbose -eq $true ) { Write-Log ( 'Получаем инфо о раздаче из клиента ' + $client.name ) }
@@ -366,7 +366,7 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
         }
         if ( $json_content -or $i -gt 3 ) { break }
     }
-    if ( !$json_content ) {
+    if ( !$json_content -and !$hash ) {
         if ( $tg_token -ne '' ) { 
             Send-TGMessage -message ( 'Не удалось получить список раздач от клиента ' + $client.Name. + ', Выполнение прервано.' ) -token $tg_token -chat_id $tg_chat -mess_sender $mess_sender
         }
