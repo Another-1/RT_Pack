@@ -617,7 +617,7 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
 if ( $rss ) {
     $rss_ids = @()
     if ( !$rss.url ) { $rss.url = 'https://rutr.my.to/ask_help.php&output=json' }
-    if ( $rss.url -notlike '*json') { $rss_url = $( $rss_url -match '\?' ? "$rss_url&output=json" : "$rss_url?output=json" ) }
+    if ( $rss.url -notlike '*json') { $rss.url = $( $rss.url -match '\?' ? "$($rss.url)&output=json" : "$($rss.url)?output=json" ) }
     $retry_cnt = 1
     Write-Log "Скачиваем RSS-ленту по адресу $($rss.url)"
     while ( $true ) {
