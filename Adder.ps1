@@ -619,10 +619,12 @@ if ( $rss ) {
     if ( !$rss.url ) { $rss.url = 'https://rutr.my.to/ask_help.php&output=json' }
     if ( $rss.url -notlike '*json') { $rss_url = $( $rss_url -match '\?' ? "$rss_url&output=json" : "$rss_url?output=json" ) }
     $retry_cnt = 1
+    Write-Log "Скачиваем RSS-ленту по адресу $($rss.url)"
     while ( $true ) {
         try {
             # $rss_data = ( Invoke-RestMethod -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).description.'#cdata-section'
             $rss_data = ( ( Invoke-WebRequest -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) | ConvertFrom-Json ).result
+            Write-Log 'Лента скачана'
             break
         }
         catch {
