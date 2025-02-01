@@ -677,11 +677,12 @@ if ( $rss ) {
                     $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
                     $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
                     Write-Log 'Подождём секунду, чтобы раздача добавилась'
-                    # Start-Sleep -Seconds 1
+                    Start-Sleep -Seconds 1
                     Write-Log 'Проверяем, что раздача добавилась'
                     while ( $null -eq ( ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash hash = $rss_record[3] -mess_sender 'Rehasher' ).state -like 'checking*' ) ) {
                         Write-Log 'Пока не добавилась, подождём ещё секунду'
-                        Start-Sleep -Seconds $check_state_delay
+                        # Start-Sleep -Seconds $check_state_delay
+                        Start-Sleep -Seconds 1
                     }
             
                     if ( $success -eq $true ) {
