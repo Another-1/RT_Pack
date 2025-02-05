@@ -673,7 +673,7 @@ if ( $rss ) {
         # }
         foreach ( $rss_record in $rss_data ) {
             if ( !$id_to_info[$rss_record[1]] ) {
-                if ( !$ignored -or $rss_record[7] -notin $ignored ) {
+                if ( !$ignored -or $rss_record[8] -notin $ignored ) {
                     Write-Log "Добавляем раздачу $( $rss_record[1] ) для $( $rss_record[8] )"
                     $rss_ids += $rss_record[1].ToInt64($null)
                     $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
