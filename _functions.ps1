@@ -1,19 +1,30 @@
 function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [switch]$skip_timestamp, [switch]$nologfile) {
     if ( $mention_script_log -eq 'Y') {
         $call_stack = Get-PSCallStack
-        $str = "#$( $call_stack[$call_stack.length - 1].command.replace( '.ps1','') ) $str"
+        # $str2 = "#$( $call_stack[$call_stack.length - 1].command.replace( '.ps1','') ) $str"
     }
     if ( $settings.interface.use_timestamp -ne 'Y' -or $skip_timestamp ) {
         if ( $Red ) { Write-Host $str -ForegroundColor Red -NoNewline:$NoNewLine }
         elseif ( $Green ) { Write-Host $str -ForegroundColor Green -NoNewline:$NoNewLine }
-        else { Write-Host $str -NoNewline:$NoNewLine }
-        if ( $log_path -and -not $nologfile.IsPresent) { Write-Output $str.Replace('...', '') | Out-File $log_path -Append -Encoding utf8 | Out-Null }
+        else {
+            if ( $call_stack ) {
+              Write-Host "#$( $call_stack[$call_stack.length - 1].command.replace( '.ps1','') ) " -ForegroundColor Green -NoNewline  
+            }
+            Write-Host $str -NoNewline:$NoNewLine
+
+        }
+        if ( $log_path -and -not $nologfile.IsPresent) { Write-Output $str2.Replace('...', '') | Out-File $log_path -Append -Encoding utf8 | Out-Null }
     }
     else {
         if ( $Red ) { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -ForegroundColor Red -NoNewline:$NoNewLine }
         elseif ( $Green ) { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -ForegroundColor Green -NoNewline:$NoNewLine }
-        else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -NoNewline:$NoNewLine } 
-        if ( $log_path -and -not $nologfile.IsPresent ) { Write-Output ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str.Replace('...', '') ) | Out-File $log_path -Append -Encoding utf8 | Out-Null }
+        else {
+            Write-Host "$( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' )" -NoNewline
+            Write-Host " #$( $call_stack[$call_stack.length - 1].command.replace( '.ps1','') ) " -ForegroundColor Green -NoNewline  
+            # Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -NoNewline:$NoNewLine
+            Write-Host $str -NoNewline:$NoNewLine
+        } 
+        if ( $log_path -and -not $nologfile.IsPresent ) { Write-Output ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str2.Replace('...', '') ) | Out-File $log_path -Append -Encoding utf8 | Out-Null }
     }
 }
  

@@ -38,10 +38,17 @@ else {
 
 $str = 'Подгружаем функции'
 if ( $settings.interface.use_timestamp -ne 'Y' ) {
-    Write-Host "#$( ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )# $str"
+    if ( $mention_script_log -eq 'Y') {
+        Write-Host "#$( ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) " -ForegroundColor Green -NoNewline
+    }
+    Write-Host "$str"
 }
 else {
-    Write-Host "$( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) #$( ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')) $str"
+    Write-Host "$( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) " -NoNewline
+    if ( $mention_script_log -eq 'Y') {
+        Write-Host "#$( ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) " -ForegroundColor Green -NoNewline
+    }
+    Write-Host "$str"
 }
 . ( Join-Path $PSScriptRoot _functions.ps1 )
 
