@@ -1219,12 +1219,19 @@ function GetRepKeptTorrents( $sections, $call_from, $max_keepers, $excluded = @(
     return $kept_ids
 }
 
+function Get-TopicKeepingStatus( $topic_id, $call_from ) {
+    $url = "/krs/api/v1/releases/reports?topic_ids=$topic_id&columns=status"
+    $content = ( Get-RepHTTP -url $url -call_from $call_from ) | ConvertFrom-Json
+    $result = ( $content.result | ForEach-Object {$_[3] -band 0b10 } | Measure-Object -Minimum ).Minimum -eq 0
+    return $result
+}
+
 function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_seeds, $min_avg, $min_release_date, $min_seeders ) {
     $use_avg_seeds = ( $avg_seeds.IsPresent ? $true : ( $ini_data.sections.avg_seeders -eq '1' ) )
     $avg_days = $ini_data.sections.avg_seeders_period
     $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
     $url = "/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders,topic_title,keeper_seeders$subst"
-    $content = ( Get-RepHTTP -url $url -headers $headers -call_from $call_from )
+    $content = ( Get-RepHTTP -url $url -call_from $call_from )
     $json = $content | ConvertFrom-Json
     $columns = @{}
     $i = 0

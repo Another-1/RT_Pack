@@ -727,8 +727,18 @@ if ( $rss ) {
                 if ( $client.name -eq $rss.client ) {
                     if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
                         # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
-                        Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
-                        Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                        if ( $rss.wait_keepers -eq 'Y') {
+                            Write-Log "Из RSS ушла раздача $($rss_torrent.topic_id) - $($rss_torrent.name), проверим наличие хранящего хранителя"
+                            if ( Get-TopicKeepingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) {
+                                Write-Log 'Раздача хранится, удаляем'
+                                Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                            }
+                            else { Write-Log 'раздача ещё не хранится, пусть полежит'}
+                        }
+                        else {
+                            Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
+                            Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                        }
                         $rss_del_cnt++
                     }
                     else {
