@@ -1,6 +1,8 @@
 function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [switch]$skip_timestamp, [switch]$nologfile) {
-    $call_stack = Get-PSCallStack
-    $str = "$( $call_stack[$call_stack.length - 1].command.replace( '.ps1','') )# $str"
+    if ( $mention_script_log -eq 'Y') {
+        $call_stack = Get-PSCallStack
+        $str = "$( $call_stack[$call_stack.length - 1].command.replace( '.ps1','') )# $str"
+    }
     if ( $settings.interface.use_timestamp -ne 'Y' -or $skip_timestamp ) {
         if ( $Red ) { Write-Host $str -ForegroundColor Red -NoNewline:$NoNewLine }
         elseif ( $Green ) { Write-Host $str -ForegroundColor Green -NoNewline:$NoNewLine }
@@ -612,7 +614,7 @@ function Send-Forum ( $mess, $post_id, $topic_id = $null ) {
     }
 }
 
-function Get-File ( $uri, $save_path, $user_agent, $headers = $null ){
+function Get-File ( $uri, $save_path, $user_agent, $headers = $null ) {
     $i = 1
     while ( $i -le 10 ) {
         try { 
