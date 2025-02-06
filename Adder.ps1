@@ -17,7 +17,7 @@ $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
 $settings_file = Join-Path $PSScriptRoot 'settings.json'
 if ( Test-Path $settings_file ) {
     # $debug = 1
-    Write-Output "Подгружаем настройки из $settings_file"
+    # Write-Output "Подгружаем настройки из $settings_file"
     $settings = Get-Content -Path $settings_file | ConvertFrom-Json -AsHashtable
     $standalone = $true
 }
@@ -37,7 +37,12 @@ else {
 }
 
 $str = 'Подгружаем функции'
-if ( $settings.interface.use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
+if ( $settings.interface.use_timestamp -ne 'Y' ) {
+    Write-Host "$( ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )# $str"
+}
+else {
+    Write-Host "$( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) $( ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', ''))# $str"
+}
 . ( Join-Path $PSScriptRoot _functions.ps1 )
 
 Test-ForumWorkingHours -verbose

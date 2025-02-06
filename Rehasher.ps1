@@ -18,8 +18,13 @@ else {
     catch { Write-Host ( 'Не найден файл настроек ' + ( Join-Path $PSScriptRoot _settings.ps1 ) + ', видимо это первый запуск.' ) }
 }
 
-$str = 'Подгружаем функции' 
-if ( $use_timestamp -ne 'Y' ) { Write-Output $str } else { Write-Output ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) }
+$str = 'Подгружаем функции'
+if ( $settings.interface.use_timestamp -ne 'Y' ) {
+    Write-Host "$( ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )# $str"
+}
+else {
+    Write-Host "$( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) $( ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', ''))# $str"
+}
 . ( Join-Path $PSScriptRoot _functions.ps1 )
 
 Write-Log 'Проверяем версии скриптов на актуальность'

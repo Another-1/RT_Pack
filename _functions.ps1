@@ -1,4 +1,6 @@
 function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [switch]$skip_timestamp, [switch]$nologfile) {
+    $call_stack = Get-PSCallStack
+    $str = "$( $call_stack[$call_stack.length - 2].command.replace( '.ps1','') )# $str"
     if ( $settings.interface.use_timestamp -ne 'Y' -or $skip_timestamp ) {
         if ( $Red ) { Write-Host $str -ForegroundColor Red -NoNewline:$NoNewLine }
         elseif ( $Green ) { Write-Host $str -ForegroundColor Green -NoNewline:$NoNewLine }
