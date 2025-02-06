@@ -824,7 +824,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             foreach ( $client in $obsolete.Keys ) {
                 if ( !$first ) { $tg_data.message += "`n" }
                 $first = $false
-                $tg_data.line = "Лишние в клиенте $($client.name) :`n"
+                $tg_data.line = "Лишние в клиенте $client :`n"
                 Add-TGMessage $tg_data
                 # Add-TGMessage "Лишние в клиенте $($client.name) :`n"
                 $obsolete[$client] | ForEach-Object {
