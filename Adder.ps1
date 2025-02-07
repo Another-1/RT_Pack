@@ -732,6 +732,7 @@ if ( $rss ) {
                             if ( Get-TopicKeepingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) {
                                 Write-Log 'Раздача хранится, удаляем'
                                 Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                                $rss_del_cnt++
                             }
                             else { Write-Log 'раздача ещё не хранится, пусть полежит'}
                         }
