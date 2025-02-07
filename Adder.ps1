@@ -738,8 +738,8 @@ if ( $rss ) {
                         else {
                             Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
                             Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                            $rss_del_cnt++
                         }
-                        $rss_del_cnt++
                     }
                     else {
                         Get-ClientTrackerStatus -client $client -torrent_list @( $rss_torrent )
