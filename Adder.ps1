@@ -693,22 +693,26 @@ if ( $rss ) {
                     Write-Log 'Подождём секунду, чтобы раздача добавилась'
                     Start-Sleep -Seconds 1
                     Write-Log 'Проверяем, что раздача добавилась'
-                    while ( $null -eq ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash $rss_record[3] -mess_sender 'Rehasher' ) ) {
+                    $fresh_hash = ( Invoke-WebRequest "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" | ConvertFrom-Json ).Result.($rss_record[1].ToString())
+                    $i = 0
+                    while ( $i -lt 10 -and $null -eq ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash $fresh_hash -mess_sender 'Rehasher' ) ) {
                         Write-Log 'Пока не добавилась, подождём ещё секунду'
                         # Start-Sleep -Seconds $check_state_delay
                         Start-Sleep -Seconds 1
+                        $++
                     }
-            
-                    if ( $success -eq $true ) {
-                        if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
-                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[8] ) # кто запросил
-                        }
-                        Start-Sleep -Seconds 1
-                        if ( $rss_record[6] -eq 1 ) {
-                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( '_Restored' ) # восстановление?
-                        }
-                        else {
-                            Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] -le 3 ? '_Help' : '_Load' ) # через что запросил
+                    if ( $i -lt 10 ) {
+                        if ( $success -eq $true ) {
+                            if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
+                                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[8] ) # кто запросил
+                            }
+                            Start-Sleep -Seconds 1
+                            if ( $rss_record[6] -eq 1 ) {
+                                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( '_Restored' ) # восстановление?
+                            }
+                            else {
+                                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] -le 3 ? '_Help' : '_Load' ) # через что запросил
+                            }
                         }
                         $rss_add_cnt++
                     }
@@ -734,7 +738,7 @@ if ( $rss ) {
                                 Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
                                 $rss_del_cnt++
                             }
-                            else { Write-Log 'раздача ещё не хранится, пусть полежит'}
+                            else { Write-Log 'раздача ещё не хранится, пусть полежит' }
                         }
                         else {
                             Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
