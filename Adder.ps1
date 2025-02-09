@@ -699,7 +699,7 @@ if ( $rss ) {
                         Write-Log 'Пока не добавилась, подождём ещё секунду'
                         # Start-Sleep -Seconds $check_state_delay
                         Start-Sleep -Seconds 1
-                        $++
+                        $i++
                     }
                     if ( $i -lt 10 ) {
                         if ( $success -eq $true ) {
