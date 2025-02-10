@@ -658,6 +658,7 @@ if ( $rss ) {
         $rss_add_cnt = 0
         if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
         if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace ( '^\s+', '') -replace ( '\s+$', '') ) }
+        if ( $rss.handle_avenger.ToUpper() -eq 'N' ) { $rss_data = $rss_data | Where-Object { $_[7] -le 3 } }
         # foreach ( $rss_record in $rss_data ) {
         #     $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
         #     $rss_ids += $id
@@ -729,7 +730,8 @@ if ( $rss ) {
             foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
                 $client = $settings.clients[$rss_torrent.client_key]
                 if ( $client.name -eq $rss.client ) {
-                    if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - 24 * 60 * 60 ) ) {
+                    $purge_delay = $( $rss.purge_delay ? $rss.purge_delay : 1 )
+                    if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
                         # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                         if ( $rss.wait_keepers -eq 'Y') {
                             Write-Log "Из RSS ушла раздача $($rss_torrent.topic_id) - $($rss_torrent.name), проверим наличие хранящего хранителя"
