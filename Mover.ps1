@@ -92,9 +92,13 @@ if ( $client.sid ) {
     if ( $category -and $category -ne '' ) {
         $torrents_list = $torrents_list | Where-Object { $_.category -eq "${category}" }
     }
+
+    if ( $max_size -gt 0 ) {
+        $torrents_list = $torrents_list | Where-Object { $_.size -le $max_size }
+    }
+
     if ( $max_1_size -gt 0 ) {
-        $max_1_bytes = $max_1_size * 1Gb
-        $torrents_list = $torrents_list | Where-Object { $_.size -le $max_1_bytes }
+        $torrents_list = $torrents_list | Where-Object { $_.size -le $max_1_size }
     }
 
     If ( $id_subfolder.ToUpper() -eq 'Y' ) {
@@ -111,9 +115,8 @@ if ( $client.sid ) {
         if ( $new_path -ne $torrent.save_path ) {
             $sum_size += $torrent.size
             if ( $max_size -gt 0 -and $sum_size -gt $max_size ) {
-                Write-Log 'Достигнут максимальный объём'
-                $sum_size = $sum_size - $torrent.size
-                break
+                $sum_size -= $torrent.size
+                continue
             }
             $verbose = $true
             Set-SaveLocation -client $client -torrent $torrent -new_path $new_path -verbose:$( $verbose.IsPresent ) -old_path $torrent.save_path -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
