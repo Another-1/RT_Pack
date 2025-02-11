@@ -648,11 +648,12 @@ function Send-Forum ( $mess, $post_id, $topic_id = $null ) {
     }
 }
 
-function Get-File ( $uri, $save_path, $user_agent, $headers = $null ) {
+function Get-File ( $uri, $save_path, $user_agent, $headers = $null, $from ) {
     $i = 1
     while ( $i -le 10 ) {
+        $use_proxy = ( $from -eq 'forum' ? $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' : ( $from -eq 'api' ? $settings.connection.proxy.use_for_api.ToUpper() -eq 'Y' : $settings.connection.proxy.use_for_rep.ToUpper() -eq 'Y' ) )
         try { 
-            if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
+            if ( $use_proxy -eq $true -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $uri используя прокси $($settings.connection.proxy.url )" }
                 if ( $settings.connection.proxy.credentials ) {
                     Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials -UserAgent $user_agent -Headers $headers
@@ -675,7 +676,7 @@ function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
     if ( $null -eq $save_path ) { $Path = Join-Path $PSScriptRoot ( $Id.ToString() + '.torrent' ) } else { $path = Join-Path $save_path ( $Id.ToString() + '.torrent' ) }
     Write-Log 'Скачиваем torrent-файл с форума'
     $user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0'
-    Get-File -Uri $get_url -save_path $Path -user_agent $user_agent
+    Get-File -Uri $get_url -save_path $Path -user_agent $user_agent -from 'forum'
     if ( $null -eq $save_path ) { return Get-Item $Path }
 }
 
@@ -1494,7 +1495,8 @@ function Get-ClientApiVersions ( $clients, $mess_sender ) {
 function Expand-TarGz( $url, $tmp_dir, $destination, $headers = $null ) {
     Write-Log "Качаем $url"
     # Invoke-WebRequest -Uri $url -Headers $headers -OutFile ( Join-Path $tmp_dir 'arch.tar' )
-    Get-File -uri $url -headers $headers -save_path ( Join-Path $tmp_dir 'arch.tar' )
+    $from = ( $url -like '*rep.rutracker.cc*' ? 'rep' : $url -like '*api.rutracker.cc*' ? 'api' : 'forum' ) 
+    Get-File -uri $url -headers $headers -save_path ( Join-Path $tmp_dir 'arch.tar' ) -from $from
     New-Item -Path $destination -ErrorAction SilentlyContinue -ItemType Directory | Out-Null
     Remove-Item -Path ( Join-Path $destination '*.*')
     Write-Log 'Распаковываем tar'
