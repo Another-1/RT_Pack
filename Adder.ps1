@@ -688,6 +688,11 @@ if ( $rss ) {
             $rss_ids += $rss_record[1].ToInt64($null)
             if ( !$id_to_info[$rss_record[1]] ) {
                 if ( !$ignored -or $rss_record[8] -notin $ignored ) {
+                    Write-Log 'Проверим, что разрача ещё существует'
+                    if ( $null -eq ( ( Invoke-WebRequest -Uri "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" ).content | ConvertFrom-Json -AsHashtable ).result.value ) {
+                        Write-Log 'Раздача уже не существует'
+                        continue
+                    }
                     Write-Log "Добавляем раздачу $( $rss_record[1] ) для $( $rss_record[8] )"
                     $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
                     $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
