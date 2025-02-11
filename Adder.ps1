@@ -688,7 +688,7 @@ if ( $rss ) {
             $rss_ids += $rss_record[1].ToInt64($null)
             if ( !$id_to_info[$rss_record[1]] ) {
                 if ( !$ignored -or $rss_record[8] -notin $ignored ) {
-                    Write-Log 'Проверим, что разрача ещё существует'
+                    Write-Log "Проверим, что раздача $($rss_record[1]) ещё существует"
                     if ( $null -eq ( ( Invoke-WebRequest -Uri "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" ).content | ConvertFrom-Json -AsHashtable ).result.value ) {
                         Write-Log 'Раздача уже не существует'
                         continue
