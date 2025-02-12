@@ -18,6 +18,7 @@ Migrator.ps1
 *.torrent
 *new.ps1
 *.was
+*_was.ps1
 *.journal
 Supporter.ps1
 posts/*.*
