@@ -710,7 +710,7 @@ if ( $rss ) {
                     if ( $i -lt 10 ) {
                         if ( $success -eq $true ) {
                             if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
-                                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[8] ) # кто запросил
+                                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger' ) # кто запросил
                             }
                             Start-Sleep -Seconds 1
                             if ( $rss_record[6] -eq 1 ) {
