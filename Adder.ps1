@@ -659,31 +659,6 @@ if ( $rss ) {
         if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
         if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace ( '^\s+', '') -replace ( '\s+$', '') ) }
         if ( $rss.handle_avenger -and $rss.handle_avenger.ToUpper() -eq 'N' ) { $rss_data = $rss_data | Where-Object { $_[7] -le 3 } }
-        # foreach ( $rss_record in $rss_data ) {
-        #     $id = ( $rss_record.split( "`n" ) | Select-String 't=\d+"' ).matches.value.replace( 't=', '' ).replace( '"', '').ToInt64($null)
-        #     $rss_ids += $id
-        #     if ( !$id_to_info[$id] ) {
-        #         $keeper = ( $rss_record.split( "`n" ) | Select-String '👤 .+?</a>' ).matches.value.replace( '👤 ', '' ).replace( '</a>', '')
-        #         if ( !$ignored -or $keeper -notin $ignored ) {
-        #             $hash = ( $rss_record.split( "`n" ) | Select-String 'btih:.+?&tr' ).matches.value.replace( 'btih:', '' ).replace( '&tr', '')
-        #             Write-Log "Добавляем раздачу $id для $keeper"
-        #             $new_torrent_file = Get-ForumTorrentFile $id
-        #             $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
-        #             Start-Sleep -Seconds 3
-        #             if ( $success -eq $true -and $rss.tag_user.ToUpper() -eq 'Y' ) {
-        #                 Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $keeper -silent
-        #             }
-        #             if ( $rss_record -match 'Форум ID - \d+</a><br />(.+?)</p>' ) {
-        #                 Start-Sleep -Seconds 1
-        #                 Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $hash } -label $matches[1] -silent
-        #             }
-        #             $rss_add_cnt++
-        #         }
-        #         else {
-        #             Write-Log "Пропускаем раздачу $id для $keeper"
-        #         }
-        #     }
-        # }
         foreach ( $rss_record in $rss_data ) {
             $rss_ids += $rss_record[1].ToInt64($null)
             if ( !$id_to_info[$rss_record[1]] ) {
@@ -698,8 +673,9 @@ if ( $rss ) {
                     $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
                     Write-Log 'Подождём секунду, чтобы раздача добавилась'
                     Start-Sleep -Seconds 1
-                    Write-Log 'Проверяем, что раздача добавилась'
                     $fresh_hash = ( Invoke-WebRequest "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" | ConvertFrom-Json ).Result.($rss_record[1].ToString())
+                    Write-Log " API считает, что у этой раздачи хэш $fresh_hash"
+                    Write-Log 'Проверяем, что раздача добавилась'
                     $i = 0
                     while ( $i -lt 10 -and $null -eq ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash $fresh_hash -mess_sender 'Rehasher' ) ) {
                         Write-Log 'Пока не добавилась, подождём ещё секунду'
