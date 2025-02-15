@@ -654,54 +654,58 @@ if ( $rss ) {
         Write-Log 'Не удалось скачать RSS-ленту, пропускаем обработку' -Red
     }
     else {
-
         $rss_add_cnt = 0
         if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
         if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace ( '^\s+', '') -replace ( '\s+$', '') ) }
         if ( $rss.handle_avenger -and $rss.handle_avenger.ToUpper() -eq 'N' ) { $rss_data = $rss_data | Where-Object { $_[7] -le 3 } }
         foreach ( $rss_record in $rss_data ) {
             $rss_ids += $rss_record[1].ToInt64($null)
-            if ( !$id_to_info[$rss_record[1]] ) {
-                if ( !$ignored -or $rss_record[8] -notin $ignored ) {
-                    Write-Log "Проверим, что раздача $($rss_record[1]) ещё существует"
-                    if ( $null -eq ( ( Invoke-WebRequest -Uri "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" ).content | ConvertFrom-Json -AsHashtable ).result.Values ) {
-                        Write-Log 'Раздача уже не существует'
-                        continue
-                    }
-                    Write-Log "Добавляем раздачу $( $rss_record[1] ) для $( $rss_record[8] )"
-                    $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
-                    $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
-                    Write-Log 'Подождём секунду, чтобы раздача добавилась'
-                    Start-Sleep -Seconds 1
-                    $fresh_hash = ( Invoke-WebRequest "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" | ConvertFrom-Json ).Result.($rss_record[1].ToString())
-                    Write-Log " API считает, что у этой раздачи хэш $fresh_hash"
-                    Write-Log 'Проверяем, что раздача добавилась'
-                    $i = 0
-                    while ( $i -lt 10 -and $null -eq ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash $fresh_hash -mess_sender 'Rehasher' ) ) {
-                        Write-Log 'Пока не добавилась, подождём ещё секунду'
-                        # Start-Sleep -Seconds $check_state_delay
-                        Start-Sleep -Seconds 1
-                        $i++
-                    }
-                    if ( $i -lt 10 ) {
-                        if ( $success -eq $true ) {
-                            if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
-                                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger' ) # кто запросил
-                            }
-                            Start-Sleep -Seconds 1
-                            if ( $rss_record[6] -eq 1 ) {
-                                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( '_Restored' ) # восстановление?
-                            }
-                            else {
-                                Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] -le 3 ? '_Help' : '_Load' ) # через что запросил
-                            }
+            if ( !$rss.ignored -or $rss_record[1] -notin $rss.ignored ) {
+                if ( !$id_to_info[$rss_record[1]] ) {
+                    if ( !$ignored -or $rss_record[8] -notin $ignored ) {
+                        Write-Log "Проверим, что раздача $($rss_record[1]) ещё существует"
+                        $fresh_hash = ( ( Invoke-WebRequest -Uri "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" ).content | ConvertFrom-Json -AsHashtable ).result.Values[0]
+                        if ( !$fresh_hash ) {
+                            Write-Log 'Раздача уже не существует'
+                            continue
                         }
-                        $rss_add_cnt++
+                        else { Write-Log "API считает, что у этой раздачи хэш $fresh_hash" }
+                        Write-Log "Добавляем раздачу $( $rss_record[1] ) для $( $rss_record[8] )"
+                        $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
+                        $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+                        Write-Log 'Подождём секунду, чтобы раздача добавилась'
+                        Start-Sleep -Seconds 1
+                        Write-Log 'Проверяем, что раздача добавилась'
+                        $i = 0
+                        while ( $i -lt 10 -and $null -eq ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash $fresh_hash -mess_sender 'Rehasher' ) ) {
+                            Write-Log 'Пока не добавилась, подождём ещё секунду'
+                            # Start-Sleep -Seconds $check_state_delay
+                            Start-Sleep -Seconds 1
+                            $i++
+                        }
+                        if ( $i -lt 10 ) {
+                            if ( $success -eq $true ) {
+                                if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
+                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger' ) # кто запросил
+                                }
+                                Start-Sleep -Seconds 1
+                                if ( $rss_record[6] -eq 1 ) {
+                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( '_Restored' ) # восстановление?
+                                }
+                                else {
+                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] -le 3 ? '_Help' : '_Load' ) # через что запросил
+                                }
+                            }
+                            $rss_add_cnt++
+                        }
+                    }
+                    else {
+                        Write-Log "Раздача $( $rss_record[1] ) для $( $rss_record[8] ) пропущена по заявителю"
                     }
                 }
-                else {
-                    Write-Log "Пропускаем раздачу $( $rss_record[1] ) для $( $rss_record[8] )"
-                }
+            }
+            else {
+                Write-Log "Раздача $( $rss_record[1] ) для $( $rss_record[8] ) пропущена по ID"
             }
         }
 
