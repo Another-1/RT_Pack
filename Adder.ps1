@@ -670,7 +670,8 @@ if ( $rss ) {
                             continue
                         }
                         else { Write-Log "API считает, что у этой раздачи хэш $fresh_hash" }
-                        Write-Log "Добавляем раздачу $( $rss_record[1] ) для $( $rss_record[8] )"
+                        $requester = $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger'
+                        Write-Log "Добавляем раздачу $( $rss_record[1] ) для $requester"
                         $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
                         $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
                         Write-Log 'Подождём секунду, чтобы раздача добавилась'
@@ -686,7 +687,7 @@ if ( $rss ) {
                         if ( $i -lt 10 ) {
                             if ( $success -eq $true ) {
                                 if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
-                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger' ) # кто запросил
+                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $requester # кто запросил
                                 }
                                 Start-Sleep -Seconds 1
                                 if ( $rss_record[6] -eq 1 ) {
