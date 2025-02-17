@@ -64,7 +64,7 @@ $down_cnt = 0
 $err_cnt = 0
 
 foreach ( $torrent in $clients_torrents ) {
-    if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', $settings.clients[$torrent.client_key].stopped_state_dl ) ) {
+    if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', 'queuedDL', 'allocating', $settings.clients[$torrent.client_key].stopped_state_dl ) ) {
         if ( $torrent.tags -like "*$seed_tag*" ) {
             Write-Log "Снимаем с раздачи $($torrent.topic_id) - '$($torrent.name)' метку '$seed_tag' в клиенте $($torrent.client_key)"
             Get-topicIDs -client $settings.clients[$torrent.client_key] -torrent_list @( $torrent )
