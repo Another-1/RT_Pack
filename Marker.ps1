@@ -112,4 +112,4 @@ foreach ( $torrent in $clients_torrents ) {
         $err_cnt++
     }
 }
-Send-TGMessage -message "Переведено в seeding: $seed_cnt`nОсталось в downloading: $down_cnt`nПереверено в ошибочные $err_cnt" -token $tg_token -chat_id $tg_chat -mess_sender 'Marker'
+Send-TGMessage -message "Переведено в seeding: $seed_cnt`nОсталось в downloading: $down_cnt`nПереверено в ошибочные: $err_cnt" -token $tg_token -chat_id $tg_chat -mess_sender 'Marker'
