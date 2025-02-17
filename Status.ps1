@@ -16,7 +16,7 @@ if ( ( Test-Version '_functions.ps1' 'Adder' ) -eq $true ) {
     . ( Join-Path $PSScriptRoot '_functions.ps1' )
 }
 
-Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Marker'
+Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Status'
 
 if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
     $settings = Get-Content -Path ( Join-Path $PSScriptRoot 'settings.json') | ConvertFrom-Json -AsHashtable
@@ -42,9 +42,6 @@ if ( $standalone -eq $false ) {
 
 $use_timestamp = Test-Setting 'use_timestamp'
 $tlo_path = Test-Setting 'tlo_path' -required
-$down_tag = Test-Setting 'down_tag' -required
-$seed_tag = Test-Setting 'seed_tag' -required
-$error_tag = Test-Setting 'error_tag' -required
 $tg_token = Test-Setting 'tg_token'
 if ( $tg_token -ne '') {
     $tg_chat = Test-Setting 'tg_chat' -required
@@ -58,10 +55,9 @@ if ( $rss_mark.ToUpper() -eq 'N' -and $rss ) {
 }
 
 Get-ClientApiVersions -clients $settings.clients
-$clients_torrents = Get-ClientsTorrents -mess_sender 'Marker' -noIDs
+$clients_torrents = Get-ClientsTorrents -mess_sender 'Status' -noIDs
 $seed_cnt = 0
 $down_cnt = 0
-$err_cnt = 0
 
 foreach ( $torrent in $clients_torrents ) {
     if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', $settings.clients[$torrent.client_key].stopped_state_dl ) ) {
@@ -109,7 +105,7 @@ foreach ( $torrent in $clients_torrents ) {
         Remove-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $seed_tag -silent
         Write-Log "Метим раздачу $($torrent.topic_id) - '$($torrent.name)' меткой '$error_tag' в клиенте $($torrent.client_key)"
         Set-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $error_tag -silent
-        $err_cnt++
+        
     }
 }
-Send-TGMessage -message "Переведено в seeding: $seed_cnt`nОсталось в downloading: $down_cnt`nПереверено в ошибочные $err_cnt" -token $tg_token -chat_id $tg_chat -mess_sender 'Marker'
+Send-TGMessage -message "Переведено в seeding: $seed_cnt`nОсталось в downloading: $down_cnt" -token $tg_token -chat_id $tg_chat -mess_sender 'Marker'
