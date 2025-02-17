@@ -15,17 +15,8 @@ if ( ( Test-Version '_functions.ps1' 'Adder' ) -eq $true ) {
     Write-Log 'Запускаем новую версию  _functions.ps1'
     . ( Join-Path $PSScriptRoot '_functions.ps1' )
 }
-Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Marker'
 
-$use_timestamp = Test-Setting 'use_timestamp'
-$tlo_path = Test-Setting 'tlo_path' -required
-$down_tag = Test-Setting 'down_tag' -required
-$seed_tag = Test-Setting 'seed_tag' -required
-$error_tag = Test-Setting 'error_tag' -required
-$tg_token = Test-Setting 'tg_token'
-if ( $tg_token -ne '') {
-    $tg_chat = Test-Setting 'tg_chat' -required
-}
+Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Marker'
 
 if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
     $settings = Get-Content -Path ( Join-Path $PSScriptRoot 'settings.json') | ConvertFrom-Json -AsHashtable
@@ -47,6 +38,16 @@ if ( $standalone -eq $false ) {
     $ini_path = Join-Path $tlo_path 'data' 'config.ini'
     Write-Log 'Читаем настройки Web-TLO'
     $ini_data = Get-IniContent $ini_path
+}
+
+$use_timestamp = Test-Setting 'use_timestamp'
+$tlo_path = Test-Setting 'tlo_path' -required
+$down_tag = Test-Setting 'down_tag' -required
+$seed_tag = Test-Setting 'seed_tag' -required
+$error_tag = Test-Setting 'error_tag' -required
+$tg_token = Test-Setting 'tg_token'
+if ( $tg_token -ne '') {
+    $tg_chat = Test-Setting 'tg_chat' -required
 }
 
 Get-Clients
@@ -100,6 +101,16 @@ foreach ( $torrent in $clients_torrents ) {
             Get-topicIDs -client $settings.clients[$torrent.client_key] -torrent_list @( $torrent )
             Start-Torrents -hashes @($torrent.hash) -client $settings.clients[$torrent.client_key]
         }
+    }
+    elseif ( $torrent.state -in ( 'missingFiles', 'error' ) ){
+        Write-Log "Снимаем с раздачи $($torrent.topic_id) - '$($torrent.name)' метку '$down_tag' в клиенте $($torrent.client_key)"
+        Get-topicIDs -client $settings.clients[$torrent.client_key] -torrent_list @( $torrent )
+        Remove-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent
+        Write-Log "Снимаем с раздачи $($torrent.topic_id) - '$($torrent.name)' метку '$seed_tag' в клиенте $($torrent.client_key)"
+        Remove-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $seed_tag -silent
+        Write-Log "Метим раздачу $($torrent.topic_id) - '$($torrent.name)' меткой '$error_tag' в клиенте $($torrent.client_key)"
+        Set-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $error_tag -silent
+        
     }
 }
 Send-TGMessage -message "Переведено в seeding: $seed_cnt`nОсталось в downloading: $down_cnt" -token $tg_token -chat_id $tg_chat -mess_sender 'Marker'
