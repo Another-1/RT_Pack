@@ -56,10 +56,10 @@ if ( $rss_mark.ToUpper() -eq 'N' -and $rss ) {
 
 Get-ClientApiVersions -clients $settings.clients
 $clients_torrents = Get-ClientsTorrents -mess_sender 'Status' -noIDs
-$seed_cnt = 0
-$down_cnt = 0
+
 
 foreach ( $torrent in $clients_torrents ) {
+    if ( !)
     if ( $torrent.state -in ( 'downloading', 'forcedDL', 'stalledDL', $settings.clients[$torrent.client_key].stopped_state_dl ) ) {
         if ( $torrent.tags -like "*$seed_tag*" ) {
             Write-Log "Снимаем с раздачи $($torrent.topic_id) - '$($torrent.name)' метку '$seed_tag' в клиенте $($torrent.client_key)"
