@@ -1063,17 +1063,17 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender 
 }
 
 function Set-ForceStart ( $client, $torrent, $mess_sender ) {
-    if (!$silent) {
-        Write-Log ( "Метим раздачу меткой '$label'" )
-    }
     $set_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/setForceStart'
-    $tag_body = @{ hashes = $torrent.hash; tags = $label }
+    $set_body = @{ 
+        hashes = $torrent.hash
+        value = $true
+     }
     try {
-        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+        Invoke-WebRequest -Method POST -Uri $set_url -Headers $loginheader -Body $set_body -WebSession $client.sid | Out-Null
     }
     catch {
         Initialize-Client -client $client -force -mess_sender $mess_sender
-        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+        Invoke-WebRequest -Method POST -Uri $set_url -Headers $loginheader -Body $set_body -WebSession $client.sid | Out-Null
     }
 }
 
