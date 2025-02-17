@@ -21,6 +21,7 @@ $use_timestamp = Test-Setting 'use_timestamp'
 $tlo_path = Test-Setting 'tlo_path' -required
 $down_tag = Test-Setting 'down_tag' -required
 $seed_tag = Test-Setting 'seed_tag' -required
+$error_tag = Test-Setting 'error_tag' -required
 $tg_token = Test-Setting 'tg_token'
 if ( $tg_token -ne '') {
     $tg_chat = Test-Setting 'tg_chat' -required
@@ -74,6 +75,11 @@ foreach ( $torrent in $clients_torrents ) {
             Write-Log "Метим раздачу $($torrent.topic_id) - '$($torrent.name)' меткой '$down_tag' в клиенте $($torrent.client_key)"
             Set-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $down_tag
             $torrent.state = 'OK'
+        }
+        if ( $torrent.state -eq 'stalledDL' ) {
+            Get-topicIDs -client $settings.clients[$torrent.client_key] -torrent_list @( $torrent )
+            Write-Log "Принудительно запускаем зависшую раздачу $($torrent.topic_id) - '$($torrent.name)' в клиенте $($torrent.client_key)"
+            Set-ForceStart -client $settings.clients[$torrent.client_key] -torrent $torrent
         }
         $down_cnt++
     }

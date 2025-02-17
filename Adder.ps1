@@ -659,8 +659,9 @@ if ( $rss ) {
         if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace ( '^\s+', '') -replace ( '\s+$', '') ) }
         if ( $rss.handle_avenger -and $rss.handle_avenger.ToUpper() -eq 'N' ) { $rss_data = $rss_data | Where-Object { $_[7] -le 3 } }
         foreach ( $rss_record in $rss_data ) {
+            $requester = $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger'
             $rss_ids += $rss_record[1].ToInt64($null)
-            if ( !$rss.ignored -or $rss_record[1] -notin $rss.ignored ) {
+            if ( !$rss.skip -or $rss_record[1] -notin $rss.skip ) {
                 if ( !$id_to_info[$rss_record[1]] ) {
                     if ( !$ignored -or $rss_record[8] -notin $ignored ) {
                         Write-Log "Проверим, что раздача $($rss_record[1]) ещё существует"
@@ -670,7 +671,6 @@ if ( $rss ) {
                             continue
                         }
                         else { Write-Log "API считает, что у этой раздачи хэш $fresh_hash" }
-                        $requester = $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger'
                         Write-Log "Добавляем раздачу $( $rss_record[1] ) для $requester"
                         $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
                         $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
@@ -701,12 +701,12 @@ if ( $rss ) {
                         }
                     }
                     else {
-                        Write-Log "Раздача $( $rss_record[1] ) для $( $rss_record[8] ) пропущена по заявителю"
+                        Write-Log "Раздача $( $rss_record[1] ) для $requester пропущена по заявителю"
                     }
                 }
             }
             else {
-                Write-Log "Раздача $( $rss_record[1] ) для $( $rss_record[8] ) пропущена по ID"
+                Write-Log "Раздача $( $rss_record[1] ) для $requester пропущена по ID"
             }
         }
 

@@ -160,6 +160,7 @@ function Test-Setting ( $setting, [switch]$required, $default, [switch]$no_ini_w
         'auto_update'           = @{ prompt = 'Автоматически обновлять версии скриптов?'; default = 'N'; type = 'YN' }
         'down_tag'              = @{ prompt = 'Тэг для скачиваемых раздач'; type = 'string' }
         'seed_tag'              = @{ prompt = 'Тег для завершённых раздач'; type = 'string' }
+        'error_tag'             = @{ prompt = 'Тег для ошибочных раздач'; type = 'string' }
         'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота Кузи в /about_me)'; type = 'string' }
         'id_subfolder'          = @{ prompt = 'Создавать папки по ID если нет?'; type = 'YN' }
     }
@@ -1061,20 +1062,20 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender 
     }
 }
 
-# function Clear-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender ) {
-#     if (!$silent) {
-#         Write-Log ( "Снимаем с раздачу метку '$label'" )
-#     }
-#     $tag_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/removeTags'
-#     $tag_body = @{ hashes = $torrent.hash; tags = $label }
-#     try {
-#         Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
-#     }
-#     catch {
-#         Initialize-Client -client $client -force -mess_sender $mess_sender
-#         Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
-#     }
-# }
+function Set-ForceStart ( $client, $torrent, $mess_sender ) {
+    if (!$silent) {
+        Write-Log ( "Метим раздачу меткой '$label'" )
+    }
+    $set_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/setForceStart'
+    $tag_body = @{ hashes = $torrent.hash; tags = $label }
+    try {
+        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+    }
+    catch {
+        Initialize-Client -client $client -force -mess_sender $mess_sender
+        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+    }
+}
 
 function Remove-Comment ( $client, $torrent, $label, [switch]$silent ) {
     if (!$silent) {
@@ -1223,7 +1224,7 @@ function GetRepKeptTorrents( $sections, $call_from, $max_keepers, $excluded = @(
 function Get-TopicKeepingStatus( $topic_id, $call_from ) {
     $url = "/krs/api/v1/releases/reports?topic_ids=$topic_id&columns=status"
     $content = ( Get-RepHTTP -url $url -call_from $call_from ) | ConvertFrom-Json
-    $result = ( $content.result | ForEach-Object {$_[3] -band 0b10 } | Measure-Object -Minimum ).Minimum -eq 0
+    $result = ( $content.result | ForEach-Object { $_[3] -band 0b10 } | Measure-Object -Minimum ).Minimum -eq 0
     return $result
 }
 
