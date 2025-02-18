@@ -11,7 +11,7 @@ if ( $use_timestamp -ne 'Y' ) { Write-Host $str } else { Write-Host ( ( Get-Date
 . ( Join-Path $PSScriptRoot _functions.ps1 )
 
 Test-PSVersion
-if ( ( Test-Version '_functions.ps1' 'Adder' ) -eq $true ) {
+if ( ( Test-Version '_functions.ps1' 'Status' ) -eq $true ) {
     Write-Log 'Запускаем новую версию  _functions.ps1'
     . ( Join-Path $PSScriptRoot '_functions.ps1' )
 }
