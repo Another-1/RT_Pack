@@ -673,7 +673,8 @@ if ( $rss ) {
                         else { Write-Log "API считает, что у этой раздачи хэш $fresh_hash" }
                         Write-Log "Добавляем раздачу $( $rss_record[1] ) для $requester"
                         $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
-                        $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $rss.save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+                        $chosen_save_path = $null -eq $rss.save_path_avenger -or $requester -ne 'Avenger' ? $rss.save_path : $rss.save_path_avenger
+                        $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
                         Write-Log 'Подождём секунду, чтобы раздача добавилась'
                         Start-Sleep -Seconds 1
                         Write-Log 'Проверяем, что раздача добавилась'
