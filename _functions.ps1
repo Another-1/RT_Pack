@@ -1149,11 +1149,11 @@ function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
     }
 }
 
-function Get-APISeeding ( $seding_days, $call_from ) {
+function Get-APISeeding ( $sections, $seeding_days, $call_from ) {
     $seed_dates = @{}
-    foreach ( $section in $settings.sections.keys ) {
+    foreach ( $section in $sections ) {
         Write-Log "Запрашиваем историю сидирования по разделу $section"
-        $url = "/krs/api/v1/keeper/$($settings.connection.user_id)/reports?only_subforums_marked_as_kept=true&last_seeded_limit_days=$min_stop_to_start&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
+        $url = "/krs/api/v1/keeper/$($settings.connection.user_id)/reports?only_subforums_marked_as_kept=true&last_seeded_limit_days=$seeding_days&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
 
         ( ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
             if ( $null -ne $_ ) { $seed_dates[$_[0]] = $_[1] }

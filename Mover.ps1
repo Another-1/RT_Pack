@@ -1,4 +1,4 @@
-param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $id_subfolder )
+param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $id_subfolder, [switch]$reverse )
 
 Write-Host 'Проверяем версию Powershell...'
 If ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
@@ -87,7 +87,13 @@ if ( $client.sid ) {
     $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" } 
     # if ( $max_size -eq -1 * 1Gb ) {
     Write-Log 'Сортируем по полезности и подразделу'
-    $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
+
+    if ( $reverse.IsPresent ) {
+        $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Stable
+    }
+    else {
+        $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
+    }
 
     if ( $category -and $category -ne '' ) {
         $torrents_list = $torrents_list | Where-Object { $_.category -eq "${category}" }

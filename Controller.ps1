@@ -108,7 +108,7 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
 
 if ( !$api_seeding -or $debug -eq $false ) {
     $states = @{}
-    $api_seeding = Get-APISeeding -call_from 'Controller'
+    $api_seeding = Get-APISeeding -sections $settings.sections.keys -seeding_days $min_stop_to_start -call_from 'Controller'
     if ( $null -eq $api_seeding ) { exit }
     Write-Log 'Осмысливаем полученное'
     $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
