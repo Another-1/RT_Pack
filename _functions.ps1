@@ -459,6 +459,30 @@ function Get-TopicIDs ( $client, $torrent_list, [switch]$verbose ) {
     }
 }
 
+function Get-TorrentsContent ( $client, $hashes ) {
+    $arr = [System.Collections.ArrayList]::new()
+    $i = 0
+    $batch_size = [math]::ceiling( $hashes.count / 100 )
+    for ( $j = 0; $j -lt $hashes.count; $j += $batch_size ) {
+        Write-Progress -Activity 'Scanning' -Status $j -PercentComplete ( $i )
+        $batch_arr = [System.Collections.ArrayList]::new()
+        $batch_hashes = $hashes[ $j.. ( $j + $batch_size - 1 ) ]
+        $batch_hashes | ForEach-Object {
+            $Params = @{ hash = $_ }
+            try {
+                $save_path = ( ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/properties' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json ).save_path
+                $files = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/files' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json
+                $files | ForEach-Object { $batch_arr += ( Join-Path $save_path $_.name ) }
+            }
+            catch { }
+        }
+        # $arr += $batch_arr.GetEnumerator()
+        $arr += $batch_arr
+        $i++
+    }
+    Write-Progress -Activity 'Scanning' -Completed
+    return $arr
+}
 function Get-ClientTrackerStatus ( $client, $torrent_list, [switch]$verbose ) {
     if ( $torrent_list.count -gt 0 ) {
         if ( $verbose.IsPresent ) {
@@ -1066,8 +1090,8 @@ function Set-ForceStart ( $client, $torrent, $mess_sender ) {
     $set_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/setForceStart'
     $set_body = @{ 
         hashes = $torrent.hash
-        value = $true
-     }
+        value  = $true
+    }
     try {
         Invoke-WebRequest -Method POST -Uri $set_url -Headers $loginheader -Body $set_body -WebSession $client.sid | Out-Null
     }

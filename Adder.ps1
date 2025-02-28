@@ -727,7 +727,7 @@ if ( $rss ) {
                                 Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
                                 $rss_del_cnt++
                             }
-                            else { Write-Log 'раздача ещё не хранится, пусть полежит' }
+                            else { Write-Log 'раздачу ещё кто-то качает, пусть полежит' }
                         }
                         else {
                             Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
