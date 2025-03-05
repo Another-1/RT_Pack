@@ -717,13 +717,13 @@ if ( $rss ) {
             foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
                 $client = $settings.clients[$rss_torrent.client_key]
                 if ( $client.name -eq $rss.client ) {
-                    $purge_delay = $( $rss.purge_delay ? $rss.purge_delay : 1 )
+                    $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
                     if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
                         # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                         if ( $rss.wait_keepers -eq 'Y') {
-                            Write-Log "Из RSS ушла раздача $($rss_torrent.topic_id) - $($rss_torrent.name), проверим наличие хранящего хранителя"
+                            Write-Log "Из RSS ушла раздача $($rss_torrent.topic_id) - $($rss_torrent.name), проверим наличие качающего хранителя"
                             if ( Get-TopicKeepingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) {
-                                Write-Log 'Раздача хранится, удаляем'
+                                Write-Log 'Нет качающих хранителей, удаляем'
                                 Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
                                 $rss_del_cnt++
                             }

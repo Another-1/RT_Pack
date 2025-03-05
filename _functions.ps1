@@ -431,6 +431,11 @@ function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$n
     return $clients_torrents
 }
 
+function Get-ClientTorrentInfo( $client, $hash ) {
+    $Params = @{ hash = $hash }
+    return ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/properties' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json
+}
+
 function Get-TopicIDs ( $client, $torrent_list, [switch]$verbose ) {
     if ( $torrent_list.count -gt 0 ) {
         if ( $verbose.IsPresent ) {
@@ -442,9 +447,8 @@ function Get-TopicIDs ( $client, $torrent_list, [switch]$verbose ) {
                 $_.topic_id = $db_hash_to_id[$_.hash]  
             }
             if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
-                $Params = @{ hash = $_.hash }
                 try {
-                    $comment = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/properties' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json | Select-Object comment -ExpandProperty comment
+                    $comment = ( Get-ClientTorrentInfo -client $client -hash $_.hash ) | Select-Object comment -ExpandProperty comment
                     Start-Sleep -Milliseconds 10
                 }
                 catch { }
@@ -1186,6 +1190,12 @@ function Get-APISeeding ( $sections, $seeding_days, $call_from ) {
     return $seed_dates
 }
 
+function Get-RepSeeds( $topic_id, $call_from ) {
+    Write-Log "Запрашиваем количество сидов по раздаче $topic_id"
+    $url = "/krs/api/v1/releases/pvc?topic_ids=$topic_id&columns=seeders"
+    return ( ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).releases[0][1]
+}
+
 function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
     if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
     Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
@@ -1248,7 +1258,8 @@ function GetRepKeptTorrents( $sections, $call_from, $max_keepers, $excluded = @(
 function Get-TopicKeepingStatus( $topic_id, $call_from ) {
     $url = "/krs/api/v1/releases/reports?topic_ids=$topic_id&columns=status"
     $content = ( Get-RepHTTP -url $url -call_from $call_from ) | ConvertFrom-Json
-    $result = ( $content.result | ForEach-Object { $_[3] -band 0b10 } | Measure-Object -Minimum ).Minimum -eq 0
+    $check = ( $content.result | ForEach-Object { $_[3] -band 0b10 } | Measure-Object -Minimum ).Minimum
+    $result = $check -eq 0 -or $null -eq $check 
     return $result
 }
 
