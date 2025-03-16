@@ -46,7 +46,7 @@ $settings.others.auto_update = Test-Setting 'auto_update' -required
 
 $tlo_path = Test-Setting 'tlo_path' -required
 ### DEBUG ###
-$tlo_path = '\\192.168.0.29\Software\1'   # Путь к папке Web-TLO
+# $tlo_path = '\\192.168.0.29\Software\1'   # Путь к папке Web-TLO
 ### DEBUG ###
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 $ini_data = Get-IniContent $ini_path
