@@ -785,7 +785,9 @@ if ( $report_stalled -eq 'Y' ) {
         $stalleds = $stalleds | Sort-Object -Property topic_id -Unique
         Write-Log ( 'Найдено ' + $stalleds.count + ' некачашек' )
         foreach ( $stalled in $stalleds ) {
-            $params = @{ hash = $stalled.hash }
+            $params = @{
+                hash = $stalled.hash
+            }
             $stalled.trackers = ( Invoke-WebRequest -Uri ( $settings.clients[$stalled.client_key].IP + ':' + $settings.clients[$stalled.client_key].port + '/api/v2/torrents/trackers' ) -WebSession $settings.clients[$stalled.client_key].sid -Body $params -TimeoutSec 120 ).Content | `
                 ConvertFrom-Json | Where-Object { $_.status -ne 0 }
         }
@@ -794,13 +796,17 @@ if ( $report_stalled -eq 'Y' ) {
         $stalleds = $stalleds | Where-Object { $_.status -ne 4 }
         Write-Log ( 'Осталось ' + $stalleds.hash.count + ' некачашек' )
 
-        $params = @{
+        $headers = @{
+            'X-Help-Pwd'   = $stalled_pwd
+            'Content-Type' = 'application/json'
+        }
+            $params = @{
             'help_load' = ( $stalleds.topic_id -join ',')
             'help_pwd'  = $stalled_pwd
         }
         Write-Log 'Отправляем список некачашек'
         Write-Log "Будет отправлено следующее: $($params.'help_load')"
-        Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/rto_api.php' -Body $params -ErrorVariable send_result -UserAgent 'adder' | Out-Null
+        Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/api/update-help' -Headers $headers -Body ( $params | ConvertTo-Json ) -ErrorVariable send_result -UserAgent 'adder' | Out-Null
         if ( $send_result.count -eq 0 ) {
             Write-Log ( 'Отправлено ' + $stalleds.hash.count + ' некачашек' )
         }
