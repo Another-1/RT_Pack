@@ -52,7 +52,7 @@ else {
 }
 . ( Join-Path $PSScriptRoot _functions.ps1 )
 
-Test-ForumWorkingHours -verbose
+Test-ForumWorkingHours -verbose -break
 
 if ( !$debug ) {
     Test-PSVersion
@@ -238,9 +238,10 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torr
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     if ( $forced_sections -and $control -ne 'Y' ) {
         $db_hash_to_id = @{}
-        $db_conn = Open-TLODatabase
+        # $db_conn = Open-TLODatabase
         $query = 'SELECT info_hash, topic_id FROM Torrents'
         Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $db_hash_to_id[$_.info_hash] = $_.topic_id }
+        $conn.Close()
     }
     $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
@@ -628,7 +629,7 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
 
 if ( $rss ) {
     $rss_ids = @()
-    if ( !$rss.url ) { $rss.url = 'https://rutr.my.to/ask_help.php?output=json' }
+    if ( !$rss.url ) { $rss.url = 'https://rto.my.to/ask_help.php?output=json' }
     if ( $rss.url -notlike '*json') { $rss.url = $( $rss.url -match '\?' ? "$($rss.url)&output=json" : "$($rss.url)?output=json" ) }
     $retry_cnt = 1
     Write-Log "Скачиваем RSS-ленту по адресу $($rss.url)"
@@ -791,7 +792,7 @@ if ( $report_stalled -eq 'Y' ) {
 
         Write-Log 'Отсеиваем некачашки с ошибкой трекера'
         $stalleds = $stalleds | Where-Object { $_.status -ne 4 }
-        Write-Log ( 'Осталось ' + $stalleds.count + ' некачашек' )
+        Write-Log ( 'Осталось ' + $stalleds.hash.count + ' некачашек' )
 
         $params = @{
             'help_load' = ( $stalleds.topic_id -join ',')
@@ -799,9 +800,9 @@ if ( $report_stalled -eq 'Y' ) {
         }
         Write-Log 'Отправляем список некачашек'
         Write-Log "Будет отправлено следующее: $($params.'help_load')"
-        Invoke-WebRequest -Method POST -Uri 'https://rutr.my.to/rto_api.php' -Body $params -ErrorVariable send_result -UserAgent 'adder' | Out-Null
+        Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/rto_api.php' -Body $params -ErrorVariable send_result -UserAgent 'adder' | Out-Null
         if ( $send_result.count -eq 0 ) {
-            Write-Log ( 'Отправлено ' + $stalleds.count + ' некачашек' )
+            Write-Log ( 'Отправлено ' + $stalleds.hash.count + ' некачашек' )
         }
         else {
             Write-Log 'Не удалось отправить некачашки, проверьте пароль.'

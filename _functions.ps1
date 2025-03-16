@@ -223,7 +223,7 @@ function Test-Setting ( $setting, [switch]$required, $default, [switch]$no_ini_w
     return $current
 }
 
-function Test-ForumWorkingHours ( [switch]$verbose ) {
+function Test-ForumWorkingHours ( [switch]$verbose, [switch]$break ) {
     $MoscowTZ = [System.TimeZoneInfo]::FindSystemTimeZoneById("Russian Standard Time")
     $MoscowTime = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $MoscowTZ)
     if ($verbose) {
@@ -233,8 +233,14 @@ function Test-ForumWorkingHours ( [switch]$verbose ) {
     if ( ( Get-Date($MoscowTime) -UFormat %H ) -eq '04' ) {
         if ( $use_working_minutes -ne 'Y' -or ( Get-Date($MoscowTime) -UFormat %M ) -in 35..45 ) {
             Write-Log 'Профилактические работы на сервере' -ForegroundColor -Red
-            exit
+            if ( $break.IsPresent ) {
+                exit
+            }
+            else { return $false }
         }
+    }
+    if ( -not $break.IsPresent ) {
+        return $true
     }
 }
 
@@ -508,13 +514,14 @@ function Get-ClientTrackerStatus ( $client, $torrent_list, [switch]$verbose ) {
     }
 }
 
-function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = '', [switch]$Skip_checking, [switch]$addToTop ) {
+function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = '', [switch]$Skip_checking, [switch]$addToTop, [switch]$paused) {
     $Params = @{
         torrents        = Get-Item $file
         category        = $category
         name            = 'torrents'
         root_folder     = 'false'
         paused          = $Paused
+        stopped         = $Paused
         skip_checking   = $Skip_checking
         addToTopOfQueue = $addToTop
     }
@@ -685,14 +692,14 @@ function Get-File ( $uri, $save_path, $user_agent, $headers = $null, $from ) {
             if ( $use_proxy -eq $true -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $uri используя прокси $($settings.connection.proxy.url )" }
                 if ( $settings.connection.proxy.credentials ) {
-                    Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials -UserAgent $user_agent -Headers $headers
+                    Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -ConnectionTimeoutSeconds 30 -SkipHttpErrorCheck -ProxyCredential $settings.connection.proxy.credentials -UserAgent $user_agent -Headers $headers
                 }
                 else {
-                    Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -SkipHttpErrorCheck -UserAgent $user_agent -Headers $headers
+                    Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -Proxy $settings.connection.proxy.url -MaximumRedirection 999 -ConnectionTimeoutSeconds 30 -SkipHttpErrorCheck -UserAgent $user_agent -Headers $headers
                 }
                 break
             }
-            else { Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -MaximumRedirection 999 -SkipHttpErrorCheck -UserAgent $user_agent -Headers $headers; break }
+            else { Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -MaximumRedirection 999 -ConnectionTimeoutSeconds 30 -SkipHttpErrorCheck -UserAgent $user_agent -Headers $headers; break }
         }
         catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
     }
@@ -706,7 +713,9 @@ function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
     Write-Log 'Скачиваем torrent-файл с форума'
     $user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0'
     Get-File -Uri $get_url -save_path $Path -user_agent $user_agent -from 'forum'
-    if ( $null -eq $save_path ) { return Get-Item $Path }
+    # if ( $null -eq $save_path ) {
+    return Get-Item $Path
+    # }
 }
 
 function Get-ForumPost ( [int]$post ) {
@@ -1090,6 +1099,30 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender 
     }
 }
 
+function Add-Category ( $category, [switch]$silent, $mess_sender ) {
+    if (!$silent) {
+        Write-Log ( "Метим раздачу категорией '$category'" )
+    }
+    $add_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/createCategory'
+    $add_body = @{ category = $category; save_path = '' }
+    Invoke-WebRequest -Method POST -Uri $add_url -Body $add_body -WebSession $client.sid | Out-Null
+}
+
+function Set-Category ( $client, $torrent, $category, [switch]$silent, $mess_sender ) {
+    if (!$silent) {
+        Write-Log ( "Метим раздачу категорией '$category'" )
+    }
+    $cat_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/setCategory'
+    $tag_body = @{ hashes = $torrent.hash; category = $category }
+    try {
+        Invoke-WebRequest -Method POST -Uri $cat_url -Body $tag_body -WebSession $client.sid | Out-Null
+    }
+    catch {
+        Add-Category $category
+        Invoke-WebRequest -Method POST -Uri $tag_url -Body $tag_body -WebSession $client.sid | Out-Null
+    }
+}
+
 function Set-ForceStart ( $client, $torrent, $mess_sender ) {
     $set_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/setForceStart'
     $set_body = @{ 
@@ -1347,7 +1380,7 @@ function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url используя прокси $($settings.connection.proxy.url )" }
                 if ( $settings.connection.proxy.credentials ) {
                     $result = ( Invoke-WebRequest -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials -Body $body `
-                            -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -OperationTimeoutSeconds 20 ).Content
+                            -UserAgent "PowerShell/$($PSVersionTable.PSVersion) -$call_from-on-$($PSVersionTable.Platform)" -OperationTimeoutSeconds 20 ).Content
                     return $result
                 }
                 else {

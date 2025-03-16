@@ -12,7 +12,7 @@ Test-Module 'PsIni' 'для чтения настроек TLO'
 Write-Log 'Читаем настройки Web-TLO'
 $ini_data = Get-IniContent $ini_path
 
-Test-ForumWorkingHours -verbose
+Test-ForumWorkingHours -verbose -break
 
 $settings = @{}
 $settings.connection = @{}
