@@ -94,13 +94,16 @@ if ( !$id_subfolder ) { $id_subfolder = Test-Setting -setting id_subfolder -requ
 
 Write-Log "Указаны параметры:`nКлиент: $($client.Name)`nИсходный кусок пути: $path_from`nЦелевой кусок пути: $path_to`nКатегория: $category`nСуммарный объём: $($max_size / 1Gb)`nОбъём раздачи: $($max_1_size / 1Gb)`nМинимальное количество дней: $min_move_days`nСоздавать подкаталоги: $id_subfolder"
 Initialize-Client $client
-Initialize-Client $client_to
 if ( $client.sid ) {
     $i = 0
     $sum_size = 0
     $already_list = Get-ClientTorrents -client $client_to -mess_sender 'Mover' -verbose 
-    $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" } | `
-        Where-Object { $_.hash -notin $already_list.hash }
+    $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" }
+    if ( $client_to -ne $client ) {
+        Initialize-Client $client_to
+        $already_list = Get-ClientTorrents -client $client_to -mess_sender 'Mover' -verbose 
+        $torrents_list = $torrents_list | Where-Object { $_.hash -notin $already_list.hash }
+    }
     if ( $min_move_days -gt 0 ) {
         $max_add_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_move_days * 24 * 60 * 60
         $torrents_list = $torrents_list | Where-Object { $_.added_on -lt $max_add_date }

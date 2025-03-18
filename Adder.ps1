@@ -783,7 +783,7 @@ if ( $report_stalled -eq 'Y' ) {
     }
     if ( $stalleds.count -gt 0 ) {
         $stalleds = $stalleds | Sort-Object -Property topic_id -Unique
-        Write-Log ( 'Найдено ' + $stalleds.count + ' некачашек' )
+        Write-Log ( 'Найдено ' + $stalleds.hash.count + ' некачашек' )
         foreach ( $stalled in $stalleds ) {
             $params = @{
                 hash = $stalled.hash
