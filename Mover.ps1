@@ -97,7 +97,6 @@ Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
     $sum_size = 0
-    $already_list = Get-ClientTorrents -client $client_to -mess_sender 'Mover' -verbose 
     $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" }
     if ( $client_to -ne $client ) {
         Initialize-Client $client_to
