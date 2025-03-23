@@ -611,7 +611,7 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
     $obsolete_torrents | ForEach-Object {
         If ( !$obsolete ) { $obsolete = @{} }
         Write-Log ( "Левая раздача " + $_.topic_id + ' в клиенте ' + $_.client_key )
-        if ( !$obsolete[$settings.clients[$_.client_key]] ) { $obsolete[ $_.client_key] = [System.Collections.ArrayList]::new() }
+        if ( !$obsolete[$_.client_key] ) { $obsolete[ $_.client_key] = [System.Collections.ArrayList]::new() }
         $obsolete[ $_.client_key ] += ( $_.topic_id )
     }
 }
