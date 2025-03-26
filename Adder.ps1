@@ -800,18 +800,22 @@ if ( $report_stalled -eq 'Y' ) {
             'X-Help-Pwd'   = $stalled_pwd
             'Content-Type' = 'application/json'
         }
-            $params = @{
-            'help_load' = ( $stalleds.topic_id -join ',')
-            'help_pwd'  = $stalled_pwd
-        }
         Write-Log 'Отправляем список некачашек'
-        Write-Log "Будет отправлено следующее: $($params.'help_load')"
-        Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/api/update-help' -Headers $headers -Body ( $params | ConvertTo-Json ) -ErrorVariable send_result -UserAgent 'adder' | Out-Null
-        if ( $send_result.count -eq 0 ) {
-            Write-Log ( 'Отправлено ' + $stalleds.hash.count + ' некачашек' )
-        }
-        else {
-            Write-Log 'Не удалось отправить некачашки, проверьте пароль.'
+        $batch_size = 100
+        for ( $i = 0; $i -le $stalleds.topic_id.Count; $i += $batch_size ) {
+            $batch = ($stalleds[ $i..([math]::Min($i + $batch_size - 1, $stalleds.hash.Count - 1))]).topic_id
+            $params = @{
+                'help_load' = ( $batch -join ',')
+                'help_pwd'  = $stalled_pwd
+            }
+            Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/api/update-help' -Headers $headers -Body ( $params | ConvertTo-Json ) -ErrorVariable send_result -UserAgent 'adder' | Out-Null
+
+            if ( $send_result.count -eq 0 ) {
+                Write-Log ( 'Отправлено ' + $stalleds.hash.count + ' некачашек' )
+            }
+            else {
+                Write-Log 'Не удалось отправить некачашки, проверьте пароль.'
+            }
         }
     }
     else { Write-Log 'Некачашек не обнаружено' }
