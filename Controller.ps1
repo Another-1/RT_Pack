@@ -179,7 +179,13 @@ $lv_str1 = Get-Spell $min_stop_to_start 1 'days'
 $lv_str2 = Get-Spell $old_starts_per_run 1 'torrents'
 Write-Log "Ищем раздачи, остановленные более чем $lv_str1 в количестве не более $lv_str2"
 
-$paused_sort = @( ( $paused_sort | Where-Object { $states[$_.hash].state -eq $settings.clients[$_.client].stopped_state -and $_.seeder_last_seen -le $ok_to_start } | Sort-Object -Property client | Sort-Object -Property seeder_last_seen -Stable ) | `
+$paused_sort = @( ( $paused_sort | Where-Object {
+    $states[$_.hash].state -eq $settings.clients[$_.client].stopped_state `
+    -and $_.seeder_last_seen -le $ok_to_start `
+    -and $tracker_torrents[$_.hash] `
+    -and $tracker_torrents[$_.hash].category -ne '' `
+    -and $tracker_torrents[$_.hash].section -notin $never_obsolete_array } | `
+    Sort-Object -Property client | Sort-Object -Property seeder_last_seen -Stable ) | `
         Select-Object -First $old_starts_per_run | Sort-Object -Property client )
 $lv_str = Get-Spell $paused_sort.count 1 'torrents'
 

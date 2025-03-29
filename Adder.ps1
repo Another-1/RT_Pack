@@ -782,8 +782,11 @@ if ( $report_stalled -eq 'Y' ) {
         $stalleds += @{ topic_id = $_.topic_id; hash = $_.infohash_v1; client_key = $_.client_key; trackers = $null }
     }
     if ( $stalleds.count -gt 0 ) {
-        $stalleds = $stalleds | Sort-Object -Property topic_id -Unique
-        Write-Log ( 'Найдено ' + $stalleds.hash.count + ' некачашек' )
+        $stalleds = @( $stalleds | Sort-Object -Property topic_id -Unique )
+        foreach ( $client in ( $stalleds.client_key | Sort-Object -Unique ) ) {
+            Write-Log ( "Найдено некачашек в клиенте $client" + ': ' + ( $stalleds | Where-Object 'client_key' -eq $client ).hash.count.ToString() )
+        }
+        Write-Log ( 'Найдено некачашек итого: ' + $stalleds.hash.count )
         foreach ( $stalled in $stalleds ) {
             $params = @{
                 hash = $stalled.hash
@@ -793,7 +796,7 @@ if ( $report_stalled -eq 'Y' ) {
         }
 
         Write-Log 'Отсеиваем некачашки с ошибкой трекера'
-        $stalleds = $stalleds | Where-Object { $_.status -ne 4 }
+        $stalleds = @( $stalleds | Where-Object { $_.status -ne 4 } )
         Write-Log ( 'Осталось ' + $stalleds.hash.count + ' некачашек' )
 
         $headers = @{
