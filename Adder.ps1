@@ -778,7 +778,7 @@ if ( $report_stalled -eq 'Y' ) {
     Write-Log 'Ищем некачашки'
     $month_ago = ( Get-Date -UFormat %s ).ToInt32($null) - 30 * 24 * 60 * 60
     $stalleds = @()
-    $clients_torrents | Where-Object { $_.state -in ( 'stalledDL', 'forcedDL' ) -and $_.added_on -le $month_ago } | ForEach-Object {
+    $clients_torrents | Where-Object { $_.state -in ( 'stalledDL', 'forcedDL' ) -and $_.added_on -le $month_ago -and $_.client_key -ne 'RSS' } | ForEach-Object {
         $stalleds += @{ topic_id = $_.topic_id; hash = $_.infohash_v1; client_key = $_.client_key; trackers = $null }
     }
     if ( $stalleds.count -gt 0 ) {
