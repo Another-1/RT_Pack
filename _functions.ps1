@@ -1110,7 +1110,7 @@ function Add-Category ( $category, [switch]$silent, $mess_sender ) {
 
 function Set-Category ( $client, $torrent, $category, [switch]$silent, $mess_sender ) {
     if (!$silent) {
-        Write-Log ( "Метим раздачу категорией '$category'" )
+        Write-Log ( "Метим раздачу $( $torrent.name ) категорией '$category'" )
     }
     $cat_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/setCategory'
     $tag_body = @{ hashes = $torrent.hash; category = $category }

@@ -156,13 +156,16 @@ if ( $client.sid ) {
                     Write-Log 'Подождём часик' -Red
                     Start-Sleep -Seconds ( 3600 )
                 }
-                Foreach ( $pair in $pairs[$client_to.Name].Keys ) {
-                    $copy_dest = $path_to.replace( $pair, $pairs[$client_to.Name][$pair] )
-                    if ( $copy_dest -and $copy_dest -ne $path_to ) {
-                        Write-Log "Используется подмена шары $path_to -> $copy_dest"
-                        break
+                if ( $pairs -and $pairs[$client_to.Name] ) {
+                    Foreach ( $pair in $pairs[$client_to.Name].Keys ) {
+                        $copy_dest = $path_to.replace( $pair, $pairs[$client_to.Name][$pair] )
+                        if ( $copy_dest -and $copy_dest -ne $path_to ) {
+                            Write-Log "Используется подмена шары $path_to -> $copy_dest"
+                            break
+                        }
                     }
                 }
+                else { $copy_dest = $path_to }
                 Write-Log "$($torrent.name)   $( to_kmg $torrent.size 2 )"
                 Copy-Item -Path $torrent.save_path -Destination ( ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) | Split-Path ) -Recurse
                 # robocopy $torrent.save_path ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) /MIR /nfl /ndl /eta /njh /njs
