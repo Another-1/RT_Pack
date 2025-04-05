@@ -233,6 +233,7 @@ foreach ( $torrent in $full_data_sorted ) {
                 "`nполнота: " + [math]::Round($percentage * 100) + "%`nссылка: https://rutracker.org/forum/viewtopic.php?t=" + $torrent.topic_id 
             Send-TGMessage -message $message -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
             Set-Comment $settings.clients[$torrent.client_key] $torrent 'Битая'
+            Set-MaxTorrentPriority -client $settings.clients[$torrent.client_key] -hash $torrent.hash
         }
         else {
             Write-Log ( 'Раздача "' + $torrent.name + '" в порядке' ) -Green

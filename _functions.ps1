@@ -572,6 +572,16 @@ Function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
     }
 }
 
+Function Set-MaxTorrentPriority ( $client, $hash ) {
+    $param = @{ hashes = $hash }
+    $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/topPrio'
+    try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
+    catch {
+        Initialize-Client -client $client -mess_sender $mess_sender -verbose
+        Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null 
+    }
+}
+
 function Initialize-Forum ( $login = $null, $password = $null ) {
     if ( !$settings.connection ) {
         Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
