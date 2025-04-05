@@ -167,15 +167,22 @@ if ( $client.sid ) {
                 }
                 else { $copy_dest = $path_to }
                 Write-Log "$($torrent.name)   $( to_kmg $torrent.size 2 )"
-                Copy-Item -Path $torrent.save_path -Destination ( ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) | Split-Path ) -Recurse
+                if ( $path_from -ne $path_to -or $client.IP -ne $client_to.IP ) {
+                    Copy-Item -Path $torrent.save_path -Destination ( ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) | Split-Path ) -Recurse
+                }
                 # robocopy $torrent.save_path ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) /MIR /nfl /ndl /eta /njh /njs
                 $fake_torrents_list = @( @{ hash = $torrent.hash } )
                 Get-TopicIDs -client $client -torrent_list $fake_torrents_list
-                $torrent_file = Get-ForumTorrentFile $fake_torrents_list[0].topic_id -save_path 'C:\TEMP'
+                $torrent_file = Get-ForumTorrentFile $fake_torrents_list[0].topic_id -save_path $PSScriptRoot
                 $is_OK = Add-ClientTorrent -client $client_to -file $torrent_file -path $new_path -category $torrent.category -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' ) -Skip_checking
                 if ( $is_ok ) {
                     Write-Log "$($torrent.name)   $( to_kmg $torrent.size 2 ) " -Green
-                    Remove-ClientTorrent -client $client -hash $torrent.hash -deleteFiles
+                    if ( $path_from -ne $path_to -or $client.IP -ne $client_to.IP ) {
+                        Remove-ClientTorrent -client $client -hash $torrent.hash -deleteFiles
+                    }
+                    else {
+                        Remove-ClientTorrent -client $client -hash $torrent.hash
+                    }
                 }
                 else { Write-Log "$($torrent.name)   $( to_kmg $torrent.size 2 )" -Red }
             }

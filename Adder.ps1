@@ -394,7 +394,7 @@ if ( $new_torrents_keys ) {
             $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
             Write-Log $text
             # подмена временного каталога если раздача хранится на SSD.
-            if ( $ssd ) {
+            if ( $ssd -or $client.name -eq 'RSS') {
                 if ( $on_ssd -eq $true ) {
                     Write-Log 'Отключаем преаллокацию'
                     Set-ClientSetting $client 'preallocate_all' $false
@@ -524,7 +524,7 @@ if ( $new_torrents_keys ) {
                 $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_torrent_key  # добавляем hash к имени папки для сохранения
             }
             $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$settings.sections[$new_tracker_data.section].client] )
-            if ( $ssd -and $ssd[$settings.sections[$new_tracker_data.section].client] ) {
+            if ( ( $ssd -and $ssd[$settings.sections[$new_tracker_data.section].client] ) -and $client.name -ne 'RSS') {
                 if ( $on_ssd -eq $false ) {
                     Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
                     Set-ClientSetting $client 'temp_path_enabled' $true
@@ -659,6 +659,10 @@ if ( $rss ) {
         if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
         if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace ( '^\s+', '') -replace ( '\s+$', '') ) }
         if ( $rss.handle_avenger -and $rss.handle_avenger.ToUpper() -eq 'N' ) { $rss_data = $rss_data | Where-Object { $_[7] -le 3 } }
+        Write-Log 'Отключаем отдельный путь для недокачанных раздач'
+        Set-ClientSetting $client 'temp_path_enabled' $false
+        Write-Log 'Отключаем преаллокацию'
+        Set-ClientSetting $client 'preallocate_all' $false
         foreach ( $rss_record in $rss_data ) {
             $requester = $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger'
             $rss_ids += $rss_record[1].ToInt64($null)
