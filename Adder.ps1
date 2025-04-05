@@ -660,9 +660,9 @@ if ( $rss ) {
         if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace ( '^\s+', '') -replace ( '\s+$', '') ) }
         if ( $rss.handle_avenger -and $rss.handle_avenger.ToUpper() -eq 'N' ) { $rss_data = $rss_data | Where-Object { $_[7] -le 3 } }
         Write-Log 'Отключаем отдельный путь для недокачанных раздач'
-        Set-ClientSetting $client 'temp_path_enabled' $false
+        Set-ClientSetting $settings.clients[$rss.client] 'temp_path_enabled' $false
         Write-Log 'Отключаем преаллокацию'
-        Set-ClientSetting $client 'preallocate_all' $false
+        Set-ClientSetting $settings.clients[$rss.client] 'preallocate_all' $false
         foreach ( $rss_record in $rss_data ) {
             $requester = $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger'
             $rss_ids += $rss_record[1].ToInt64($null)
