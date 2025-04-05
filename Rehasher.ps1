@@ -80,6 +80,10 @@ $min_freshes_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $freshes_delay 
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     Get-Clients
+    if ( $rss -and !$rss.client ) {
+        $settings.clients['RSS'] = @{ IP = $rss.client_IP; port = $rss.client_port; login = $rss.client_login; password = $rss.client_password; name = 'RSS'; ssl = 0 }
+        $rss.client = 'RSS'
+    }
     Get-ClientApiVersions $settings.clients -mess_sender 'Rehasher' -noIDs -completed
     $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
 }
