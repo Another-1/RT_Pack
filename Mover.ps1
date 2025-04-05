@@ -69,6 +69,7 @@ else {
     $client_to = Select-Client
     Write-Log ( 'Выбран клиент ' + $client_to.Name )
     Set-ConnectDetails $settings
+    Set-Proxy $settings
 }
 if ( !$path_from ) { $path_from = Select-Path 'from' }
 if ( !$path_to ) { $path_to = Select-Path 'to' }
