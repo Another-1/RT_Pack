@@ -510,55 +510,61 @@ if ( $new_torrents_keys ) {
             ### DEBUG ###
             # if ( $client.name -eq 'NAS-NEW' -and $new_tracker_data.section -eq '1574' ) { continue }
 
-            $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
-            if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
-                $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
+            if ( $new_tracker_data.topic_title -match 'из \?' -and $skip_inprogress -eq 'Y' ) {
+                Write-Log "Раздача $($new_tracker_data.topic_title) ещё в показе"
+                continue
             }
-            $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиент ' + $client.name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
-            Write-Log $text
-            $save_path = $settings.sections[$new_tracker_data.section].data_folder
-            if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '1' ) {
-                $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_tracker_data.topic_id # добавляем ID к имени папки для сохранения
-            }       
-            elseif ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '2' ) {
-                $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_torrent_key  # добавляем hash к имени папки для сохранения
-            }
-            $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$settings.sections[$new_tracker_data.section].client] )
-            if ( ( $ssd -and $ssd[$settings.sections[$new_tracker_data.section].client] ) -and $client.name -ne 'RSS') {
-                if ( $on_ssd -eq $false ) {
-                    Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
-                    Set-ClientSetting $client 'temp_path_enabled' $true
-                    Set-ClientSetting $client 'preallocate_all' $false
+            else {
+                $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
+                if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
+                    $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
                 }
-                else {
-                    Set-ClientSetting $client 'temp_path_enabled' $false
-                    Set-ClientSetting $client 'preallocate_all' $false
+                $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиент ' + $client.name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
+                Write-Log $text
+                $save_path = $settings.sections[$new_tracker_data.section].data_folder
+                if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '1' ) {
+                    $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_tracker_data.topic_id # добавляем ID к имени папки для сохранения
+                }       
+                elseif ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '2' ) {
+                    $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_torrent_key  # добавляем hash к имени папки для сохранения
                 }
-            }
-            $success = Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $settings.sections[$new_tracker_data.section].label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' )
-            if ( $success -eq $true ) {
-                if ( $masks ) {
-                    If ( $mask_passed -eq $true -and $mask_label ) {
-                        Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы раздача "подхватилась"'
+                $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$settings.sections[$new_tracker_data.section].client] )
+                if ( ( $ssd -and $ssd[$settings.sections[$new_tracker_data.section].client] ) -and $client.name -ne 'RSS') {
+                    if ( $on_ssd -eq $false ) {
+                        Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
+                        Set-ClientSetting $client 'temp_path_enabled' $true
+                        Set-ClientSetting $client 'preallocate_all' $false
+                    }
+                    else {
+                        Set-ClientSetting $client 'temp_path_enabled' $false
+                        Set-ClientSetting $client 'preallocate_all' $false
+                    }
+                }
+                $success = Add-ClientTorrent -client $client -file $new_torrent_file -path $save_path -category $settings.sections[$new_tracker_data.section].label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' )
+                if ( $success -eq $true ) {
+                    if ( $masks ) {
+                        If ( $mask_passed -eq $true -and $mask_label ) {
+                            Write-Log 'Раздача добавлена по маске и задана метка маски. Надо проставить метку. Ждём 2 секунды чтобы раздача "подхватилась"'
+                            Start-Sleep -Seconds 2
+                            $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                            Set-Comment -client $client -torrent $client_torrent -label $mask_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                        }
+                        elseif ( !$mask_label ) { Write-Log 'Метка масок не задана, простановка метки маски не требуется' }
+                        elseif ( $mask_passed -eq $false ) { Write-Log 'Маска не пройдена, но раздача добавлена. Такого не должно было произойти. Где-то косяк' }
+                    }
+                    elseif ( $news_label ) {
+                        Write-Log 'Указана маска для новых раздач. Ждём 2 секунды чтобы раздача "подхватилась'
                         Start-Sleep -Seconds 2
                         $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                        Set-Comment -client $client -torrent $client_torrent -label $mask_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                    }
-                    elseif ( !$mask_label ) { Write-Log 'Метка масок не задана, простановка метки маски не требуется' }
-                    elseif ( $mask_passed -eq $false ) { Write-Log 'Маска не пройдена, но раздача добавлена. Такого не должно было произойти. Где-то косяк' }
-                }
-                elseif ( $news_label ) {
-                    Write-Log 'Указана маска для новых раздач. Ждём 2 секунды чтобы раздача "подхватилась'
-                    Start-Sleep -Seconds 2
-                    $client_torrent = Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                    Write-Log "Проставляем метку $news_label"
-                    Set-Comment -client $client -torrent $client_torrent -label $news_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                        Write-Log "Проставляем метку $news_label"
+                        Set-Comment -client $client -torrent $client_torrent -label $news_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 
-                }
-                if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_token ) {
-                    if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
-                    if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
-                    $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
+                    }
+                    if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_token ) {
+                        if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
+                        if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
+                        $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
+                    }
                 }
             }
         }

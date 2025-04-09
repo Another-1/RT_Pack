@@ -582,12 +582,12 @@ Function Set-MaxTorrentPriority ( $client, $hash ) {
     }
 }
 
-function Initialize-Forum ( $login = $null, $password = $null ) {
+function Initialize-Forum ( $login = $null, $password = $null, [switch]$noretry = $false ) {
     if ( !$settings.connection ) {
         Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
         Exit
     }
-    Write-Log 'Авторизуемся на форуме.'
+    Write-Log 'Авторизуемся на форуме под пользователем ;login.'
 
     $login_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/login.php'
     $headers = @{ 'User-Agent' = 'Mozilla/5.0' }
@@ -599,7 +599,8 @@ function Initialize-Forum ( $login = $null, $password = $null ) {
     }
     $i = 1
 
-    while ($true) {
+    while ($i -le ( $noretry.IsPresent ? 1 : 10 )) {
+        if ( $i -gt 1 ) { Write-Log "Попытка номер $i" }
         try {
             if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
                 if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url используя прокси $($settings.connection.proxy.url )" }
@@ -619,29 +620,33 @@ function Initialize-Forum ( $login = $null, $password = $null ) {
         }
         catch {
             Write-Log 'Не удалось соединиться с форумом' -Red
-            Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
+            Start-Sleep -Seconds 10; $i++
             If ( $i -gt 10 ) { break }
         }
         if ( $answer.StatusCode -ne 200 ) {
             Write-Log "Форум вернул ответ $($answer.StatusCode)" -Red
-            Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
+            Start-Sleep -Seconds 10; $i++
             If ( $i -gt 10 ) { break }
         }
         if ( $sid.Cookies.Count -eq 0 ) {
             Write-Log 'Форум не вернул cookie' -Red
-            Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
+            Start-Sleep -Seconds 10; $i++
             If ( $i -gt 10 ) { break }
         }
         else { break }
     }
     if ( $answer.StatusCode -ne 200 ) {
         Write-Log "Форум вернул ответ $($answer.StatusCode)" -Red
-        Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
+        Start-Sleep -Seconds 10; $i++
         If ( $i -gt 10 ) { break }
+    }
+    if ( $answer.content -like '*Вы ввели неверное*' -or $answer.content -like '*введите код подтверждения*' ) {
+        Write-Log 'Неверный пароль' -Red; $i++
+        break
     }
     if ( $sid.Cookies.Count -eq 0 ) {
         Write-Log 'Форум не вернул cookie' -Red
-        Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
+        Start-Sleep -Seconds 10; $i++
         If ( $i -gt 10 ) { break }
     }
 

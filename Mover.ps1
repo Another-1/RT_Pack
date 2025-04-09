@@ -102,32 +102,32 @@ if ( $client.sid ) {
     if ( $client_to -ne $client ) {
         Initialize-Client $client_to
         $already_list = Get-ClientTorrents -client $client_to -mess_sender 'Mover' -verbose 
-        $torrents_list = $torrents_list | Where-Object { $_.hash -notin $already_list.hash }
+        $torrents_list = @( $torrents_list | Where-Object { $_.hash -notin $already_list.hash } )
     }
     if ( $min_move_days -gt 0 ) {
         $max_add_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_move_days * 24 * 60 * 60
-        $torrents_list = $torrents_list | Where-Object { $_.added_on -lt $max_add_date }
+        $torrents_list = @( $torrents_list | Where-Object { $_.added_on -lt $max_add_date } )
     }
     # if ( $max_size -eq -1 * 1Gb ) {
     Write-Log 'Сортируем по полезности и подразделу'
 
     if ( $reverse.IsPresent ) {
-        $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Stable
+        $torrents_list = @( $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Stable )
     }
     else {
-        $torrents_list = $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable
+        $torrents_list = @( $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable )
     }
 
     if ( $category -and $category -ne '' ) {
-        $torrents_list = $torrents_list | Where-Object { $_.category -eq "${category}" }
+        $torrents_list = @( $torrents_list | Where-Object { $_.category -eq "${category}" } )
     }
 
     if ( $max_size -gt 0 ) {
-        $torrents_list = $torrents_list | Where-Object { $_.size -le $max_size }
+        $torrents_list = @( $torrents_list | Where-Object { $_.size -le $max_size } )
     }
 
     if ( $max_1_size -gt 0 ) {
-        $torrents_list = $torrents_list | Where-Object { $_.size -le $max_1_size }
+        $torrents_list = @( $torrents_list | Where-Object { $_.size -le $max_1_size } )
     }
 
     If ( $id_subfolder.ToUpper() -eq 'Y' ) {
