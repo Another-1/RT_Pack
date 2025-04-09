@@ -510,15 +510,15 @@ if ( $new_torrents_keys ) {
             ### DEBUG ###
             # if ( $client.name -eq 'NAS-NEW' -and $new_tracker_data.section -eq '1574' ) { continue }
 
-            if ( $new_tracker_data.topic_title -match 'из \?' -and $skip_inprogress -eq 'Y' ) {
+            if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
+                $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
+            }
+            if ( $skip_inprogress -eq 'Y' -and ( $new_tracker_data.topic_title -match 'из \?' -or ( $new_tracker_data.topic_title -match 'd+ из d+' -and $new_tracker_data.topic_title -notmatch '(\d+) из (\1)' ) ) ) {
                 Write-Log "Раздача $($new_tracker_data.topic_title) ещё в показе"
                 continue
             }
             else {
                 $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
-                if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
-                    $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
-                }
                 $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиент ' + $client.name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
                 Write-Log $text
                 $save_path = $settings.sections[$new_tracker_data.section].data_folder
@@ -794,7 +794,7 @@ if ( $report_stalled -eq 'Y' ) {
     if ( $stalleds.count -gt 0 ) {
         $stalleds = @( $stalleds | Sort-Object -Property topic_id -Unique )
         foreach ( $client in ( $stalleds.client_key | Sort-Object -Unique ) ) {
-            Write-Log ( "Найдено некачашек в клиенте $client" + ': ' + ( $stalleds | Where-Object 'client_key' -eq $client ).hash.count.ToString() )
+            Write-Log ( "Найдено некачашек в клиенте $client" + ': ' + ( $stalleds | Where-Object 'client_key' -EQ $client ).hash.count.ToString() )
         }
         Write-Log ( 'Найдено некачашек итого: ' + $stalleds.hash.count )
         foreach ( $stalled in $stalleds ) {
