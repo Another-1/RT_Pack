@@ -89,7 +89,8 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
 }
 
 if ( $max_rehash_size_bytes -and $max_rehash_size_bytes -gt 0 ) {
-    $clients_torrents = $clients_torrents | Where-Object { $_.size -le $max_rehash_size_bytes }
+    Write-Log 'Исключаем явно слишком большие раздачи'
+    $clients_torrents = @( $clients_torrents | Where-Object { $_.size -le $max_rehash_size_bytes } )
 }
 Write-Log 'Исключаем уже хэшируемые и стояшие в очереди на рехэш'
 $before = $clients_torrents.count
@@ -189,6 +190,15 @@ else {
 }
 
 foreach ( $torrent in $full_data_sorted ) {
+
+    if ( $max_rehash_size_bytes - $sum_size -lt $torrent.size ) {
+        Write-Log 'Достигнут целевой объём раздач'
+        break
+    }
+    if ( $sum_cnt -ge $max_rehash_qty ) {
+        Write-Log 'Достигнуто целевое количество раздач'
+        break
+    }
     if ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
         Write-Log 'Выполняется Adder или Controller, подождём...' -Red
         while ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
@@ -247,15 +257,6 @@ foreach ( $torrent in $full_data_sorted ) {
                 Remove-Comment $settings.clients[$torrent.client_key] $torrent 'Битая'
             }
         }
-    }
-
-    if ( $sum_cnt -ge $max_rehash_qty ) {
-        Write-Log 'Достигнуто целевое количество раздач'
-        break
-    }
-    elseif ( $sum_size -ge $max_rehash_size_bytes ) {
-        Write-Log 'Достигнут целевой объём раздач'
-        break
     }
 }
 
