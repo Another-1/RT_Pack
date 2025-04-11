@@ -88,10 +88,10 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
     $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
 }
 
-if ( $max_rehash_size_bytes -and $max_rehash_size_bytes -gt 0 ) {
-    Write-Log 'Исключаем явно слишком большие раздачи'
-    $clients_torrents = @( $clients_torrents | Where-Object { $_.size -le $max_rehash_size_bytes } )
-}
+# if ( $max_rehash_size_bytes -and $max_rehash_size_bytes -gt 0 ) {
+#     Write-Log 'Исключаем явно слишком большие раздачи'
+#     $clients_torrents = @( $clients_torrents | Where-Object { $_.size -le $max_rehash_size_bytes } )
+# }
 Write-Log 'Исключаем уже хэшируемые и стояшие в очереди на рехэш'
 $before = $clients_torrents.count
 $clients_torrents = $clients_torrents | Where-Object { $_.state -ne 'checkingUP' }
@@ -144,6 +144,11 @@ $before = $full_data_sorted.count
 $full_data_sorted = $full_data_sorted | Where-Object { $_.rehash_date -lt $min_repeat_epoch }
 Write-Log ( 'Исключено раздач: ' + ( $before - $full_data_sorted.count ) )
 
+if ( $max_rehash_size_bytes -and $max_rehash_size_bytes -gt 0 ) {
+    $before = $full_data_sorted.count
+    Write-Log "Исключаем явно слишком большие раздачи (больше $( to_kmg $max_rehash_size_bytes ))"
+    $full_data_sorted = @( $full_data_sorted | Where-Object { $_.size -le $max_rehash_size_bytes } )
+}
 $was_count = $full_data_sorted.count
 $was_sum_size = ( $full_data_sorted | Measure-Object -Property size -Sum ).Sum
 
