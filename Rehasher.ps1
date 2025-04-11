@@ -192,13 +192,17 @@ else {
 foreach ( $torrent in $full_data_sorted ) {
 
     if ( $max_rehash_size_bytes - $sum_size -lt $torrent.size ) {
-        Write-Log 'Достигнут целевой объём раздач'
-        break
+        # Write-Log 'Достигнут целевой объём раздач'
+        # break
+        $too_big = $true
+        continue
     }
     if ( $sum_cnt -ge $max_rehash_qty ) {
         Write-Log 'Достигнуто целевое количество раздач'
         break
+        # continue
     }
+    $too_big = $false
     if ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
         Write-Log 'Выполняется Adder или Controller, подождём...' -Red
         while ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } | Where-Object { $_.CommandLine -like '*Adder.ps1' -or $_.CommandLine -like '*Controller.ps1' } ).count -gt 0 ) {
@@ -259,6 +263,7 @@ foreach ( $torrent in $full_data_sorted ) {
         }
     }
 }
+if ( $too_big ) { Write-Log 'Достигнут целевой объём раздач' }
 
 Write-Log 'Прогон завершён'
 Write-Log ( "Отправлено в рехэш: $sum_cnt раздач объёмом " + ( $sum_size -eq 0 ? 0 : ( to_kmg $sum_size 1 ) ) )
