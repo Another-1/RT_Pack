@@ -88,7 +88,9 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
     $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
 }
 
-
+if ( $max_rehash_size_bytes -and $max_rehash_size_bytes -gt 0 ) {
+    $clients_torrents = $clients_torrents | Where-Object { $_.size -le $max_rehash_size_bytes }
+}
 Write-Log 'Исключаем уже хэшируемые и стояшие в очереди на рехэш'
 $before = $clients_torrents.count
 $clients_torrents = $clients_torrents | Where-Object { $_.state -ne 'checkingUP' }
