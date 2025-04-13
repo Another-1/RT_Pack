@@ -387,8 +387,9 @@ function Export-ClientTorrentFile ( $client, $hash, $save_path ) {
         Initialize-Client $client
     }
     $data = @{ hash = $hash }
+    Write-Log "Экспортируем торрент из клиента $($client.name) в файл $save_path"
     $uri = ( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/export'
-    Invoke-RestMethod -Uri $uri -Body $data -WebSession $client.sid -OutFile $save_path
+    Invoke-WebRequest -Uri $uri -Body $data -WebSession $client.sid -OutFile $save_path
 }
 
 
