@@ -382,6 +382,16 @@ function Initialize-Client ( $client, $mess_sender = '', [switch]$verbose, [swit
     }
 }
 
+function Export-ClientTorrentFile ( $client, $hash, $save_path ) {
+    if ( !$client.sid -or $force ) {
+        Initialize-Client $client
+    }
+    $data = @{ hash = $hash }
+    $uri = ( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/export'
+    Invoke-RestMethod -Uri $uri -Body $data -WebSession $client.sid -OutFile $save_path
+}
+
+
 # function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$completed, $hash, $client_key, [switch]$verbose ) {
 function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$completed, $hash, [switch]$verbose ) {
     $Params = @{}

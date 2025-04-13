@@ -98,41 +98,43 @@ Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
     $sum_size = 0
-    $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" }
-    if ( $client_to -ne $client ) {
-        Initialize-Client $client_to
-        $already_list = Get-ClientTorrents -client $client_to -mess_sender 'Mover' -verbose 
-        $torrents_list = @( $torrents_list | Where-Object { $_.hash -notin $already_list.hash } )
-    }
-    if ( $min_move_days -gt 0 ) {
-        $max_add_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_move_days * 24 * 60 * 60
-        $torrents_list = @( $torrents_list | Where-Object { $_.added_on -lt $max_add_date } )
-    }
-    # if ( $max_size -eq -1 * 1Gb ) {
-    Write-Log 'Сортируем по полезности и подразделу'
+    if ( !$torrents_list ) {
+        $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed | Where-Object { $_.save_path -like "*${path_from}*" }
+        if ( $client_to -ne $client ) {
+            Initialize-Client $client_to
+            $already_list = Get-ClientTorrents -client $client_to -mess_sender 'Mover' -verbose 
+            $torrents_list = @( $torrents_list | Where-Object { $_.hash -notin $already_list.hash } )
+        }
+        if ( $min_move_days -gt 0 ) {
+            $max_add_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_move_days * 24 * 60 * 60
+            $torrents_list = @( $torrents_list | Where-Object { $_.added_on -lt $max_add_date } )
+        }
+        # if ( $max_size -eq -1 * 1Gb ) {
+        Write-Log 'Сортируем по полезности и подразделу'
 
-    if ( $reverse.IsPresent ) {
-        $torrents_list = @( $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Stable )
-    }
-    else {
-        $torrents_list = @( $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable )
-    }
+        if ( $reverse.IsPresent ) {
+            $torrents_list = @( $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Stable )
+        }
+        else {
+            $torrents_list = @( $torrents_list | Sort-Object -Property category | Sort-Object { $_.uploaded / $_.size } -Descending -Stable )
+        }
 
-    if ( $category -and $category -ne '' ) {
-        $torrents_list = @( $torrents_list | Where-Object { $_.category -eq "${category}" } )
-    }
+        if ( $category -and $category -ne '' ) {
+            $torrents_list = @( $torrents_list | Where-Object { $_.category -eq "${category}" } )
+        }
 
-    if ( $max_size -gt 0 ) {
-        $torrents_list = @( $torrents_list | Where-Object { $_.size -le $max_size } )
-    }
+        if ( $max_size -gt 0 ) {
+            $torrents_list = @( $torrents_list | Where-Object { $_.size -le $max_size } )
+        }
 
-    if ( $max_1_size -gt 0 ) {
-        $torrents_list = @( $torrents_list | Where-Object { $_.size -le $max_1_size } )
-    }
+        if ( $max_1_size -gt 0 ) {
+            $torrents_list = @( $torrents_list | Where-Object { $_.size -le $max_1_size } )
+        }
 
-    If ( $id_subfolder.ToUpper() -eq 'Y' ) {
-        Write-Log 'Получаем ID раздач из комментариев. Это может быть небыстро.'
-        Get-TopicIDs -client $client -torrent_list $torrents_list -verbose
+        If ( $id_subfolder.ToUpper() -eq 'Y' ) {
+            Write-Log 'Получаем ID раздач из комментариев. Это может быть небыстро.'
+            Get-TopicIDs -client $client -torrent_list $torrents_list -verbose
+        }
     }
     # Write-Log "Предстоит переместить $( Get-Spell -qty $torrents_list.Count -spelling 2 -entity 'torrents' )"
     foreach ( $torrent in $torrents_list ) {
@@ -174,7 +176,9 @@ if ( $client.sid ) {
                 # robocopy $torrent.save_path ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) /MIR /nfl /ndl /eta /njh /njs
                 $fake_torrents_list = @( @{ hash = $torrent.hash } )
                 Get-TopicIDs -client $client -torrent_list $fake_torrents_list
-                $torrent_file = Get-ForumTorrentFile $fake_torrents_list[0].topic_id -save_path $PSScriptRoot
+                # $torrent_file = Get-ForumTorrentFile $fake_torrents_list[0].topic_id -save_path $PSScriptRoot
+                Export-ClientTorrentFile -client $client -hash $torrent.hash -save_path ( Join-Path $PSScriptRoot "$( $fake_torrents_list[0].topic_id ).torrent" )
+                $torrent_file = Get-Item ( Join-Path $PSScriptRoot "$($fake_torrents_list[0].topic_id).torrent" )
                 $is_OK = Add-ClientTorrent -client $client_to -file $torrent_file -path $new_path -category $torrent.category -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' ) -Skip_checking
                 if ( $is_ok ) {
                     Write-Log "$($torrent.name)   $( to_kmg $torrent.size 2 ) " -Green
