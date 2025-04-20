@@ -413,7 +413,7 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
             $json_content = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
             $torrents_list = $json_content | ConvertFrom-Json | `
                 # Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client_key } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags | `
-                Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags | `
+                Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags, download_path | `
                 Where-Object { $_.save_path -match ('^' + $dsk ) }
         }
         catch {
@@ -593,12 +593,21 @@ Function Set-MaxTorrentPriority ( $client, $hash ) {
     }
 }
 
+Function Set-DlSpeedLimit ( $client, $hash, $limit ) {
+    $param = @{ hashes = $hash; limit = $limit }
+    $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/setDownloadLimit'
+    try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
+    catch {
+        Initialize-Client -client $client -mess_sender $mess_sender -verbose
+        Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null 
+    }
+}
 function Initialize-Forum ( $login = $null, $password = $null, [switch]$noretry = $false ) {
     if ( !$settings.connection ) {
         Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
         Exit
     }
-    Write-Log 'Авторизуемся на форуме под пользователем ;login.'
+    Write-Log "Авторизуемся на форуме под пользователем $login."
 
     $login_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/login.php'
     $headers = @{ 'User-Agent' = 'Mozilla/5.0' }

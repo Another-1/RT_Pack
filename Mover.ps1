@@ -90,6 +90,7 @@ else {
 if ( !$min_move_days ) {
     $min_move_days = ( Get-String -obligatory -prompt 'Минимальное количество дней с добавления (при необходимости, 0 = без ограничений)' ).ToInt16($null)
 }
+else { $min_move_days = $min_move_days.ToInt16($null) }
 
 if ( !$id_subfolder ) { $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write }
 
