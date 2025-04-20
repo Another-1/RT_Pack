@@ -514,8 +514,8 @@ if ( $new_torrents_keys ) {
                 $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
             }
             if ( $skip_inprogress -eq 'Y' -and ( $new_tracker_data.topic_title -match 'из \d*\?' -or `
-                    ( $new_tracker_data.topic_title -match 'сери[яи]:{0,1} (\d+)-(\d+)(\s\(\d+-\d+\)|) из' -and `
-                            $new_tracker_data.topic_title -notmatch 'сери[яи]:{0,1} (\d+)-(\d+)(\s\(\d+-\d+\)|) из (\2)' )
+                    ( $new_tracker_data.topic_title -match 'сери[яи]:{0,1} (\d+)(-(\d+)|)(\s\(\d+-\d+\)|) из' -and `
+                            $new_tracker_data.topic_title -notmatch 'сери[яи]:{0,1} (\d+)(-(\d+)|)(\s\(\d+-\d+\)|) из (\2)\D' )
                 )
             ) {
                 Write-Log "Раздача $($new_tracker_data.topic_title) ещё в показе"
