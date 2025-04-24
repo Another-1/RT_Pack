@@ -375,7 +375,9 @@ function Initialize-Client ( $client, $mess_sender = '', [switch]$verbose, [swit
         catch {
             Write-Log ( '[client] Не удалось авторизоваться в клиенте, прерываем. Ошибка: {0}.' -f $Error[0] ) -Red
             if ( $tg_token -ne '' ) {
-                Send-TGMessage "Нет связи с клиентом $( $client.Name ) при вызыве из $( (Get-PSCallStack)[(( Get-PSCallStack ).count - 1 )..0].Command | Where-Object { $null -ne $_ } | Join-String -Separator ' → ' ). Процесс остановлен." $tg_token $tg_chat $mess_sender
+                $( (Get-PSCallStack)[(( Get-PSCallStack ).count - 1 )..0].Command | Where-Object { $null -ne $_ } | Join-String -Separator ' → ' )
+                Send-TGMessage "Нет связи с клиентом $( $client.Name ) при вызыве из $( (Get-PSCallStack)[(( Get-PSCallStack ).count - 1 )..0].Command | Where-Object { $null -ne $_ -and $_ -ne '<ScriptBlock>'} | `
+                    Join-String -Separator ' → ' ). Процесс остановлен." $tg_token $tg_chat $mess_sender
             }
             Exit
         }
@@ -394,7 +396,7 @@ function Export-ClientTorrentFile ( $client, $hash, $save_path ) {
 
 
 # function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$completed, $hash, $client_key, [switch]$verbose ) {
-function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$completed, $hash, [switch]$verbose ) {
+function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$completed, $hash, [switch]$verbose, [switch]$break ) {
     $Params = @{}
     if ( $completed ) {
         $Params.filter = 'completed'
@@ -427,6 +429,9 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
             Send-TGMessage -message ( 'Не удалось получить список раздач от клиента ' + $client.Name. + ', Выполнение прервано.' ) -token $tg_token -chat_id $tg_chat -mess_sender $mess_sender
         }
         Write-Log ( 'Не удалось получить список раздач от клиента ' + $client.Name )
+        if ( $break.IsPresent ) {
+            exit
+        }
     }
     if ( !$torrents_list ) { $torrents_list = @() }
     if ( $verbose ) { Write-Log ( 'Получено ' + $torrents_list.Count + ' раздач от клиента ' + $client.Name ) }
