@@ -331,7 +331,7 @@ if ( $masks_db ) {
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
-if ( $max_keepers -and $max_keepers -gt -1 -and !$kept ) {
+if ( $null -ne $max_keepers -and $max_keepers -gt -1 -and !$kept ) {
     Write-Log 'Указано ограничение на количество хранителей, необходимо подтянуть данные из отчётов по хранимым разделам'
     if ( $ini_data.reports.exclude_keepers_ids -and $ini_data.reports.exclude_keepers_ids -ne '' ) {
         $excluded_array = ( $ini_data.reports.exclude_keepers_ids -replace '[^0-9]', '|' ).split( '|' )
@@ -392,7 +392,7 @@ if ( $new_torrents_keys ) {
                 $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
             }
             $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
-            Write-Log $text
+            Write-Log $text -Green
             # подмена временного каталога если раздача хранится на SSD.
             if ( $ssd -or $client.name -eq 'RSS') {
                 if ( $on_ssd -eq $true ) {
@@ -515,7 +515,8 @@ if ( $new_torrents_keys ) {
             }
             if ( $skip_inprogress -eq 'Y' -and ( $new_tracker_data.topic_title -match 'из \d*\?' -or `
                     ( $new_tracker_data.topic_title -match 'сери[яи]:{0,1} (\d+)(-(\d+)|)(\s\(\d+-\d+\)|) из' -and `
-                            $new_tracker_data.topic_title -notmatch 'сери[яи]:{0,1} (\d+)(-(\d+)|)(\s\(\d+-\d+\)|) из (\2)\D' )
+                            # $new_tracker_data.topic_title -notmatch 'сери[яи]:{0,1} (\d+)(-(\d+)|)(\s\(\d+-\d+\)|) из (\2)\D' )
+                            $new_tracker_data.topic_title -notmatch 'ерии:{0,1} (?:\d+)-(\d+)( \(\d+-\d+\)|) из (\1)\D' )
                 )
             ) {
                 Write-Log "Раздача $($new_tracker_data.topic_title) ещё в показе"
@@ -524,7 +525,7 @@ if ( $new_torrents_keys ) {
             else {
                 $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
                 $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиент ' + $client.name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
-                Write-Log $text
+                Write-Log $text -Green
                 $save_path = $settings.sections[$new_tracker_data.section].data_folder
                 if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '1' ) {
                     $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_tracker_data.topic_id # добавляем ID к имени папки для сохранения
