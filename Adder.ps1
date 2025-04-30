@@ -331,18 +331,19 @@ if ( $masks_db ) {
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
-if ( $null -ne $max_keepers -and $max_keepers -gt -1 -and !$kept ) {
+if ( $null -ne $max_keepers -and $max_keepers -gt -1 -and !$kept_ht ) {
     Write-Log 'Указано ограничение на количество хранителей, необходимо подтянуть данные из отчётов по хранимым разделам'
     if ( $ini_data.reports.exclude_keepers_ids -and $ini_data.reports.exclude_keepers_ids -ne '' ) {
         $excluded_array = ( $ini_data.reports.exclude_keepers_ids -replace '[^0-9]', '|' ).split( '|' )
         Write-Log "При этом не доверяем хранителям $($excluded_array -join ', ') "
     }
-    $kept = GetRepKeptTorrents -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -max_keepers $max_keepers -excluded $excluded_array
+    $kept_ht = @{}
+    GetRepKeptTorrents -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -max_keepers $max_keepers -excluded $excluded_array | ForEach-Object { $kept_ht[$_] = 1 }
 }
 
-if ( $kept ) {
+if ( $kept_ht ) {
     Write-Log 'Отфильтровываем раздачи, у которых слишком много хранителей'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { $tracker_torrents[$_].topic_id -notin $kept }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { !$kept_ht[$tracker_torrents[$_].topic_id] }
     $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
     Write-Log ( "Осталось : $spell" )
 }
