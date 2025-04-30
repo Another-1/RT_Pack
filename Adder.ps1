@@ -338,12 +338,12 @@ if ( $null -ne $max_keepers -and $max_keepers -gt -1 -and !$kept_ht ) {
         Write-Log "При этом не доверяем хранителям $($excluded_array -join ', ') "
     }
     $kept_ht = @{}
-    GetRepKeptTorrents -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -max_keepers $max_keepers -excluded $excluded_array | ForEach-Object { $kept_ht[$_] = 1 }
+    GetRepKeptTorrents -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -max_keepers $max_keepers -excluded $excluded_array | ForEach-Object { $kept_ht[$_.ToInt64($null)] = 1 }
 }
 
 if ( $kept_ht ) {
     Write-Log 'Отфильтровываем раздачи, у которых слишком много хранителей'
-    $new_torrents_keys = $new_torrents_keys | Where-Object { !$kept_ht[$tracker_torrents[$_].topic_id] }
+    $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $kept_ht[$tracker_torrents[$_].topic_id] }
     $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
     Write-Log ( "Осталось : $spell" )
 }
