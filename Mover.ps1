@@ -156,10 +156,10 @@ if ( $client.sid ) {
                 Write-Progress -Activity 'Moving' -Status $torrent.name -PercentComplete ( $i * 100 / $torrents_list.Count )
             }
             else {
-                if ( -not ( Test-ForumWorkingHours ) ) {
-                    Write-Log 'Подождём часик' -Red
-                    Start-Sleep -Seconds ( 3600 )
-                }
+                # if ( -not ( Test-ForumWorkingHours ) ) {
+                #     Write-Log 'Подождём часик' -Red
+                #     Start-Sleep -Seconds ( 3600 )
+                # }
                 if ( $pairs -and $pairs[$client_to.Name] ) {
                     Foreach ( $pair in $pairs[$client_to.Name].Keys ) {
                         $copy_dest = $path_to.replace( $pair, $pairs[$client_to.Name][$pair] )
