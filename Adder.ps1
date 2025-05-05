@@ -332,7 +332,7 @@ if ( $masks_db ) {
 }
 
 if ( $null -ne $max_keepers -and $max_keepers -gt -1 -and !$kept_ht ) {
-    Write-Log 'Указано ограничение на количество хранителей, необходимо подтянуть данные из отчётов по хранимым разделам'
+    Write-Log 'Указано ограничение на количество хранителей, подгружаем данные из отчётов по хранимым подразделам'
     if ( $ini_data.reports.exclude_keepers_ids -and $ini_data.reports.exclude_keepers_ids -ne '' ) {
         $excluded_array = ( $ini_data.reports.exclude_keepers_ids -replace '[^0-9]', '|' ).split( '|' )
         Write-Log "При этом не доверяем хранителям $($excluded_array -join ', ') "

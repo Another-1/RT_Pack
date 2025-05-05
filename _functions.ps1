@@ -438,12 +438,12 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
     return $torrents_list
 }
 
-function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$noIDs ) {
+function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$noIDs, [switch]$break ) {
     $clients_torrents = @()
     foreach ($clientkey in $settings.clients.Keys ) {
         $client = $settings.clients[ $clientkey ]
         Initialize-Client $client $mess_sender -verbose
-        $client_torrents = Get-ClientTorrents -client $client -client_key $clientkey -verbose -completed:$completed -mess_sender $mess_sender
+        $client_torrents = Get-ClientTorrents -client $client -client_key $clientkey -verbose -completed:$completed -mess_sender $mess_sender -break:$break.IsPresent
         if ( $noIDs.IsPresent -eq $false ) {
             Get-TopicIDs -client $client -torrent_list $client_torrents -conn $db_conn
         }
@@ -1306,6 +1306,7 @@ function GetRepSectionKeepers( $section, $excluded = @(), $call_from ) {
     Write-Log "Выгружаем отчёты по подразделу $section"
     $url = "/krs/api/v1/subforum/$section/reports?columns=status"
     $content = ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json
+    if ( $null -eq $content ) { exit }
     if ( $excluded.count -gt 0 ) {
         $content = $content | Where-Object { $_.keeper_id -notin $excluded }
     }
@@ -1442,8 +1443,8 @@ function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
             else {
                 Write-Log "Ошибка $($error[0].Exception.Message)`nЖдём 10 секунд и пробуем ещё раз" -Red
             }
-            Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
-            If ( $retry_cnt -gt 10 ) { break }
+            If ( $retry_cnt -lt 10 ) { Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt" }
+            elseif ( $retry_cnt -ge 10 ) { break }
         }
     }
     Write-Log 'Не удалось получить данные, выходим досрочно' -Red
