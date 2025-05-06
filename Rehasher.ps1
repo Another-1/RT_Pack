@@ -284,7 +284,7 @@ if ( $report_rehasher -eq 'Y' ) {
         Send-TGMessage -message $message -mess_sender 'Rehasher' -chat_id $tg_chat -token $tg_token
     }
     else {
-        Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Rehasher' ) + " отработал, ничего делать не пришлось.`nБлижайший рехэш через $closest_span" ) -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
+        Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' :'Rehasher' ) + ' отработал, ничего делать не пришлось.' + ( $rehash_prophet -eq 'Y' ? "`nБлижайший рехэш через $closest_span" : '' ) ) -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
     }
 }
 
