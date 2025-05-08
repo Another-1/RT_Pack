@@ -289,5 +289,5 @@ if ( $report_rehasher -eq 'Y' ) {
 }
 
 Write-Log 'Удаляем из БД рехэшей раздачи, которых нет в клиентах'
-$db_data.Keys | Where-Object { $_ -notin $full_data_sorted.hash } | % { Invoke-SqliteQuery -Query "DELETE FROM rehash_dates WHERE hash = '$_'" -SQLiteConnection $conn }
+$db_data.Keys | Where-Object { $_ -notin $full_data_sorted.hash } | ForEach-Object { Invoke-SqliteQuery -Query "DELETE FROM rehash_dates WHERE hash = '$_'" -SQLiteConnection $conn }
 $conn.Close()
