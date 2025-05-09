@@ -289,5 +289,7 @@ if ( $report_rehasher -eq 'Y' ) {
 }
 
 Write-Log 'Удаляем из БД рехэшей раздачи, которых нет в клиентах'
-$db_data.Keys | Where-Object { $_ -notin $clients_torrents.hash } | ForEach-Object { Invoke-SqliteQuery -Query "DELETE FROM rehash_dates WHERE hash = '$_'" -SQLiteConnection $conn }
+$ct_ht = @{}
+$clients_torrents.hash | ForEach-Object { $ct_ht[$_] = 1 }
+$db_data.Keys | Where-Object { !$ct_ht[$_] } | ForEach-Object { Invoke-SqliteQuery -Query "DELETE FROM rehash_dates WHERE hash = '$_'" -SQLiteConnection $conn }
 $conn.Close()
