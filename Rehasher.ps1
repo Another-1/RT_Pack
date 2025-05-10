@@ -1,3 +1,6 @@
+$window_title = 'Rehasher'
+Write-Host "$([char]0x1B)]0;$window_title`a"
+
 Write-Output 'Подгружаем настройки'
 $separator = $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
 if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {

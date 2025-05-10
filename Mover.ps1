@@ -1,5 +1,8 @@
 param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, [switch]$reverse )
 
+$window_title = 'Mover'
+Write-Host "$([char]0x1B)]0;$window_title`a"
+
 Write-Host 'Проверяем версию Powershell...'
 If ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
     Write-Host 'У вас слишком древний Powershell, обновитесь с https://github.com/PowerShell/PowerShell#get-powershell ' -ForegroundColor Red

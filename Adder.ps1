@@ -1,5 +1,8 @@
 param ([switch]$delay )
 
+$window_title = 'Adder'
+Write-Host "$([char]0x1B)]0;$window_title`a"
+
 if ( $delay ) {
     Write-Host 'Запуск после обновления, ждём 5 секунд чтобы старая версия точно завершила работу.'
     Start-Sleep -Seconds 5
