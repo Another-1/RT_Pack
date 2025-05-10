@@ -92,6 +92,11 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
 #     Write-Log 'Исключаем явно слишком большие раздачи'
 #     $clients_torrents = @( $clients_torrents | Where-Object { $_.size -le $max_rehash_size_bytes } )
 # }
+Write-Log 'Получаем из БД TLO комбинации ID - hash'
+$conn = Open-TLODatabase
+$db_hash_to_id = Get-DBHashToId -conn $conn
+$conn.Close( )
+
 Write-Log 'Исключаем уже хэшируемые и стояшие в очереди на рехэш'
 $before = $clients_torrents.count
 $clients_torrents = $clients_torrents | Where-Object { $_.state -ne 'checkingUP' }
@@ -219,7 +224,6 @@ foreach ( $torrent in $full_data_sorted ) {
         $prev_state = ( Get-ClientTorrents $settings.clients[$torrent.client_key] -mess_sender 'Rehasher' -hash $torrent.hash ).state
         if ( $prev_state -eq $settings.clients[$torrent.client_key].stopped_state ) { Write-Log 'Раздача уже остановлена, так и запишем' } else { Write-Log 'Раздача запущена, предварительно остановим' }
         if ( $prev_state -ne $settings.clients[$torrent.client_key].stopped_state ) {
-            # Write-Log ( 'Останавливаем раздачу"' + $torrent.name + '" в клиенте ' + $clients[$torrent.client_key].Name )
             Write-Log 'Останавливаем раздачу'
             Stop-Torrents $torrent.hash $settings.clients[$torrent.client_key]
         }

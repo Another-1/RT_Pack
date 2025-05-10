@@ -458,6 +458,12 @@ function Get-ClientTorrentInfo( $client, $hash ) {
     return ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/properties' ) -WebSession $client.sid -Body $params ).Content | ConvertFrom-Json
 }
 
+function Get-DBHashToId ( $conn ) {
+    $db_hash_to_id = @{}
+    $query = 'SELECT info_hash, topic_id FROM Torrents'
+    Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $db_hash_to_id[$_.info_hash] = $_.topic_id }
+    Return $db_hash_to_id
+}
 function Get-TopicIDs ( $client, $torrent_list, [switch]$verbose ) {
     if ( $torrent_list.count -gt 0 ) {
         if ( $verbose.IsPresent ) {

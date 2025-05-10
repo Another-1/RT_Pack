@@ -237,11 +237,7 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torr
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     if ( $forced_sections -and $control -ne 'Y' ) {
-        $db_hash_to_id = @{}
-        # $db_conn = Open-TLODatabase
-        $query = 'SELECT info_hash, topic_id FROM Torrents'
-        Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $db_hash_to_id[$_.info_hash] = $_.topic_id }
-        $conn.Close()
+        $db_hash_to_id = Get-DBHashToId
     }
     $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 }
