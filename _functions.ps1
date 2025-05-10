@@ -403,10 +403,8 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
     }
     if ( $null -ne $hash ) {
         $Params.hashes = $hash
-        # if ( $verbose -eq $true ) { Write-Log ( 'Получаем инфо о раздаче из клиента ' + $client_key ) }
         if ( $verbose -eq $true ) { Write-Log ( 'Получаем инфо о раздаче из клиента ' + $client.name ) }
     }
-    # elseif ( $verbose -eq $true ) { Write-Log ( 'Получаем список раздач от клиента ' + $client_key ) }
     elseif ( $verbose -eq $true ) { Write-Log ( 'Получаем список раздач от клиента ' + $client.name ) }
     if ( $null -ne $disk -and $disk -ne '') { $dsk = $disk + ':\\' } else { $dsk = '' }
     $i = 0
@@ -414,7 +412,6 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
         try {
             $json_content = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
             $torrents_list = $json_content | ConvertFrom-Json | `
-                # Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client_key } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags | `
                 Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags, download_path | `
                 Where-Object { $_.save_path -match ('^' + $dsk ) }
         }
@@ -434,7 +431,10 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
         }
     }
     if ( !$torrents_list ) { $torrents_list = @() }
-    if ( $verbose ) { Write-Log ( 'Получено ' + $torrents_list.Count + ' раздач от клиента ' + $client.Name ) }
+    if ( $verbose ) {
+        if ( !$hash ) { Write-Log ( 'Получено ' + $torrents_list.Count + ' раздач от клиента ' + $client.Name ) }
+        elseif ( $torrents_list.count -gt 0 ) { Write-Log $torrents_list[0] }
+    }
     return $torrents_list
 }
 
@@ -1096,16 +1096,16 @@ function Get-IniSectionDetails ( $settings, $sections ) {
     }
 }
 
-function Start-Rehash ( $client, $hash, [switch]$move_up ) {
+function Start-Rehash ( $client, $hash ) {
     $Params = @{ hashes = $hash }
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/recheck'
     Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
-    if ( $move_up.IsPresent) {
-        Start-Sleep -Seconds 1
-        Write-Log 'Поднимаем раздачу в начало очереди'
-        $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/topPrio'
-        Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
-    }
+    # if ( $move_up.IsPresent) {
+    #     Start-Sleep -Seconds 1
+    #     Write-Log 'Поднимаем раздачу в начало очереди'
+    #     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/topPrio'
+    #     Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
+    # }
 }
 
 Function DeGZip-File {

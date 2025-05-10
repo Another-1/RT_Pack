@@ -229,7 +229,7 @@ foreach ( $torrent in $full_data_sorted ) {
         }
     }
     Write-Log 'Отправляем в рехэш'
-    Start-Rehash -client $settings.clients[$torrent.client_key] -hash $torrent.hash -move_up:($already_hashing -gt 0 )
+    Start-Rehash -client $settings.clients[$torrent.client_key] -hash $torrent.hash # -move_up:($already_hashing -gt 0 )
     if ( !$db_data[$torrent.hash] ) {
         Invoke-SqliteQuery -Query "INSERT INTO rehash_dates (hash, rehash_date) VALUES (@hash, @epoch )" -SqlParameters @{ hash = $torrent.hash; epoch = ( Get-Date -UFormat %s ) }-SQLiteConnection $conn
     }
@@ -244,7 +244,7 @@ foreach ( $torrent in $full_data_sorted ) {
         while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' ).state -like 'checking*' ) {
             Start-Sleep -Seconds $check_state_delay
         }
-        $tor_info = Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher'
+        $tor_info = Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbose
         $percentage = $tor_info.progress
         if ( $percentage -lt 1 ) {
             Write-Log ( 'Раздача "' + $torrent.name + '" битая! Полнота: ' + $percentage )
