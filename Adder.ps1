@@ -691,6 +691,14 @@ if ( $rss ) {
                         Write-Log "Добавляем раздачу $( $rss_record[1] ) для $requester"
                         $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
                         $chosen_save_path = $null -eq $rss.save_path_avenger -or $requester -ne 'Avenger' ? $rss.save_path : $rss.save_path_avenger
+
+                        if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '1' ) {
+                            $chosen_save_path = ( $chosen_save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $rss_record[1] # добавляем ID к имени папки для сохранения
+                        }       
+                        elseif ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '2' ) {
+                            $chosen_save_path = ( $chosen_save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $fresh_hash  # добавляем hash к имени папки для сохранения
+                        }
+
                         $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
                         Write-Log 'Подождём секунду, чтобы раздача добавилась'
                         Start-Sleep -Seconds 1
