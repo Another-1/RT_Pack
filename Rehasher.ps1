@@ -220,7 +220,7 @@ foreach ( $torrent in $full_data_sorted ) {
         }
     }    
     if ( $wait_finish -eq 'Y' ) {
-        Write-Log ( 'Будем рехэшить раздачу "' + $torrent.name + '" в клиенте ' + $torrent.client_key + ' размером ' + ( to_kmg $torrent.size 2 ))
+        Write-Log ( 'Будем рехэшить раздачу "' + $torrent.name + '" в клиенте ' + $torrent.client_key + ' размером ' + ( to_kmg $torrent.size 2 ) + ' и хэшем ' + $torrent.hash )
         $prev_state = ( Get-ClientTorrents $settings.clients[$torrent.client_key] -mess_sender 'Rehasher' -hash $torrent.hash ).state
         if ( $prev_state -eq $settings.clients[$torrent.client_key].stopped_state ) { Write-Log 'Раздача уже остановлена, так и запишем' } else { Write-Log 'Раздача запущена, предварительно остановим' }
         if ( $prev_state -ne $settings.clients[$torrent.client_key].stopped_state ) {
@@ -241,7 +241,7 @@ foreach ( $torrent in $full_data_sorted ) {
     if ( $wait_finish -eq 'Y' ) {
         Start-Sleep -Seconds $check_state_delay
         Write-Log 'Подождём окончания рехэша'
-        while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' ).state -like 'checking*' ) {
+        while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbose ).state -like 'checking*' ) {
             Start-Sleep -Seconds $check_state_delay
         }
         $tor_info = Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbose

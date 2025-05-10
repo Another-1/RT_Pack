@@ -403,7 +403,7 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
     }
     if ( $null -ne $hash ) {
         $Params.hashes = $hash
-        if ( $verbose -eq $true ) { Write-Log ( 'Получаем инфо о раздаче из клиента ' + $client.name ) }
+        if ( $verbose -eq $true ) { Write-Log ( "Получаем инфо о раздаче $hash из клиента " + $client.name ) }
     }
     elseif ( $verbose -eq $true ) { Write-Log ( 'Получаем список раздач от клиента ' + $client.name ) }
     if ( $null -ne $disk -and $disk -ne '') { $dsk = $disk + ':\\' } else { $dsk = '' }
@@ -433,7 +433,9 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
     if ( !$torrents_list ) { $torrents_list = @() }
     if ( $verbose ) {
         if ( !$hash ) { Write-Log ( 'Получено ' + $torrents_list.Count + ' раздач от клиента ' + $client.Name ) }
-        # elseif ( $torrents_list.count -gt 0 ) { Write-Log ( 'Получена информация о торренте: ' + ( $torrents_list[0] | ConvertFrom-Json ) ) }
+        elseif ( $torrents_list.count -gt 0 ) {
+            Write-Log ( 'Клиент ответил, что статус раздачи ' + $torrents_list[0].state )
+         }
     }
     return $torrents_list
 }
@@ -1097,6 +1099,7 @@ function Get-IniSectionDetails ( $settings, $sections ) {
 }
 
 function Start-Rehash ( $client, $hash ) {
+    Write-Log "Привет, я процедура рехэша, мне передан хэш $hash"
     $Params = @{ hashes = $hash }
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/recheck'
     $statusCode = ( Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' ).StatusCode # | Out-Null
