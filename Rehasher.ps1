@@ -244,8 +244,8 @@ foreach ( $torrent in $full_data_sorted ) {
         while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbose ).state -like 'checking*' ) {
             Start-Sleep -Seconds $check_state_delay
         }
-        $tor_info = Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbose
-        $percentage = $tor_info.progress
+        $tor_info = Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher'
+        $percentage = $tor_info[0].progress
         if ( $percentage -lt 1 ) {
             Write-Log ( 'Раздача "' + $torrent.name + '" битая! Полнота: ' + $percentage )
             if ( $start_errored -eq 'Y' ) {

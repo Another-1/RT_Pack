@@ -434,7 +434,7 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
     if ( $verbose ) {
         if ( !$hash ) { Write-Log ( 'Получено ' + $torrents_list.Count + ' раздач от клиента ' + $client.Name ) }
         elseif ( $torrents_list.count -gt 0 ) {
-            Write-Log ( 'Клиент ответил, что статус раздачи ' + $torrents_list[0].state )
+            Write-Log ( 'Клиент ответил, что у раздачи ' + $torrents_list[0].hash + ' статус ' + $torrents_list[0].state + ' и целость ' +  + $torrents_list[0].progress )
          }
     }
     return $torrents_list
