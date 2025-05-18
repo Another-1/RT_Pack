@@ -1,3 +1,5 @@
+param ([switch]$offline )
+
 $window_title = 'Rehasher'
 Write-Host "$([char]0x1B)]0;$window_title`a"
 
@@ -87,14 +89,19 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
         $settings.clients['RSS'] = @{ IP = $rss.client_IP; port = $rss.client_port; login = $rss.client_login; password = $rss.client_password; name = 'RSS'; ssl = 0 }
         $rss.client = 'RSS'
     }
-    Get-ClientApiVersions $settings.clients -mess_sender 'Rehasher' -noIDs -completed
-    $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
+    $off = $offline.IsPresent
+    # $off = $true
+    if ( $off ) {
+        $client = Select-Client
+        Get-ClientApiVersions -clients @{ $client.name = $client }
+        $clients_torrents = Get-ClientsTorrents -clients @{ $client.name = $client } -mess_sender 'Rehasher' -noIDs -completed
+    }
+    else {
+        Get-ClientApiVersions $settings.clients
+        $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
+    }
 }
 
-# if ( $max_rehash_size_bytes -and $max_rehash_size_bytes -gt 0 ) {
-#     Write-Log 'Исключаем явно слишком большие раздачи'
-#     $clients_torrents = @( $clients_torrents | Where-Object { $_.size -le $max_rehash_size_bytes } )
-# }
 Write-Log 'Получаем из БД TLO комбинации ID - hash'
 $conn = Open-TLODatabase
 $db_hash_to_id = Get-DBHashToId -conn $conn
@@ -115,7 +122,7 @@ Write-Log 'Выгружаем из БД даты рехэшей'
 Invoke-SqliteQuery -Query 'SELECT * FROM rehash_dates' -SQLiteConnection $conn | ForEach-Object { $db_data[$_.hash] = $_.rehash_date }
 
 $full_data_sorted = [System.Collections.ArrayList]::new()
-Write-Log 'Ищем раздачи из клиентов в БД рехэшей'
+Write-Log 'Ищем раздачи в БД рехэшей'
 $clients_torrents | ForEach-Object {
     if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
     if ($_.infohash_v1 -and ( $nul -ne $_.infohash_v1 ) -and ( $_.infohash_v1 -ne '' ) ) {
@@ -163,7 +170,7 @@ $was_sum_size = ( $full_data_sorted | Measure-Object -Property size -Sum ).Sum
 Write-Log 'Сортируем всё по дате рехэша и размеру'
 $full_data_sorted = $full_data_sorted | Sort-Object -Property size -Descending | Sort-Object -Property rehash_date -Stable
 
-if ( $mix_clients -eq 'Y') {
+if ( $mix_clients -eq 'Y' -and !$off ) {
     Write-Log 'Тщательнейшим образом перемешиваем клиентов'
     if ( $full_data_sorted.count -gt 1 ) {
         $per_client = @{}

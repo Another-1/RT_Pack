@@ -440,8 +440,9 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
     return $torrents_list
 }
 
-function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$noIDs, [switch]$break ) {
+function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$noIDs, [switch]$break, $clients ) {
     $clients_torrents = @()
+    if ( !$clients ) { $clients = $settings.clients }
     foreach ($clientkey in $settings.clients.Keys ) {
         $client = $settings.clients[ $clientkey ]
         Initialize-Client $client $mess_sender -verbose

@@ -111,7 +111,7 @@ $json_section = ( $standalone -eq $true ? 'others' : '' )
 if ( !$settings.others ) { $settings.others = [ordered]@{} }
 $settings.others.auto_update = Test-Setting 'auto_update' -required -json_section $json_section
 
-if ( $update_stats -eq 'Y' -and $standalone -ne $true ) {
+if ( ( $update_stats -eq 'Y' -or $force_update -eq 'Y' ) -and $standalone -ne $true ) {
     if ( !$send_reports ) { Write-Log 'Для обновления БД TLO и отправки отчётов нужен интерпретатор php на этом же компе.' }
     $send_reports = Test-Setting 'send_reports'
     while ( $true ) {
@@ -382,7 +382,7 @@ if ( $new_torrents_keys ) {
         else {
             $min_delay = $min_days
         }
-        if ( $existing_torrent ) {
+        if ( $existing_torrent -and $get_updated -ne 'N' ) {
             # if ( !$settings.connection.sid ) { Initialize-Forum }
             $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
             if ( $null -eq $new_torrent_file ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
@@ -582,6 +582,9 @@ if ( $new_torrents_keys ) {
         }
         elseif ( $get_news -ne 'Y') {
             # раздача новая, но выбрано не добавлять новые. Значит ничего и не делаем.
+        }
+        elseif ( $get_updated -eq 'N') {
+            # раздача обновлённая, но выбрано не качать олбновлённые. Значит ничего и не делаем.
         }
         else {
             Write-Log ( 'Случилось что-то странное на раздаче ' + $new_tracker_data.topic_id + ' лучше остановимся' ) -Red
@@ -847,13 +850,13 @@ if ( $report_stalled -eq 'Y' ) {
     else { Write-Log 'Некачашек не обнаружено' }
 }
 
-If ( Test-Path -Path $report_flag_file ) {
+If ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' ) {
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
         # что-то добавилось, стоит подождать.
         Update-Stats -wait -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # с паузой.
     }
     else {
-        Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # без паузы, так как это сработал флаг от предыдущего прогона.
+        Update-Stats -send_report:( ( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) -or $force_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона.
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
 }
