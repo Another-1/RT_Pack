@@ -142,6 +142,10 @@ if ( $client.sid ) {
     }
     # Write-Log "Предстоит переместить $( Get-Spell -qty $torrents_list.Count -spelling 2 -entity 'torrents' )"
     foreach ( $torrent in $torrents_list ) {
+        if ( ( $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) ) {
+            Remove-Item -Path $prev_path -ErrorAction SilentlyContinue
+        }
+
         $i++
         $new_path = $torrent.save_path.replace( $path_from, $path_to )
         if ( $id_subfolder -eq 'Y' -and $new_path -notlike "*$($torrent.topic_id)*" ) {
@@ -157,8 +161,10 @@ if ( $client.sid ) {
             if ( $client -eq $client_to ) {
                 Set-SaveLocation -client $client -torrent $torrent -new_path $new_path.replace( '\', '/' ) -verbose:$( $verbose.IsPresent ) -old_path $torrent.save_path -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
                 Write-Progress -Activity 'Moving' -Status $torrent.name -PercentComplete ( $i * 100 / $torrents_list.Count )
+                $prev_path = $torrent.save_path
             }
             else {
+                Remove-Variable prev_path
                 # if ( -not ( Test-ForumWorkingHours ) ) {
                 #     Write-Log 'Подождём часик' -Red
                 #     Start-Sleep -Seconds ( 3600 )
@@ -200,6 +206,10 @@ if ( $client.sid ) {
             }
             Start-Sleep -Milliseconds 100
         }
+        if ( ( $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) ) {
+            Remove-Item -Path $prev_path -ErrorAction SilentlyContinue
+        }
+
     }
     Write-Progress -Activity 'Moving' -Completed
     Write-Log "Отправлено в очередь перемещения $( to_kmg -bytes $sum_size -precision 2 )"
