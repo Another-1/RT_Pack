@@ -175,7 +175,7 @@ if ( $client.sid ) {
                 else { $copy_dest = $path_to }
                 Write-Log "$($torrent.name)   $( to_kmg $torrent.size 2 )"
                 if ( $path_from -ne $path_to -or $client.IP -ne $client_to.IP ) {
-                    Copy-Item -Path $torrent.save_path -Destination ( ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) | Split-Path ) -Recurse
+                    Copy-Item -Path $torrent.save_path -Destination ( ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) ) -Recurse
                 }
                 # robocopy $torrent.save_path ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) /MIR /nfl /ndl /eta /njh /njs
                 $fake_torrents_list = @( @{ hash = $torrent.hash } )
@@ -188,6 +188,9 @@ if ( $client.sid ) {
                     Write-Log "$($torrent.name)   $( to_kmg $torrent.size 2 ) " -Green
                     if ( $path_from -ne $path_to -or $client.IP -ne $client_to.IP ) {
                         Remove-ClientTorrent -client $client -hash $torrent.hash -deleteFiles
+                        if ( ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
+                            Remove-Item -Path $torrent.save_path -ErrorAction SilentlyContinue
+                        }
                     }
                     else {
                         Remove-ClientTorrent -client $client -hash $torrent.hash

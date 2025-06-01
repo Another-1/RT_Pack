@@ -82,7 +82,8 @@ if ( $settings.controller.control_override -and (Get-Date).hour -in $settings.co
     }
 }
 
-$paused_sort = [System.Collections.ArrayList]::new()
+# $long_ago = [System.Collections.ArrayList]::new()
+$long_ago = @{}
 
 $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
 
@@ -115,12 +116,15 @@ if ( !$api_seeding -or $debug -eq $false ) {
         $states[$_.hash] = @{
             client           = $_.client_key
             state            = $_.state
-            seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
+            # seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
             save_path        = $_.save_path
         }
-        if ( $_.state -eq $settings.clients[$_.client_key].stopped_state ) {
-            $paused_sort.Add( [PSCustomObject]@{ hash = $_.infohash_v1; client = $_.client_key; seeder_last_seen = $states[$_.infohash_v1].seeder_last_seen } ) | Out-Null
+        if ( ( $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -le $ok_to_start ) {
+            $long_ago[$_.hash] = 1
         }
+        # if ( $_.state -eq $settings.clients[$_.client_key].stopped_state ) {
+        #     $paused_sort.Add( [PSCustomObject]@{ hash = $_.infohash_v1; client = $_.client_key; seeder_last_seen = $states[$_.infohash_v1].seeder_last_seen } ) | Out-Null
+        # }
     }
 }
 
@@ -139,7 +143,7 @@ foreach ( $client_key in $settings.clients.keys ) {
     $states.Keys | Where-Object { $states[$_].client -eq $client_key } | ForEach-Object {
         try { 
             # if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $section_seeds[$tracker_torrents[$_].section] ) {
-            if ( $states[$_].state -eq $settings.clients[$client_key].stopped_state -and $tracker_torrents[$_].seeders -lt $settings.sections[$tracker_torrents[$_].section].control_peers ) {
+            if ( $states[$_].state -eq $settings.clients[$client_key].stopped_state -and ( $tracker_torrents[$_].seeders -lt $settings.sections[$tracker_torrents[$_].section].control_peers -or $long_ago[$_] ) ) {
                 if ( $start_keys.count -eq $batch_size ) {
                     Start-Torrents $start_keys $settings.clients[$client_key] -mess_sender 'Controller'
                     $started += $start_keys.count
@@ -151,8 +155,9 @@ foreach ( $client_key in $settings.clients.keys ) {
                 }
                 else { write-Log "Раздача $_ на слишком занятом сейчас диске" }
             }
-            elseif ( ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced -eq 'Y' )) `
-                    -and $tracker_torrents[$_].seeders -gt ( $settings.sections[$tracker_torrents[$_].section].control_peers + $( $null -eq $hysteresis ? 0 : $hysteresis ) )
+            elseif ( ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced -eq 'Y' ) ) `
+                    -and $tracker_torrents[$_].seeders -gt ( $settings.sections[$tracker_torrents[$_].section].control_peers + $( $null -eq $hysteresis ? 0 : $hysteresis ) ) `
+                    -and !$long_ago[$_]
             ) {
 
                 if ( $stop_keys.count -eq $batch_size ) {
@@ -175,45 +180,45 @@ foreach ( $client_key in $settings.clients.keys ) {
     }
 }
 
-$lv_str1 = Get-Spell $min_stop_to_start 1 'days'
-$lv_str2 = Get-Spell $old_starts_per_run 1 'torrents'
-Write-Log "Ищем раздачи, остановленные более чем $lv_str1 в количестве не более $lv_str2"
+# $lv_str1 = Get-Spell $min_stop_to_start 1 'days'
+# $lv_str2 = Get-Spell $old_starts_per_run 1 'torrents'
+# Write-Log "Ищем раздачи, остановленные более чем $lv_str1 в количестве не более $lv_str2"
 
-$paused_sort = @( ( $paused_sort | Where-Object {
-    $states[$_.hash].state -eq $settings.clients[$_.client].stopped_state `
-    -and $_.seeder_last_seen -le $ok_to_start `
-    -and $tracker_torrents[$_.hash] `
-    -and $tracker_torrents[$_.hash].category -ne '' `
-    -and $tracker_torrents[$_.hash].section -notin $never_obsolete_array } | `
-    Sort-Object -Property client | Sort-Object -Property seeder_last_seen -Stable ) | `
-        Select-Object -First $old_starts_per_run | Sort-Object -Property client )
-$lv_str = Get-Spell $paused_sort.count 1 'torrents'
+# $paused_sort = @( ( $paused_sort | Where-Object {
+#     $states[$_.hash].state -eq $settings.clients[$_.client].stopped_state `
+#     -and $_.seeder_last_seen -le $ok_to_start `
+#     -and $tracker_torrents[$_.hash] `
+#     -and $tracker_torrents[$_.hash].category -ne '' `
+#     -and $tracker_torrents[$_.hash].section -notin $never_obsolete_array } | `
+#     Sort-Object -Property client | Sort-Object -Property seeder_last_seen -Stable ) | `
+#         Select-Object -First $old_starts_per_run | Sort-Object -Property client )
+# $lv_str = Get-Spell $paused_sort.count 1 'torrents'
 
-Write-Log "Найдено $lv_str"
+# Write-Log "Найдено $lv_str"
 
-if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
-    Write-Log 'Запускаем давно стоящие раздачи'
-    $counter = 0
-    $start_keys = @()
-    $client = 'Z'
-    foreach ( $state in $paused_sort.GetEnumerator() ) {
-        if ( $client -eq 'Z' ) {
-            $client = $state.client
-        }
-        if ( $start_keys.count -eq $batch_size -or $state.client -ne $client ) {
-            Start-Torrents $start_keys $settings.clients[$client]
-            $client = $state.client
-            $started += $start_keys.count
-            $start_keys = @()
-        }
-        $start_keys += $state.hash
-        $counter++
-    }
-    if ( $start_keys.count -gt 0 ) {
-        Start-Torrents $start_keys $settings.clients[$client]
-        $started += $start_keys.count
-    }
-}
+# if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
+#     Write-Log 'Запускаем давно стоящие раздачи'
+#     $counter = 0
+#     $start_keys = @()
+#     $client = 'Z'
+#     foreach ( $state in $paused_sort.GetEnumerator() ) {
+#         if ( $client -eq 'Z' ) {
+#             $client = $state.client
+#         }
+#         if ( $start_keys.count -eq $batch_size -or $state.client -ne $client ) {
+#             Start-Torrents $start_keys $settings.clients[$client]
+#             $client = $state.client
+#             $started += $start_keys.count
+#             $start_keys = @()
+#         }
+#         $start_keys += $state.hash
+#         $counter++
+#     }
+#     if ( $start_keys.count -gt 0 ) {
+#         Start-Torrents $start_keys $settings.clients[$client]
+#         $started += $start_keys.count
+#     }
+# }
 $lv_str1 = "Запущено: $( Get-Spell -qty $started -spelling 1 -entity 'torrents' ). "
 $lv_str2 = "Остановлено: $( Get-Spell -qty $stopped -spelling 1 -entity 'torrents' )."
 $lv_str = "$lv_str1`n$lv_str2"
