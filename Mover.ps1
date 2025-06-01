@@ -156,10 +156,6 @@ if ( $client.sid ) {
             $verbose = $true
             if ( $client -eq $client_to ) {
                 Set-SaveLocation -client $client -torrent $torrent -new_path $new_path.replace( '\', '/' ) -verbose:$( $verbose.IsPresent ) -old_path $torrent.save_path -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                if ( ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
-                    Remove-Item -Path $torrent.save_path -ErrorAction SilentlyContinue
-                }
-
                 Write-Progress -Activity 'Moving' -Status $torrent.name -PercentComplete ( $i * 100 / $torrents_list.Count )
             }
             else {
