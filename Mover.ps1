@@ -142,7 +142,7 @@ if ( $client.sid ) {
     }
     # Write-Log "Предстоит переместить $( Get-Spell -qty $torrents_list.Count -spelling 2 -entity 'torrents' )"
     foreach ( $torrent in $torrents_list ) {
-        if ( ( $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) ) {
+        if ( $client.IP -in ( Get-NetIPAddress ).IPAddress -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
             Remove-Item -Path $prev_path -ErrorAction SilentlyContinue
         }
 
@@ -206,7 +206,7 @@ if ( $client.sid ) {
             }
             Start-Sleep -Milliseconds 100
         }
-        if ( ( $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) ) {
+        if ( $client.IP -in ( Get-NetIPAddress ).IPAddress -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
             Remove-Item -Path $prev_path -ErrorAction SilentlyContinue
         }
 
