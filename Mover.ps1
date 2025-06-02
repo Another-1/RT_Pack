@@ -1,4 +1,4 @@
-param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, [switch]$reverse )
+param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, [switch]$reverse, [switch]$keep_empty_folders )
 
 $window_title = 'Mover'
 Write-Host "$([char]0x1B)]0;$window_title`a"
@@ -142,7 +142,7 @@ if ( $client.sid ) {
     }
     # Write-Log "Предстоит переместить $( Get-Spell -qty $torrents_list.Count -spelling 2 -entity 'torrents' )"
     foreach ( $torrent in $torrents_list ) {
-        if ( $client.IP -in ( Get-NetIPAddress ).IPAddress -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
+        if ( -not $keep_empty_folders.IsPresent -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
             Remove-Item -Path $prev_path -ErrorAction SilentlyContinue
         }
 
@@ -206,7 +206,7 @@ if ( $client.sid ) {
             }
             Start-Sleep -Milliseconds 100
         }
-        if ( $client.IP -in ( Get-NetIPAddress ).IPAddress -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
+        if ( -not $keep_empty_folders.IsPresent -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
             Remove-Item -Path $prev_path -ErrorAction SilentlyContinue
         }
 
