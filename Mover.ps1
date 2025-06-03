@@ -164,7 +164,7 @@ if ( $client.sid ) {
                 $prev_path = $torrent.save_path
             }
             else {
-                Remove-Variable prev_path
+                Remove-Variable prev_path -ErrorAction SilentlyContinue
                 # if ( -not ( Test-ForumWorkingHours ) ) {
                 #     Write-Log 'Подождём часик' -Red
                 #     Start-Sleep -Seconds ( 3600 )
