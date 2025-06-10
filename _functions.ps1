@@ -1,33 +1,3 @@
-# function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [switch]$skip_timestamp, [switch]$nologfile) {
-#     if ( $mention_script_log -eq 'Y') {
-#         $call_stack = Get-PSCallStack
-#         # $str2 = "#$( $call_stack[$call_stack.length - 1].command.replace( '.ps1','') ) $str"
-#     }
-#     if ( $settings.interface.use_timestamp -ne 'Y' -or $skip_timestamp ) {
-#         if ( $Red ) { Write-Host $str -ForegroundColor Red -NoNewline:$NoNewLine }
-#         elseif ( $Green ) { Write-Host $str -ForegroundColor Green -NoNewline:$NoNewLine }
-#         else {
-#             if ( $call_stack ) {
-#                 Write-Host "#$( $call_stack[$call_stack.length - 1].command.replace( '.ps1','') ) " -ForegroundColor Green -NoNewline  
-#             }
-#             Write-Host $str -NoNewline:$NoNewLine
-
-#         }
-#         if ( $log_path -and -not $nologfile.IsPresent) { Write-Output $str2.Replace('...', '') | Out-File $log_path -Append -Encoding utf8 | Out-Null }
-#     }
-#     else {
-#         if ( $Red ) { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -ForegroundColor Red -NoNewline:$NoNewLine }
-#         elseif ( $Green ) { Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -ForegroundColor Green -NoNewline:$NoNewLine }
-#         else {
-#             Write-Host "$( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' )" -NoNewline
-#             Write-Host " #$( $call_stack[$call_stack.length - 1].command.replace( '.ps1','') ) " -ForegroundColor Green -NoNewline  
-#             # Write-Host ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str ) -NoNewline:$NoNewLine
-#             Write-Host $str -NoNewline:$NoNewLine
-#         } 
-#         if ( $log_path -and -not $nologfile.IsPresent ) { Write-Output ( ( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) + ' ' + $str2.Replace('...', '') ) | Out-File $log_path -Append -Encoding utf8 | Out-Null }
-#     }
-# }
-
 function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [switch]$skip_timestamp, [switch]$nologfile) {
 
     $color = $( $Red.IsPresent ? [System.ConsoleColor]::Red : $( $Green.IsPresent ? [System.ConsoleColor]::Green : $null ) )
@@ -1296,9 +1266,9 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     while ( $counter -lt 10 ) {
         try {
             foreach ( $section in $sections ) {
-                $section_torrents = Get-RepSectionTorrents -section $section -ok_states $ok_states -call_from $call_from -avg_seeds:$avg_seeds.IsPresent -min_avg $min_avg -min_seeders $min_seeders -min_release_date $min_release_date
+                $section_torrents = Get-RepSectionTorrents `
+                    -section $section -ok_states $ok_states -call_from $call_from -avg_seeds:$avg_seeds.IsPresent -min_avg $min_avg -min_seeders $min_seeders -min_release_date $min_release_date -get_low $get_lows -get_mids $get_mids -get_highs $get_highs
                 $section_torrents.keys | Where-Object { $null -eq $tracker_torrents[$_] } | ForEach-Object { $tracker_torrents[$_] = $section_torrents[$_] }
-                # Start-Sleep -Seconds 1
             }
             break
         }
@@ -1310,6 +1280,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
             Remove-Variable -Name $tracker_torrents -ErrorAction SilentlyContinue
         }
     }
+
     return $tracker_torrents
 }
 
@@ -1391,7 +1362,39 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
     #     Write-Log 'Не получилось' -Red
     #     exit 
     # }
+    if ( $call_from -like '*Adder*' ) {
+        # Send-Handshake -section $section -use_avg_seeds $use_avg_seeds
+    }
     return $lines
+}
+
+function Send-Handshake ( $section, $use_avg_seeds ) {
+    $body = @{
+        'subforum_id' = $section
+        'tool_name'   = 'Adder'
+        'filters'     = @{
+            'max_keepers'       = $max_keepers
+            'max_seeders'       = $use_avg_seeds ? - 1 : $settings.adder.max_seeds
+            'max_average_seeds' = $use_avg_seeds ? $settings.adder.max_seeds : - 1
+            'min_days_old'      = $min_days
+            # 'exact_keeper_id' = exact_keeper_id
+            'exclude_low_prio'  = $get_lows -eq 'Y' ? 'N' : 'Y'
+            'exclude_mid_prio'  = $get_mids -eq 'Y' ? 'N' : 'Y'
+            'exclude_high_prio' = $get_highs -eq 'Y' ? 'N' : 'Y'
+            # 'exclude_self_kept' = exclude_self_kept
+            'get_news'          = $settings.adder.get_news
+            'get_updated'       = $get_updated
+            'get_blacklist'     = $settings.adder.get_blacklist
+            'get_hidden'        = $settings.adder.get_hidden
+            'get_shown'         = $settings.adder.get_shown
+            'report_changes'    = ( $settings.adder.update_stats -eq 'Y' -and $send_reports -eq 'Y' ) ? 'Y' : 'N'
+            'self_update'       = $settings.others.auto_update
+        }
+    }
+    $url = '/krs/api/v1/docs#/default/mark_subforum_fetch_mark_subforum_fetch_post'
+    $headers = @{}
+    $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
+    Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
 }
 
 function Get-RepTopics( $call_from ) {
