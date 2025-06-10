@@ -382,7 +382,7 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
         try {
             $json_content = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
             $torrents_list = $json_content | ConvertFrom-Json | `
-                Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags, download_path | `
+                Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags, download_path, last_activity | `
                 Where-Object { $_.save_path -match ('^' + $dsk ) }
         }
         catch {

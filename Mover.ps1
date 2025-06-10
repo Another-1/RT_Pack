@@ -1,4 +1,4 @@
-param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, [switch]$reverse, [switch]$keep_empty_folders )
+param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, [switch]$reverse, [switch]$keep_empty_folders, $max_inactive_days )
 
 $window_title = 'Mover'
 Write-Host "$([char]0x1B)]0;$window_title`a"
@@ -113,6 +113,12 @@ if ( $client.sid ) {
             $max_add_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_move_days * 24 * 60 * 60
             $torrents_list = @( $torrents_list | Where-Object { $_.added_on -lt $max_add_date } )
         }
+
+        if ( $max_inactive_days -and $max_inactive_days -gt 0 ) {
+            $min_act_date = ( Get-Date -UFormat %s ).ToInt32($null) - $max_inactive_days * 24 * 60 * 60
+            $torrents_list = @( $torrents_list | Where-Object { $_.last_activity -gt $min_act_date } )
+        }
+
         # if ( $max_size -eq -1 * 1Gb ) {
         Write-Log 'Сортируем по полезности и подразделу'
 
