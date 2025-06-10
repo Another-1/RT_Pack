@@ -1363,38 +1363,38 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
     #     exit 
     # }
     if ( $call_from -like '*Adder*' ) {
-        # Send-Handshake -section $section -use_avg_seeds $use_avg_seeds
+         Send-Handshake -section $section -use_avg_seeds $use_avg_seeds
     }
     return $lines
 }
 
 function Send-Handshake ( $section, $use_avg_seeds ) {
-    $body = @{
-        'subforum_id' = $section
+    $body = [ordered]@{
+        'subforum_id' = $section.ToInt64( $null )
         'tool_name'   = 'Adder'
-        'filters'     = @{
+        'filters'     = [ordered]@{
             'max_keepers'       = $max_keepers
             'max_seeders'       = $use_avg_seeds ? - 1 : $settings.adder.max_seeds
             'max_average_seeds' = $use_avg_seeds ? $settings.adder.max_seeds : - 1
             'min_days_old'      = $min_days
             # 'exact_keeper_id' = exact_keeper_id
-            'exclude_low_prio'  = $get_lows -eq 'Y' ? 'N' : 'Y'
-            'exclude_mid_prio'  = $get_mids -eq 'Y' ? 'N' : 'Y'
-            'exclude_high_prio' = $get_highs -eq 'Y' ? 'N' : 'Y'
+            'exclude_low_prio'  = $get_lows -eq 'Y' ? $false : $true
+            'exclude_mid_prio'  = $get_mids -eq 'Y' ? $false : $true
+            'exclude_high_prio' = $get_highs -eq 'Y' ? $false : $true
             # 'exclude_self_kept' = exclude_self_kept
-            'get_news'          = $settings.adder.get_news
-            'get_updated'       = $get_updated
-            'get_blacklist'     = $settings.adder.get_blacklist
-            'get_hidden'        = $settings.adder.get_hidden
-            'get_shown'         = $settings.adder.get_shown
-            'report_changes'    = ( $settings.adder.update_stats -eq 'Y' -and $send_reports -eq 'Y' ) ? 'Y' : 'N'
-            'self_update'       = $settings.others.auto_update
+            'get_news'          = $settings.adder.get_news -eq 'Y' ? $true : $false
+            'get_updated'       = $get_updated -eq 'Y' ? $true : $false
+            'get_blacklist'     = $settings.adder.get_blacklist -eq 'Y' ? $true : $false
+            'get_hidden'        = $settings.adder.get_hidden -eq 'Y' ? $true : $false
+            'get_shown'         = $settings.adder.get_shown -eq 'Y' ? $true : $false
+            'report_changes'    = ( $settings.adder.update_stats -eq 'Y' -and $send_reports -eq 'Y' ) ? $true : $false
+            'self_update'       = $settings.others.auto_update -eq 'Y' ? $true : $false
         }
     }
-    $url = '/krs/api/v1/docs#/default/mark_subforum_fetch_mark_subforum_fetch_post'
+    $url = '/krs/api/v1/mark_subforum_fetch'
     $headers = @{}
     $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
-    Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
+    Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body ( $body | ConvertTo-Json -Compress ) -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
 }
 
 function Get-RepTopics( $call_from ) {
@@ -1500,7 +1500,7 @@ function Send-HTTP ( $url, $body, $headers, $call_from ) {
                 }
             }
             else {
-                Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" | Out-Null
+                Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' | Out-Null
                 return
             }
         }
