@@ -240,7 +240,9 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torr
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
     if ( $forced_sections -and $control -ne 'Y' ) {
-        $db_hash_to_id = Get-DBHashToId
+        $conn = Open-TLODatabase
+        $db_hash_to_id = Get-DBHashToId -conn $conn
+        $conn.Close()
     }
     $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 }
