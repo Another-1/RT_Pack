@@ -1385,7 +1385,7 @@ function Send-Handshake ( $section, $use_avg_seeds ) {
         'subforum_id' = $section.ToInt64( $null )
         'tool_name'   = 'Adder'
         'filters'     = [ordered]@{
-            'max_keepers'       = $max_keepers
+            'max_keepers'       = $max_keepers ? $max_keepers : -1
             'max_seeders'       = $use_avg_seeds ? - 1 : $settings.adder.max_seeds
             'max_average_seeds' = $use_avg_seeds ? $settings.adder.max_seeds : - 1
             'min_days_old'      = $min_days
