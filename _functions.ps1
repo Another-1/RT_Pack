@@ -1395,7 +1395,7 @@ function Send-Handshake ( $section, $use_avg_seeds ) {
             'exclude_high_prio' = $get_highs -eq 'Y' ? $false : $true
             # 'exclude_self_kept' = exclude_self_kept
             'get_news'          = $settings.adder.get_news -ne 'N' ? $true : $false
-            'get_updated'       = $get_updated -eq 'Y' ? $true : $false
+            'get_updated'       = $get_updated -ne 'N' ? $true : $false
             'get_blacklist'     = $settings.adder.get_blacklist -eq 'Y' ? $true : $false
             'get_hidden'        = $settings.adder.get_hidden -eq 'Y' ? $true : $false
             'get_shown'         = $settings.adder.get_shown -ne 'N' ? $true : $false
