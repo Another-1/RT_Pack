@@ -437,6 +437,12 @@ function Get-DBHashToId ( $conn ) {
     Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $db_hash_to_id[$_.info_hash] = $_.topic_id }
     Return $db_hash_to_id
 }
+function Get-DBHashToClient ( $conn ) {
+    $db_hash_to_client = @{}
+    $query = 'SELECT info_hash, client_id FROM Torrents'
+    Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $db_hash_to_client[$_.info_hash] = $_.client_id }
+    Return $db_hash_to_client
+}
 function Get-TopicIDs ( $client, $torrent_list, [switch]$verbose ) {
     if ( $torrent_list.count -gt 0 ) {
         if ( $verbose.IsPresent ) {
@@ -1011,9 +1017,15 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
     }
 }
 
-function Start-Torrents( $hashes, $client, $mess_sender ) {
+function Start-Torrents( $hashes, $client, $mess_sender, [switch]$force ) {
     $Params = @{ hashes = ( $hashes -join '|' ) }
-    $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/' + $client.start_command
+    if ( $force.IsPresent ) {
+        $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/setForceStart'
+        $Params.value = $true
+    }
+    else {
+        $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/' + $client.start_command
+    }
     try {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
@@ -1363,7 +1375,7 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
     #     exit 
     # }
     if ( $call_from -like '*Adder*' ) {
-         Send-Handshake -section $section -use_avg_seeds $use_avg_seeds
+        Send-Handshake -section $section -use_avg_seeds $use_avg_seeds
     }
     return $lines
 }
@@ -1382,11 +1394,11 @@ function Send-Handshake ( $section, $use_avg_seeds ) {
             'exclude_mid_prio'  = $get_mids -eq 'Y' ? $false : $true
             'exclude_high_prio' = $get_highs -eq 'Y' ? $false : $true
             # 'exclude_self_kept' = exclude_self_kept
-            'get_news'          = $settings.adder.get_news -eq 'Y' ? $true : $false
+            'get_news'          = $settings.adder.get_news -ne 'N' ? $true : $false
             'get_updated'       = $get_updated -eq 'Y' ? $true : $false
             'get_blacklist'     = $settings.adder.get_blacklist -eq 'Y' ? $true : $false
             'get_hidden'        = $settings.adder.get_hidden -eq 'Y' ? $true : $false
-            'get_shown'         = $settings.adder.get_shown -eq 'Y' ? $true : $false
+            'get_shown'         = $settings.adder.get_shown -ne 'N' ? $true : $false
             'report_changes'    = ( $settings.adder.update_stats -eq 'Y' -and $send_reports -eq 'Y' ) ? $true : $false
             'self_update'       = $settings.others.auto_update -eq 'Y' ? $true : $false
         }
