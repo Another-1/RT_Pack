@@ -1403,6 +1403,7 @@ function Send-Handshake ( $section, $use_avg_seeds ) {
             'self_update'       = $settings.others.auto_update -eq 'Y' ? $true : $false
         }
     }
+    Write-Log 'Отчитываемся в API по параметрам запроса'
     $url = '/krs/api/v1/mark_subforum_fetch'
     $headers = @{}
     $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
@@ -1517,6 +1518,7 @@ function Send-HTTP ( $url, $body, $headers, $call_from ) {
             }
         }
         catch {
+           Write-Log "Ошибка`n$($_.ToString())`n ждём 10 секунд" -Red
             Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
             If ( $retry_cnt -gt 10 ) { return }
         }
