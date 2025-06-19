@@ -1497,8 +1497,9 @@ function  Get-SpokenInterval ( $start_date, $end_date ) {
     return $Day
 }
 
-function Send-HTTP ( $url, $body, $headers, $call_from ) {
+function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
     $retry_cnt = 1
+    $retry_max = 1
     while ( $true ) {
         try {
             if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseApiProxy -eq 1 ) {
@@ -1518,12 +1519,15 @@ function Send-HTTP ( $url, $body, $headers, $call_from ) {
             }
         }
         catch {
-           Write-Log "Ошибка`n$($_.ToString())`n ждём 10 секунд" -Red
+            If ( $retry_cnt -ge $retry_max ) { return }
+            Write-Log "Ошибка`n$($_.ToString())`n ждём 10 секунд" -Red
             Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
-            If ( $retry_cnt -gt 10 ) { return }
         }
     }
-    Write-Log 'Не удалось отправить данные, выходим досрочно' -Red
+    if ( $break.IsPresent ) {
+        Write-Log 'Не удалось отправить данные, выходим досрочно' -Red
+        exit
+    }
 }
     
 function Send-APIReport ( $sections, $id, $api_key, $call_from) {
