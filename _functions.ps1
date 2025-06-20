@@ -81,7 +81,12 @@ function Test-Module ( $module, $description ) {
     Write-Log "Проверяем наличие модуля $module $description"
     if ( -not ( [bool](Get-InstalledModule -Name $module -ErrorAction SilentlyContinue) ) ) {
         Write-Log "Не установлен модуль $module $description, ставим" -Red
-        Install-Module -Name $module -Scope CurrentUser -Force
+        if ( $module -eq 'PsIni') {
+            Install-Module -Name $module -MaximumVersion 3.6.3 -Scope CurrentUser -Force
+        }
+        else {
+            Install-Module -Name $module -Scope CurrentUser -Force
+        }
         Import-Module $module
     }
     else {
