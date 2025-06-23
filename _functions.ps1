@@ -1379,7 +1379,7 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
     #     Write-Log 'Не получилось' -Red
     #     exit 
     # }
-    if ( $call_from -like '*Adder*' -and $no_telemetry -ne 'N ') {
+    if ( $call_from -like '*Adder*' -and $no_telemetry -ne 'Y') {
         Send-Handshake -section $section -use_avg_seeds $use_avg_seeds
     }
     return $lines
