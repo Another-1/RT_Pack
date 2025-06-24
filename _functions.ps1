@@ -1280,6 +1280,10 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
     $tracker_torrents = @{}
     $counter = 0
+    if ( $call_from -like '*Adder*' -and $no_telemetry -ne 'Y') {
+        Send-Handshake -sections $sections -use_avg_seeds $use_avg_seeds
+    }
+
     while ( $counter -lt 10 ) {
         try {
             foreach ( $section in $sections ) {
@@ -1379,15 +1383,13 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
     #     Write-Log 'Не получилось' -Red
     #     exit 
     # }
-    if ( $call_from -like '*Adder*' -and $no_telemetry -ne 'Y') {
-        Send-Handshake -section $section -use_avg_seeds $use_avg_seeds
-    }
     return $lines
 }
 
-function Send-Handshake ( $section, $use_avg_seeds ) {
+function Send-Handshake ( $sections, $use_avg_seeds ) {
     $body = [ordered]@{
-        'subforum_id' = $section.ToInt64( $null )
+        # 'subforum_id' = $section.ToInt64( $null )
+        'subforum_id' = ( $sections | Join-String -Separator ', ' )
         'tool_name'   = 'Adder'
         'filters'     = [ordered]@{
             'max_keepers'       = $max_keepers ? $max_keepers : -1
