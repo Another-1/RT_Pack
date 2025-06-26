@@ -1514,18 +1514,18 @@ function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
                 if ( $ConnectDetails.proxyCred ) {
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred -Body $body `
                             -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
-                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
+                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                     return
                 }
                 else {
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
-                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
+                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                     return
                 }
             }
             else {
                 $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
-                Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
+                Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                 return
             }
         }
