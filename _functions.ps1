@@ -1411,6 +1411,7 @@ function Send-Handshake ( $sections, $use_avg_seeds ) {
         }
     }
     Write-Log 'Отчитываемся в API по параметрам запроса'
+    Write-Log "Отчитываемые разделы: $( $body.subforum_id )"
     $url = '/krs/api/v1/mark_subforum_fetch'
     $headers = @{}
     $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
