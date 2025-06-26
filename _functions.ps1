@@ -1512,17 +1512,20 @@ function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
         try {
             if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseApiProxy -eq 1 ) {
                 if ( $ConnectDetails.proxyCred ) {
-                    Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred -Body $body `
-                        -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' | Out-Null
+                    $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred -Body $body `
+                            -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
+                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
                     return
                 }
                 else {
-                    Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' | Out-Null
+                    $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
+                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
                     return
                 }
             }
             else {
-                Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' | Out-Null
+                $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
+                Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
                 return
             }
         }
