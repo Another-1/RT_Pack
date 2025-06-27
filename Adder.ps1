@@ -686,7 +686,7 @@ if ( $rss ) {
                 if ( !$id_to_info[$rss_record[1]] ) {
                     if ( !$ignored -or $rss_record[8] -notin $ignored ) {
                         Write-Log "Проверим, что раздача $($rss_record[1]) ещё существует"
-                        $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" ) |  ConvertFrom-Json -AsHashtable ).result.values[0]
+                        $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) |  ConvertFrom-Json -AsHashtable ).result.values[0]
                         # $fresh_hash = ( ( Invoke-WebRequest -Uri "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" ).content | ConvertFrom-Json -AsHashtable ).result.Values[0]
                         if ( !$fresh_hash ) {
                             Write-Log 'Раздача уже не существует'
