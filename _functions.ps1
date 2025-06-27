@@ -1508,22 +1508,26 @@ function  Get-SpokenInterval ( $start_date, $end_date ) {
 function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
     $retry_cnt = 1
     $retry_max = 1
+    Write-Log 'Запуск функции отправки'
     while ( $true ) {
         try {
             if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseApiProxy -eq 1 ) {
                 if ( $ConnectDetails.proxyCred ) {
+                    Write-Log 'Указан прокси с аутентификацией'
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred -Body $body `
                             -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
                     Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                     return
                 }
                 else {
+                    Write-Log 'Указан прокси без аутентификации'
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
                     Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                     return
                 }
             }
             else {
+                Write-Log 'Прокси не используем'
                 $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
                 Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                 return
@@ -1539,6 +1543,7 @@ function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
         Write-Log 'Не удалось отправить данные, выходим досрочно' -Red
         exit
     }
+    Write-Log 'Функция отработала'
 }
     
 function Send-APIReport ( $sections, $id, $api_key, $call_from) {
