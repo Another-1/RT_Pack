@@ -1511,17 +1511,19 @@ function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
     Write-Log 'Запуск функции отправки'
     while ( $true ) {
         try {
-            if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseApiProxy -eq 1 ) {
-                if ( $ConnectDetails.proxyCred ) {
+            # if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseApiProxy -eq 1 ) {
+            if ( $settings.connection.proxy.use_for_rep -eq 'Y' ) {
+              if ( $settings.connection.proxy.credentials ) {
                     Write-Log 'Указан прокси с аутентификацией'
-                    $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -ProxyCredential $ConnectDetails.proxyCred -Body $body `
+                    $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials -Body $body `
                             -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
                     Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                     return
                 }
                 else {
                     Write-Log 'Указан прокси без аутентификации'
-                    $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $ConnectDetails.ProxyURL -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
+                    $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -Body $body `
+                            -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
                     Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                     return
                 }
