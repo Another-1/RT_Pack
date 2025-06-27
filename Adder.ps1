@@ -709,7 +709,7 @@ if ( $rss ) {
                         Start-Sleep -Seconds 1
                         Write-Log 'Проверяем, что раздача добавилась'
                         $i = 0
-                        while ( $i -lt 10 -and $null -eq ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash $fresh_hash -mess_sender 'Rehasher' ) ) {
+                        while ( $i -lt 10 -and $null -eq ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash $fresh_hash -mess_sender 'Adder' ) ) {
                             Write-Log 'Пока не добавилась, подождём ещё секунду'
                             # Start-Sleep -Seconds $check_state_delay
                             Start-Sleep -Seconds 1
