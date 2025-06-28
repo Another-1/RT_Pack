@@ -219,8 +219,7 @@ if ( $client.sid ) {
         if ( -not $keep_empty_folders.IsPresent -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
             Remove-Item -Path $prev_path -ErrorAction SilentlyContinue
         }
-
+        Write-Progress -Activity 'Moving' -Completed
     }
-    Write-Progress -Activity 'Moving' -Completed
     Write-Log "Отправлено в очередь перемещения $( to_kmg -bytes $sum_size -precision 2 )"
 }

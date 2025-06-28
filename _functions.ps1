@@ -1508,7 +1508,6 @@ function  Get-SpokenInterval ( $start_date, $end_date ) {
 function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
     $retry_cnt = 1
     $retry_max = 1
-    Write-Log 'Запуск функции отправки'
     while ( $true ) {
         try {
             # if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseApiProxy -eq 1 ) {
