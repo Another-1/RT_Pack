@@ -407,7 +407,7 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
     }
     if ( !$torrents_list ) { $torrents_list = @() }
     if ( $verbose ) {
-        if ( !$hash ) { Write-Log ( 'Получено ' + $torrents_list.Count + ' раздач от клиента ' + $client.Name ) }
+        if ( !$hash ) { Write-Log ( 'Получено от клиента ' + $client.Name + ': ' + ( Get-Spell -qty $torrents_list.Count ) ) }
         # elseif ( $torrents_list.count -gt 0 ) {
         #     Write-Log ( 'Клиент ответил, что у раздачи ' + $torrents_list[0].hash + ' статус ' + $torrents_list[0].state + ' и целость ' +  + $torrents_list[0].progress )
         #  }
@@ -1378,7 +1378,7 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
             $lines[$release[$hash_column]] = $line | Select-Object tor_status, reg_time, topic_poster, tor_size_bytes, keeping_priority, seeder_last_seen, seeders, topic_title, section, topic_id, avg_seeders, keeper_seeders
         }
     }
-    Write-Log ( "По разделу $section получено раздач: $($lines.count)" ) # -skip_timestamp -nologfile
+    Write-Log ( "По разделу $section получено: $( Get-Spell $($lines.count) )" ) # -skip_timestamp -nologfile
     # if ( !$lines.count ) {
     #     Write-Log 'Не получилось' -Red
     #     exit 
