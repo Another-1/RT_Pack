@@ -23,21 +23,9 @@ else {
     $standalone = $false
 }
 
-# if ( $standalone -eq $true ) {
-#     $settings.controller.old_starts_per_run = Test-Setting '$settings.controller.old_starts_per_run'
-# }
-# else {
-# $old_starts_per_run = Test-Setting 'old_starts_per_run'; $settings.controller.old_starts_per_run = $old_starts_per_run
-# }
 $json_section = ( $standalone -eq $true ? 'controller' : '' )
 $settings.controller.old_starts_per_run = Test-Setting 'old_starts_per_run' -json_section $json_section
 
-# if ( $standalone -eq $true ) {
-#     $settings.controller.min_stop_to_start = Test-Setting 'settings.controller.min_stop_to_start'
-# }
-# else {
-#     $min_stop_to_start = Test-Setting 'min_stop_to_start'; $settings.controller.min_stop_to_start = $min_stop_to_start
-# }
 $settings.controller.min_stop_to_start = Test-Setting 'min_stop_to_start' -json_section $json_section
 
 if ( $standalone -eq $false ) {
@@ -45,11 +33,13 @@ if ( $standalone -eq $false ) {
     $settings.controller.priority = $ini_data['topics_control'].priority
 }
 
-if ( $settings.controller.priority -eq '1' ) { # регулировка на уровне раздела
+if ( $settings.controller.priority -eq '1' ) {
+    # регулировка на уровне раздела
     $settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = ( $settings.sections[$_].control_peers -ne '' ? $settings.sections[$_].control_peers : -2 ).ToInt32($null) }
     $settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds.ToInt32($null) }
 }
-else { #регулировка на уровне клиента
+else {
+    #регулировка на уровне клиента
     $settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = $settings.clients[$settings.sections[$_].client].control_peers }
     $settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds.ToInt32($null) }
 }
@@ -73,7 +63,7 @@ if ( $settings.controller.control_override -and (Get-Date).hour -in $settings.co
             Write-Log "Не указан клиент для подраздела $section" -Red
             continue
         }
-        if ( $settings.controller.control_override.client[$settings.sections[$section].client] ) {
+        if ( $settings.controller.control_override.client -and $settings.controller.control_override.client[$settings.sections[$section].client] ) {
             $settings.sections[$section].control_peers = $settings.controller.control_override.client[$settings.sections[$section].client]
         }
         elseif ( $settings.controller.control_override.global ) {
@@ -82,7 +72,6 @@ if ( $settings.controller.control_override -and (Get-Date).hour -in $settings.co
     }
 }
 
-# $long_ago = [System.Collections.ArrayList]::new()
 $long_ago = @{}
 
 $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
@@ -114,17 +103,14 @@ if ( !$api_seeding -or $debug -eq $false ) {
     Write-Log 'Осмысливаем полученное'
     $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
         $states[$_.hash] = @{
-            client           = $_.client_key
-            state            = $_.state
+            client    = $_.client_key
+            state     = $_.state
             # seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
-            save_path        = $_.save_path
+            save_path = $_.save_path
         }
         if ( ( $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -le $ok_to_start ) {
             $long_ago[$_.hash] = 1
         }
-        # if ( $_.state -eq $settings.clients[$_.client_key].stopped_state ) {
-        #     $paused_sort.Add( [PSCustomObject]@{ hash = $_.infohash_v1; client = $_.client_key; seeder_last_seen = $states[$_.infohash_v1].seeder_last_seen } ) | Out-Null
-        # }
     }
 }
 
@@ -180,45 +166,6 @@ foreach ( $client_key in $settings.clients.keys ) {
     }
 }
 
-# $lv_str1 = Get-Spell $min_stop_to_start 1 'days'
-# $lv_str2 = Get-Spell $old_starts_per_run 1 'torrents'
-# Write-Log "Ищем раздачи, остановленные более чем $lv_str1 в количестве не более $lv_str2"
-
-# $paused_sort = @( ( $paused_sort | Where-Object {
-#     $states[$_.hash].state -eq $settings.clients[$_.client].stopped_state `
-#     -and $_.seeder_last_seen -le $ok_to_start `
-#     -and $tracker_torrents[$_.hash] `
-#     -and $tracker_torrents[$_.hash].category -ne '' `
-#     -and $tracker_torrents[$_.hash].section -notin $never_obsolete_array } | `
-#     Sort-Object -Property client | Sort-Object -Property seeder_last_seen -Stable ) | `
-#         Select-Object -First $old_starts_per_run | Sort-Object -Property client )
-# $lv_str = Get-Spell $paused_sort.count 1 'torrents'
-
-# Write-Log "Найдено $lv_str"
-
-# if ( $paused_sort -and $paused_sort.Count -gt 0 ) {
-#     Write-Log 'Запускаем давно стоящие раздачи'
-#     $counter = 0
-#     $start_keys = @()
-#     $client = 'Z'
-#     foreach ( $state in $paused_sort.GetEnumerator() ) {
-#         if ( $client -eq 'Z' ) {
-#             $client = $state.client
-#         }
-#         if ( $start_keys.count -eq $batch_size -or $state.client -ne $client ) {
-#             Start-Torrents $start_keys $settings.clients[$client]
-#             $client = $state.client
-#             $started += $start_keys.count
-#             $start_keys = @()
-#         }
-#         $start_keys += $state.hash
-#         $counter++
-#     }
-#     if ( $start_keys.count -gt 0 ) {
-#         Start-Torrents $start_keys $settings.clients[$client]
-#         $started += $start_keys.count
-#     }
-# }
 $lv_str1 = "Запущено: $( Get-Spell -qty $started -spelling 1 -entity 'torrents' ). "
 $lv_str2 = "Остановлено: $( Get-Spell -qty $stopped -spelling 1 -entity 'torrents' )."
 $lv_str = "$lv_str1`n$lv_str2"

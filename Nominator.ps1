@@ -91,4 +91,6 @@ foreach ( $torrent in $torrents_list ) {
     catch { }
     Write-Progress -Activity scanning -Status $torrent.name -PercentComplete ( $i * 100 / $torrents_list.Count )
 }
+Write-Log 'Готово'
 Write-Progress -Activity scanning -Completed
+Remove-Variable -Name 'torrents_list'
