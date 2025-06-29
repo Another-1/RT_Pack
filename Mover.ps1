@@ -169,6 +169,7 @@ if ( $client.sid ) {
             }
             $verbose = $true
             if ( $client -eq $client_to ) {
+                Write-Log 'Клиент один и тот же, просто даём ему команду переместить файл'
                 Set-SaveLocation -client $client -torrent $torrent -new_path $new_path.replace( '\', '/' ) -verbose:$( $verbose.IsPresent ) -old_path $torrent.save_path -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
                 Write-Progress -Activity 'Moving' -Status $torrent.name -PercentComplete ( $i * 100 / $torrents_list.Count )
                 $prev_path = $torrent.save_path
@@ -189,7 +190,7 @@ if ( $client.sid ) {
                     }
                 }
                 else { $copy_dest = $path_to }
-                Write-Log "$($torrent.name)   $( to_kmg $torrent.size 2 )"
+                Write-Log "Будем перемещать $($torrent.name) размером $( to_kmg $torrent.size 2 ) из $path_from в $path_to"
                 if ( $path_from -ne $path_to -or $client.IP -ne $client_to.IP ) {
                     Copy-Item -Path $torrent.save_path -Destination ( ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) ) -Recurse
                 }
