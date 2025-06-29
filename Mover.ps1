@@ -97,7 +97,7 @@ else { $min_move_days = $min_move_days.ToInt16($null) }
 
 if ( !$id_subfolder ) { $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write }
 
-Write-Log "Указаны параметры:`nКлиент: $($client.Name)`nИсходный кусок пути: $path_from`nЦелевой кусок пути: $path_to`nКатегория: $category`nСуммарный объём: $($max_size / 1Gb)`nОбъём раздачи: $($max_1_size / 1Gb)`nМинимальное количество дней: $min_move_days`nСоздавать подкаталоги: $id_subfolder"
+Write-Log "Указаны параметры:`nИсходный клиент: $($client.Name)`nЦелевой клиент: $($client_to.Name)`nИсходный кусок пути: $path_from`nЦелевой кусок пути: $path_to`nКатегория: $category`nСуммарный объём: $($max_size / 1Gb)`nОбъём раздачи: $($max_1_size / 1Gb)`nМинимальное количество дней: $min_move_days`nСоздавать подкаталоги: $id_subfolder"
 Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
