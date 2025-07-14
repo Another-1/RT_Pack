@@ -1,6 +1,6 @@
 function Write-Log {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$str,
         [switch]$Red,
@@ -39,7 +39,7 @@ function Test-PSVersion {
     if ( $PSVersionTable.PSVersion -lt $MinimumVersion ) {
         Write-Log "У вас слишком древний Powershell, обновитесь с https://github.com/PowerShell/PowerShell#get-powershell " -Red
         Read-Host -Prompt "Нажмите Enter для выхода"
-        Exit
+        exit
     }
     else {
         Write-Log "Версия достаточно свежая ( $($PSVersionTable.PSVersion) >= $MinimumVersion ), продолжаем" -Green
@@ -52,7 +52,7 @@ function Get-Separator {
 
 function Test-Version {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [ValidatePattern("\.ps1$")]
         [string]$name,
@@ -100,7 +100,7 @@ function Test-Version {
 
 function Test-Module {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$module,
         [string]$description = ''
@@ -126,7 +126,7 @@ function Test-Module {
 
 function Test-Setting {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$setting,
         [switch]$required,
@@ -141,7 +141,7 @@ function Test-Setting {
         'use_timestamp'         = @{ prompt = 'Выводить дату-время в окне лога Adder?'; default = 'N'; type = 'YN' }
         'tlo_path'              = @{ prompt = 'Путь к папке Web-TLO'; default = 'C:\OpenServer\domains\webtlo.local'; type = 'string' }
         'get_blacklist'         = @{ prompt = 'Скачивать раздачи из чёрного списка Web-TLO?'; default = 'N'; type = 'YN' }
-        'max_seeds'             = @{ prompt = 'Максимальное кол-во сидов для скачивания раздачи'; default = -1; type = 'number' }
+        'max_seeds'             = @{ prompt = 'Максимальное кол-во сидов для скачивания раздачи'; default = -1; type = 'float' }
         'min_days'              = @{ prompt = 'Минимальное количество дней с релиза (только для новых раздач)'; default = -1; type = 'number' }
         'get_hidden'            = @{ prompt = 'Скачивать раздачи со скрытых из общего списка разделов Web-TLO? (Y/N)'; default = 'N'; type = 'YN' }
         'get_shown'             = @{ prompt = 'Скачивать раздачи с НЕскрытых из общего списка разделов Web-TLO? (Y/N)'; default = 'Y'; type = 'YN' }
@@ -201,7 +201,7 @@ function Test-Setting {
             }
             if ( $setting -like '*tlo_path') {
                 $ini_path = Join-Path $current 'data' 'config.ini'
-                If ( -not ( Test-Path $ini_path ) ) {
+                if ( -not ( Test-Path $ini_path ) ) {
                     Write-Log ( 'Не нахожу файла ' + ( $ini_path ) + ', проверьте ввод' ) -ForegroundColor -Red
                     $current = ''
                 }
@@ -210,7 +210,7 @@ function Test-Setting {
                 }
             }
             elseif ( $setting -like '*php_path' ) {
-                If ( -not ( Test-Path $current ) ) {
+                if ( -not ( Test-Path $current ) ) {
                     Write-Log ( 'Не нахожу такого файла , проверьте ввод' ) -ForegroundColor -Red
                     $current = ''
                 }
@@ -223,17 +223,24 @@ function Test-Setting {
             }
         } while ( ( $current -eq '' -and $required ) -or ( $set_names[$setting].type -eq 'YN' -and $current -notmatch '[YN]' ) )
         if ( $changed ) {
-            if ( $set_names[$setting].type -eq ( 'number' ) ) {
-                $current = $current.ToInt64( $null )
+            if ( $set_names[$setting].type -eq ( 'number' ) -or $set_names[$setting].type -eq ( 'float' ) ) {
+                if ( $set_names[$setting].type -eq ( 'float' ) ) {
+                    $current = $current.ToSingle( $null )
+                }
+                else {
+                    $current = $current.ToInt64( $null )
+                }
             }
             try {
                 Set-Variable -Name $setting -Value $current
-            } catch { Write-Log "[Test-Setting] Ошибка при установке переменной $($setting): $($_.Exception.Message)" -Red }
+            }
+            catch { Write-Log "[Test-Setting] Ошибка при установке переменной $($setting): $($_.Exception.Message)" -Red }
             if ( $no_ini_write.IsPresent -eq $false -and $standalone -eq $false ) {
                 try {
                     Add-Content -Path ( Join-Path $PSScriptRoot '_settings.ps1' ) `
                         -Value ( '$' + $setting + ' = ' + $( ( $set_names[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + $current + $( ( $set_names[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + '   # ' + $set_names[$setting].prompt )
-                } catch { Write-Log "[Test-Setting] Ошибка при записи в _settings.ps1: $($_.Exception.Message)" -Red }
+                }
+                catch { Write-Log "[Test-Setting] Ошибка при записи в _settings.ps1: $($_.Exception.Message)" -Red }
             }
         }
     }
@@ -243,7 +250,8 @@ function Test-Setting {
 function Test-ForumWorkingHours ( [switch]$verbose, [switch]$break ) {
     try {
         $MoscowTZ = [System.TimeZoneInfo]::FindSystemTimeZoneById("Russian Standard Time")
-    } catch {
+    }
+    catch {
         Write-Log "[Test-ForumWorkingHours] Ошибка: Не удалось найти часовой пояс 'Russian Standard Time': $($_.Exception.Message)" -Red
         if ($break.IsPresent) { exit }
         # return $false
@@ -265,7 +273,7 @@ function Test-ForumWorkingHours ( [switch]$verbose, [switch]$break ) {
     if ( -not $break.IsPresent ) { return $true }
 }
 
-Function Set-ConnectDetails ( $settings ) {
+function Set-ConnectDetails ( $settings ) {
 
     if ( !$settings.connection ) { $settings.connection = [ordered]@{} }
     $settings.connection.login = $ini_data.'torrent-tracker'.login
@@ -283,7 +291,7 @@ Function Set-ConnectDetails ( $settings ) {
         # $settings.connection.proxy.use_for_rep = $settings.connection.proxy.use_for_api
     }
 
-    If ( $ini_data.proxy.activate_forum -eq '1' -or $ini_data.proxy.activate_api -eq '1' -or $ini_data.proxy.activate_report -eq '1' ) {
+    if ( $ini_data.proxy.activate_forum -eq '1' -or $ini_data.proxy.activate_api -eq '1' -or $ini_data.proxy.activate_report -eq '1' ) {
         Write-Log ( 'Используем ' + $ini_data.proxy.type.Replace('socks5h', 'socks5') + ' прокси ' + $ini_data.proxy.hostname + ':' + $ini_data.proxy.port )
     }
     $settings.connection.proxy = [ordered]@{}
@@ -400,7 +408,7 @@ function Initialize-Client ( $client, $mess_sender = '', [switch]$verbos, [switc
                 Send-TGMessage "Нет связи с клиентом $( $client.Name ) при вызыве из $( (Get-PSCallStack)[(( Get-PSCallStack ).count - 1 )..0].Command | Where-Object { $null -ne $_ -and $_ -ne '<ScriptBlock>'} | `
                     Join-String -Separator ' → ' ). Процесс остановлен." $tg_token $tg_chat $mess_sender
             }
-            Exit
+            exit
         }
     }
 }
@@ -418,7 +426,7 @@ function Export-ClientTorrentFile ( $client, $hash, $save_path ) {
 
 function Get-ClientTorrents {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNull()]
         [object]$client,
         [string]$disk = '',
@@ -506,20 +514,20 @@ function Get-DBHashToId ( $conn ) {
     $db_hash_to_id = @{}
     $query = 'SELECT info_hash, topic_id FROM Torrents'
     Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $db_hash_to_id[$_.info_hash] = $_.topic_id }
-    Return $db_hash_to_id
+    return $db_hash_to_id
 }
 function Get-DBHashToClient ( $conn ) {
     $db_hash_to_client = @{}
     $query = 'SELECT info_hash, client_id FROM Torrents'
     Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $db_hash_to_client[$_.info_hash] = $_.client_id }
-    Return $db_hash_to_client
+    return $db_hash_to_client
 }
 function Get-TopicIDs {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNull()]
         [object]$client,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNull()]
         [array]$torrent_list,
         [switch]$verbos
@@ -654,10 +662,10 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
         }
     }
     Remove-Item $File
-    Return $added_ok
+    return $added_ok
 }
 
-Function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
+function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/app/setPreferences'
     $param = @{ json = ( @{ $param = $value } | ConvertTo-Json -Compress ) }
     try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
@@ -667,7 +675,7 @@ Function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
     }
 }
 
-Function Set-MaxTorrentPriority ( $client, $hash ) {
+function Set-MaxTorrentPriority ( $client, $hash ) {
     $param = @{ hashes = $hash }
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/topPrio'
     try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
@@ -677,7 +685,7 @@ Function Set-MaxTorrentPriority ( $client, $hash ) {
     }
 }
 
-Function Set-DlSpeedLimit ( $client, $hash, $limit ) {
+function Set-DlSpeedLimit ( $client, $hash, $limit ) {
     $param = @{ hashes = $hash; limit = $limit }
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/setDownloadLimit'
     try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
@@ -695,7 +703,7 @@ function Initialize-Forum {
     # Check for required connection settings
     if ( !$settings.connection ) {
         Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
-        Exit
+        exit
     }
     Write-Log "Авторизуемся на форуме под пользователем $login."
 
@@ -781,7 +789,7 @@ function ConvertTo-1251 ( $inp ) {
 function Send-Forum ( $mess, $post_id, $topic_id = $null ) {
     if ( !$settings.connection ) {
         Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
-        Exit
+        exit
     }
     if ( !$settings.connection.sid ) { Initialize-Forum }
     $pos_url = "$( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.forum_url)/forum/posting.php"
@@ -811,7 +819,7 @@ function Send-Forum ( $mess, $post_id, $topic_id = $null ) {
         }
         catch {
             Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i"
-            If ( $i -gt 20 ) { break }
+            if ( $i -gt 20 ) { break }
         }
     }
 }
@@ -1202,8 +1210,8 @@ function Start-Rehash ( $client, $hash ) {
     # }
 }
 
-Function DeGZip-File {
-    Param(
+function DeGZip-File {
+    param(
         $infile,
         $outfile = ($infile -replace '\.gz$', '')
     )
@@ -1340,11 +1348,11 @@ function Get-DB_ColumnNames ($conn) {
 function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
     switch ( $qty % 100 ) {
         { $PSItem -in ( 5..20 ) } { return ( $entity -eq 'torrents' ? "$qty раздач" : "$qty дней" ) }
-        Default {
+        default {
             switch ( $qty % 10 ) {
                 { $PSItem -eq 1 } { if ( $spelling -eq 1 ) { return ( $entity -eq 'torrents' ? "$qty раздача" : "$qty день" ) } else { return ( $entity -eq 'torrents' ? "$qty раздачу" : "$qty день" ) } }
                 { $PSItem -in ( 2..4 ) } { return ( $entity -eq 'torrents' ? "$qty раздачи" : "$qty дня" ) }
-                Default { return ( $entity -eq 'torrents' ? "$qty раздач" : "$qty дней" ) }
+                default { return ( $entity -eq 'torrents' ? "$qty раздач" : "$qty дней" ) }
             }
         }
     }
@@ -1473,7 +1481,7 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
         }
         catch { $line.seeders = 0 }
         if (
-                ( !$min_avg -or ( $min_avg -ge $line.avg_seeders ) ) `
+            ( !$min_avg -or ( $min_avg -ge $line.avg_seeders ) ) `
                 -and ( !$min_release_date -or ( $min_release_date -and $line.reg_time -le $min_release_date ) ) `
                 -and ( !$min_seeders -or ( $min_seeders -and $line.seeders -ge $min_seeders ) )
         ) {
@@ -1580,7 +1588,7 @@ function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
             else {
                 Write-Log "Ошибка $($error[0].Exception.Message)`nЖдём 10 секунд и пробуем ещё раз" -Red
             }
-            If ( $retry_cnt -lt 10 ) { Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt" }
+            if ( $retry_cnt -lt 10 ) { Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt" }
             elseif ( $retry_cnt -ge 10 ) { break }
         }
     }
@@ -1614,7 +1622,7 @@ function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
         try {
             # if ( [bool]$ConnectDetails.ProxyURL -and $ConnectDetails.UseApiProxy -eq 1 ) {
             if ( $settings.connection.proxy.use_for_rep -eq 'Y' ) {
-              if ( $settings.connection.proxy.credentials ) {
+                if ( $settings.connection.proxy.credentials ) {
                     # Write-Log 'Указан прокси с аутентификацией'
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials -Body $body `
                             -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
@@ -1637,7 +1645,7 @@ function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
             }
         }
         catch {
-            If ( $retry_cnt -ge $retry_max ) { return }
+            if ( $retry_cnt -ge $retry_max ) { return }
             Write-Log "Ошибка`n$($_.ToString())`n ждём 10 секунд" -Red
             Start-Sleep -Seconds 10; $retry_cnt++; Write-Log "Попытка номер $retry_cnt"
         }
