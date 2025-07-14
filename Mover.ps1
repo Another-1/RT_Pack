@@ -217,7 +217,7 @@ if ( $client.sid ) {
             }
             Start-Sleep -Milliseconds 100
         }
-        if ( -not $keep_empty_folders.IsPresent -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
+        if ( -not $keep_empty_folders.IsPresent -and $prev_path -and ( Test-Path $prev_path ) -and ( Get-ChildItem -Path $prev_path ).Count -eq 0 ) {
             Remove-Item -Path $prev_path -ErrorAction SilentlyContinue
         }
     }
