@@ -1,4 +1,14 @@
-function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [switch]$skip_timestamp, [switch]$nologfile) {
+function Write-Log {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$str,
+        [switch]$Red,
+        [switch]$Green,
+        [switch]$NoNewLine,
+        [switch]$skip_timestamp,
+        [switch]$nologfile
+    )
 
     $color = $( $Red.IsPresent ? [System.ConsoleColor]::Red : $( $Green.IsPresent ? [System.ConsoleColor]::Green : $null ) )
     $log_str = ''
@@ -22,23 +32,32 @@ function Write-Log ( $str, [switch]$Red, [switch]$Green, [switch]$NoNewLine, [sw
 
 
 function Test-PSVersion {
+    param(
+        [version]$MinimumVersion = [version]'7.1.0.0'
+    )
     Write-Log 'Проверяем версию Powershell...'
-    if ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
-        Write-Log 'У вас слишком древний Powershell, обновитесь с https://github.com/PowerShell/PowerShell#get-powershell ' -Red
-        Pause
+    if ( $PSVersionTable.PSVersion -lt $MinimumVersion ) {
+        Write-Log "У вас слишком древний Powershell, обновитесь с https://github.com/PowerShell/PowerShell#get-powershell " -Red
+        Read-Host -Prompt "Нажмите Enter для выхода"
         Exit
     }
     else {
-        Write-Log 'Версия достаточно свежая, продолжаем' -Green
+        Write-Log "Версия достаточно свежая ( $($PSVersionTable.PSVersion) >= $MinimumVersion ), продолжаем" -Green
     }
 }
 
 function Get-Separator {
-    if ( $PSVersionTable.OS.ToLower().contains('windows')) { $separator = '\' } else { $separator = '/' }
-    return $separator
+    return [IO.Path]::DirectorySeparatorChar
 }
 
-function Test-Version ( $name, $mess_sender = '') {
+function Test-Version {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidatePattern("\.ps1$")]
+        [string]$name,
+        [string]$mess_sender = ''
+    )
     try {
         $old_hash = ( Get-FileHash -Path ( Join-Path $PSScriptRoot $name ) ).Hash
         $new_file_path = ( Join-Path $PSScriptRoot $name.replace( '.ps1', '.new' ) )
@@ -74,28 +93,47 @@ function Test-Version ( $name, $mess_sender = '') {
             Remove-Item $new_file_path -ErrorAction SilentlyContinue
         } 
     }
-    catch {}
+    catch {
+        Write-Log "[Test-Version] Ошибка: $($_.Exception.Message)" -Red
+    }
 }
 
-function Test-Module ( $module, $description ) {
+function Test-Module {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$module,
+        [string]$description = ''
+    )
     Write-Log "Проверяем наличие модуля $module $description"
-    if ( -not ( [bool](Get-InstalledModule -Name $module -ErrorAction SilentlyContinue) ) ) {
-        Write-Log "Не установлен модуль $module $description, ставим" -Red
-        if ( $module -eq 'PsIni') {
-            Install-Module -Name $module -MaximumVersion 3.6.3 -Scope CurrentUser -Force
+    try {
+        if ( -not ( [bool](Get-InstalledModule -Name $module -ErrorAction SilentlyContinue) ) ) {
+            Write-Log "Не установлен модуль $module $description, ставим" -Red
+            if ( $module -eq 'PsIni') {
+                Install-Module -Name $module -MaximumVersion 3.6.3 -Scope CurrentUser -Force
+            }
+            else {
+                Install-Module -Name $module -Scope CurrentUser -Force
+            }
         }
-        else {
-            Install-Module -Name $module -Scope CurrentUser -Force
-        }
-        Import-Module $module
-    }
-    else {
         Write-Log "Модуль $module обнаружен" -Green
-        Import-Module $module
+        Import-Module $module -ErrorAction Stop
+    }
+    catch {
+        Write-Log "[Test-Module] Ошибка при установке или импорте модуля $($module): $($_.Exception.Message)" -Red
     }
 }
 
-function Test-Setting ( $setting, [switch]$required, $default, [switch]$no_ini_write, $json_section ) {
+function Test-Setting {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$setting,
+        [switch]$required,
+        $default = $null,
+        [switch]$no_ini_write,
+        $json_section = $null
+    )
     $set_names = @{
         'tg_token'              = @{ prompt = 'Токен бота Telegram, если нужна отправка событий в Telegram. Если не нужно, оставить пустым'; default = ''; type = 'string' }
         'tg_chat'               = @{ prompt = 'Номер чата для отправки сообщений Telegram'; default = ''; type = 'string' }
@@ -139,15 +177,16 @@ function Test-Setting ( $setting, [switch]$required, $default, [switch]$no_ini_w
         'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота Кузи в /about_me)'; type = 'string' }
         'id_subfolder'          = @{ prompt = 'Создавать папки по ID если нет?'; type = 'YN' }
     }
+    if (-not $set_names.ContainsKey($setting)) {
+        Write-Log "[Test-Setting] Ошибка: '$setting' не является допустимым параметром настройки." -Red
+        return $null
+    }
     $changed = $false
-    # if ( $json_section ) {
-    #     $setting = '$settings.' + "$json_section.$setting"
-    # }
     if ( $json_section -and $json_section -ne '' ) {
-        try { $current_var = $settings.$json_section.$setting } catch {}
+        try { $current_var = $settings.$json_section.$setting } catch { Write-Log "[Test-Setting] Ошибка доступа к $($json_section).$($setting): $($_.Exception.Message)" -Red }
     }
     else {
-        $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue )
+        try { $current_var = ( Get-Variable -Name $setting -ErrorAction SilentlyContinue ) } catch { Write-Log "[Test-Setting] Ошибка доступа к переменной $($setting): $($_.Exception.Message)" -Red }
     }
     if ( $current_var -and $null -ne $current_var.Value ) { $current = $current_var.Value }
     else {
@@ -183,15 +222,18 @@ function Test-Setting ( $setting, [switch]$required, $default, [switch]$no_ini_w
                 $changed = $true
             }
         } while ( ( $current -eq '' -and $required ) -or ( $set_names[$setting].type -eq 'YN' -and $current -notmatch '[YN]' ) )
-
         if ( $changed ) {
             if ( $set_names[$setting].type -eq ( 'number' ) ) {
                 $current = $current.ToInt64( $null )
             }
-            Set-Variable -Name $setting -Value $current
+            try {
+                Set-Variable -Name $setting -Value $current
+            } catch { Write-Log "[Test-Setting] Ошибка при установке переменной $($setting): $($_.Exception.Message)" -Red }
             if ( $no_ini_write.IsPresent -eq $false -and $standalone -eq $false ) {
-                Add-Content -Path ( Join-Path $PSScriptRoot '_settings.ps1' ) `
-                    -Value ( '$' + $setting + ' = ' + $( ( $set_names[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + $current + $( ( $set_names[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + '   # ' + $set_names[$setting].prompt )
+                try {
+                    Add-Content -Path ( Join-Path $PSScriptRoot '_settings.ps1' ) `
+                        -Value ( '$' + $setting + ' = ' + $( ( $set_names[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + $current + $( ( $set_names[$setting].type -in ( 'YN', 'string' ) ) ? "'" : '') + '   # ' + $set_names[$setting].prompt )
+                } catch { Write-Log "[Test-Setting] Ошибка при записи в _settings.ps1: $($_.Exception.Message)" -Red }
             }
         }
     }
@@ -199,7 +241,13 @@ function Test-Setting ( $setting, [switch]$required, $default, [switch]$no_ini_w
 }
 
 function Test-ForumWorkingHours ( [switch]$verbose, [switch]$break ) {
-    $MoscowTZ = [System.TimeZoneInfo]::FindSystemTimeZoneById("Russian Standard Time")
+    try {
+        $MoscowTZ = [System.TimeZoneInfo]::FindSystemTimeZoneById("Russian Standard Time")
+    } catch {
+        Write-Log "[Test-ForumWorkingHours] Ошибка: Не удалось найти часовой пояс 'Russian Standard Time': $($_.Exception.Message)" -Red
+        if ($break.IsPresent) { exit }
+        # return $false
+    }
     $MoscowTime = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $MoscowTZ)
     if ($verbose) {
         Write-Log 'Проверяем, что в Москве не 4 часа ночи (профилактика)'
@@ -214,9 +262,7 @@ function Test-ForumWorkingHours ( [switch]$verbose, [switch]$break ) {
             else { return $false }
         }
     }
-    if ( -not $break.IsPresent ) {
-        return $true
-    }
+    if ( -not $break.IsPresent ) { return $true }
 }
 
 Function Set-ConnectDetails ( $settings ) {
@@ -370,17 +416,34 @@ function Export-ClientTorrentFile ( $client, $hash, $save_path ) {
 }
 
 
-# function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$completed, $hash, $client_key, [switch]$verbose ) {
-function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$completed, $hash, [switch]$verbose, [switch]$break ) {
+function Get-ClientTorrents {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNull()]
+        [object]$client,
+        [string]$disk = '',
+        [string]$mess_sender = '',
+        [switch]$completed,
+        $hash = $null,
+        [switch]$verbos,
+        [switch]$break
+    )
+    # Validate required client properties
+    # foreach ($prop in @('IP','port','sid','name')) {
+    #     if (-not $client.PSObject.Properties[$prop]) {
+    #         Write-Log "[Get-ClientTorrents] Ошибка: client не содержит свойство '$prop'" -Red
+    #         return @()
+    #     }
+    # }
     $Params = @{}
     if ( $completed ) {
         $Params.filter = 'completed'
     }
     if ( $null -ne $hash ) {
         $Params.hashes = $hash
-        if ( $verbose -eq $true ) { Write-Log ( "Получаем инфо о раздаче $hash из клиента " + $client.name ) }
+        if ( $verbos ) { Write-Log ( "Получаем инфо о раздаче $hash из клиента " + $client.name ) }
     }
-    elseif ( $verbose -eq $true ) { Write-Log ( 'Получаем список раздач от клиента ' + $client.name ) }
+    elseif ( $verbos ) { Write-Log ( 'Получаем список раздач от клиента ' + $client.name ) }
     if ( $null -ne $disk -and $disk -ne '') { $dsk = $disk + ':\\' } else { $dsk = '' }
     $i = 0
     while ( $true ) {
@@ -391,14 +454,20 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
                 Where-Object { $_.save_path -match ('^' + $dsk ) }
         }
         catch {
-            Initialize-Client $client $mess_sender -force -verbose $verbose
+            Write-Log "[Get-ClientTorrents] Ошибка при получении списка раздач: $($_.Exception.Message)" -Red
+            if ( $verbos.IsPresent ) {
+                Initialize-Client $client $mess_sender -force -verbose
+            }
+            else {
+                Initialize-Client $client $mess_sender -force
+            }
             $i++
         }
         if ( $json_content -or $i -gt 3 ) { break }
     }
     if ( !$json_content -and !$hash ) {
         if ( $tg_token -ne '' ) { 
-            Send-TGMessage -message ( 'Не удалось получить список раздач от клиента ' + $client.Name. + ', Выполнение прервано.' ) -token $tg_token -chat_id $tg_chat -mess_sender $mess_sender
+            Send-TGMessage -message ( 'Не удалось получить список раздач от клиента ' + $client.Name + ', Выполнение прервано.' ) -token $tg_token -chat_id $tg_chat -mess_sender $mess_sender
         }
         Write-Log ( 'Не удалось получить список раздач от клиента ' + $client.Name )
         if ( $break.IsPresent ) {
@@ -406,11 +475,8 @@ function  Get-ClientTorrents ( $client, $disk = '', $mess_sender = '', [switch]$
         }
     }
     if ( !$torrents_list ) { $torrents_list = @() }
-    if ( $verbose ) {
+    if ( $verbos ) {
         if ( !$hash ) { Write-Log ( 'Получено от клиента ' + $client.Name + ': ' + ( Get-Spell -qty $torrents_list.Count ) ) }
-        # elseif ( $torrents_list.count -gt 0 ) {
-        #     Write-Log ( 'Клиент ответил, что у раздачи ' + $torrents_list[0].hash + ' статус ' + $torrents_list[0].state + ' и целость ' +  + $torrents_list[0].progress )
-        #  }
     }
     return $torrents_list
 }
@@ -421,9 +487,9 @@ function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$n
     foreach ($clientkey in $settings.clients.Keys ) {
         $client = $settings.clients[ $clientkey ]
         Initialize-Client $client $mess_sender -verbose
-        $client_torrents = Get-ClientTorrents -client $client -client_key $clientkey -verbose -completed:$completed -mess_sender $mess_sender -break:$break.IsPresent
-        if ( $noIDs.IsPresent -eq $false ) {
-            Get-TopicIDs -client $client -torrent_list $client_torrents -conn $db_conn
+        $client_torrents = Get-ClientTorrents -client $client -verbos -completed:$completed -mess_sender $mess_sender -break:$break.IsPresent
+        if ( $noIDs.IsPresent -eq $false -and $client_torrents.count -gt 0 ) {
+            Get-TopicIDs -client $client -torrent_list $client_torrents # -conn $db_conn
         }
         $clients_torrents += $client_torrents
     }
@@ -448,9 +514,30 @@ function Get-DBHashToClient ( $conn ) {
     Invoke-SqliteQuery -Query $query -SQLiteConnection $conn -ErrorAction SilentlyContinue | ForEach-Object { $db_hash_to_client[$_.info_hash] = $_.client_id }
     Return $db_hash_to_client
 }
-function Get-TopicIDs ( $client, $torrent_list, [switch]$verbose ) {
+function Get-TopicIDs {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNull()]
+        [object]$client,
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNull()]
+        [array]$torrent_list,
+        [switch]$verbos
+    )
+    # Validate required client property
+    # if (-not $client.PSObject.Properties['name']) {
+    #     Write-Log "[Get-TopicIDs] Ошибка: client не содержит свойство 'name'" -Red
+    #     return
+    # }
+    # # Validate torrent_list items
+    # foreach ($t in $torrent_list) {
+    #     if (-not $t.PSObject.Properties['hash']) {
+    #         Write-Log "[Get-TopicIDs] Ошибка: элемент списка не содержит свойство 'hash'" -Red
+    #         return
+    #     }
+    # }
     if ( $torrent_list.count -gt 0 ) {
-        if ( $verbose.IsPresent ) {
+        if ( $verbos.IsPresent ) {
             Write-Log "Ищем ID раздач по $( $torrent_list.count -gt 1 ? 'хэшам' : 'хэшу ' + $torrent_list[0].hash ) от клиента $( $client.name ) в данных от трекера"
         }
         $torrent_list | ForEach-Object {
@@ -463,13 +550,15 @@ function Get-TopicIDs ( $client, $torrent_list, [switch]$verbose ) {
                     $comment = ( Get-ClientTorrentInfo -client $client -hash $_.hash ) | Select-Object comment -ExpandProperty comment
                     Start-Sleep -Milliseconds 10
                 }
-                catch { }
+                catch {
+                    Write-Log "[Get-TopicIDs] Ошибка при получении комментария для $_.hash: $($_.Exception.Message)" -Red
+                }
                 $ending = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
                 $_.topic_id = $( $ending -ne '' ? $ending.ToInt64($null) : $null )
             }
         }
         $success = ( $torrent_list | Where-Object { $_.topic_id } ).count
-        if ( $verbose.IsPresent ) {
+        if ( $verbos.IsPresent ) {
             Write-Log ( 'Найдено ' + $success + ' штук ID' ) -Red:( $success -ne $torrent_list.Count )
         }
     }
@@ -597,7 +686,13 @@ Function Set-DlSpeedLimit ( $client, $hash, $limit ) {
         Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null 
     }
 }
-function Initialize-Forum ( $login = $null, $password = $null, [switch]$noretry = $false ) {
+function Initialize-Forum {
+    param(
+        [string]$login = $null,
+        [string]$password = $null,
+        [switch]$noretry
+    )
+    # Check for required connection settings
     if ( !$settings.connection ) {
         Write-Log 'Не обнаружены данные для подключения к форуму. Проверьте настройки.' -ForegroundColor Red
         Exit
@@ -613,12 +708,13 @@ function Initialize-Forum ( $login = $null, $password = $null, [switch]$noretry 
         $payload = @{ 'login_username' = $login; 'login_password' = $password; 'login' = '%E2%F5%EE%E4' }
     }
     $i = 1
-
-    while ($i -le ( $noretry.IsPresent ? 1 : 10 )) {
+    $max_tries = $noretry.IsPresent ? 1 : 10
+    $answer = $null
+    while ($i -le $max_tries) {
         if ( $i -gt 1 ) { Write-Log "Попытка номер $i" }
         try {
             if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
-                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $url используя прокси $($settings.connection.proxy.url )" }
+                if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url используя прокси $($settings.connection.proxy.url )" }
                 if ( $settings.connection.proxy.credentials ) {
                     $answer = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials )
                 }
@@ -631,40 +727,46 @@ function Initialize-Forum ( $login = $null, $password = $null, [switch]$noretry 
                 $answer = ( Invoke-WebRequest -Uri $login_url -Method Post -Headers $headers -Body $payload -SessionVariable sid -MaximumRedirection 999 -SkipHttpErrorCheck )
             }
             if ( $request_details -eq 'Y' ) { Write-Log 'Ответ получен' }
-            break
         }
         catch {
-            Write-Log 'Не удалось соединиться с форумом' -Red
+            Write-Log "[Initialize-Forum] Не удалось соединиться с форумом: $($_.Exception.Message)" -Red
             Start-Sleep -Seconds 10; $i++
-            If ( $i -gt 10 ) { break }
+            if ( $i -gt $max_tries ) { return }
+            continue
+        }
+        if ( -not $answer ) {
+            Write-Log '[Initialize-Forum] Нет ответа от форума.' -Red
+            Start-Sleep -Seconds 10; $i++
+            if ( $i -gt $max_tries ) { return }
+            continue
         }
         if ( $answer.StatusCode -ne 200 ) {
             Write-Log "Форум вернул ответ $($answer.StatusCode)" -Red
             Start-Sleep -Seconds 10; $i++
-            If ( $i -gt 10 ) { break }
+            if ( $i -gt $max_tries ) { return }
+            continue
         }
         if ( $sid.Cookies.Count -eq 0 ) {
             Write-Log 'Форум не вернул cookie' -Red
             Start-Sleep -Seconds 10; $i++
-            If ( $i -gt 10 ) { break }
+            if ( $i -gt $max_tries ) { return }
+            continue
         }
-        else { break }
-    }
-    if ( $answer.StatusCode -ne 200 ) {
-        Write-Log "Форум вернул ответ $($answer.StatusCode)" -Red
-        Start-Sleep -Seconds 10; $i++
-        If ( $i -gt 10 ) { break }
-    }
-    if ( $answer.content -like '*Вы ввели неверное*' -or $answer.content -like '*введите код подтверждения*' ) {
-        Write-Log 'Неверный пароль' -Red; $i++
+        if ( $answer.content -like '*Вы ввели неверное*' -or $answer.content -like '*введите код подтверждения*' ) {
+            Write-Log 'Неверный пароль' -Red
+            return
+        }
+        # Success
         break
     }
-    if ( $sid.Cookies.Count -eq 0 ) {
-        Write-Log 'Форум не вернул cookie' -Red
-        Start-Sleep -Seconds 10; $i++
-        If ( $i -gt 10 ) { break }
+    if ( -not $answer -or $answer.StatusCode -ne 200 ) {
+        Write-Log '[Initialize-Forum] Не удалось авторизоваться на форуме.' -Red
+        return
     }
-
+    if ( $sid.Cookies.Count -eq 0 ) {
+        Write-Log '[Initialize-Forum] Не удалось получить cookie после авторизации.' -Red
+        return
+    }
     $token = ( ( Select-String -InputObject $answer.Content -Pattern "\tform_token ?: '(.+?)'," ).matches[0].value.Replace("',", '')) -replace ( "\s*form_token: '", '')
     if ($token -and $token -ne '' ) { $settings.connection.token = $token }
     $settings.connection.sid = $sid
@@ -832,7 +934,7 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
         }
     }
     else {
-        Write-Log "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -ForegroundColor Red
+        Write-Log "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -Red
     }
     # }
 }
@@ -1609,7 +1711,7 @@ function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false, $m
     }
     try {
         if ( $verbose.IsPresent ) {
-            Write-Log "Отправляем команду на перемещение торрента $torrent.name из папки $old_path в папку $new_path"
+            Write-Log "Отправляем команду на перемещение торрента $($torrent.name ) из папки $old_path в папку $new_path"
         }
         Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/setLocation' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
     }

@@ -92,7 +92,7 @@ if ( $standalone -eq $false ) {
 if ( !$settings.adder ) { $settings.adder = [ordered]@{} }
 $json_section = ( $standalone -eq $true ? 'adder' : '' )
 $settings.adder.get_news = Test-Setting 'get_news' -json_section $json_section
-$settings.adder.min_days = Test-Setting 'min_days' -default $ini_data.sections.rule_date_release -required -json_section$json_section
+$settings.adder.min_days = Test-Setting 'min_days' -default $ini_data.sections.rule_date_release -required -json_section $json_section
 if (!$settings.adder.min_days ) { $settings.adder.min_days = 0 }
 $settings.adder.get_blacklist = Test-Setting 'get_blacklist' -json_section $json_section
 $settings.adder.max_seeds = Test-Setting -setting 'max_seeds' -default $ini_data.sections.rule_topics -json_section $json_section
@@ -151,23 +151,29 @@ if ( $settings.adder.never_obsolete ) {
 }
 Write-Log "Разделов в работе: $( $section_numbers.count )"
 if ( $forced_sections ) { $settings.adder.forced_sections = $forced_sections }
-if ( $settings.adder.forced_sections ) {
-    if ( $inverse_forced -eq 'Y' ) {
-        Write-Log 'Обнаружена инвертированная настройка forced_sections, отбрасываем лишние разделы'
+try {
+    if ( $settings.adder.forced_sections ) {
+        if ( $inverse_forced -eq 'Y' ) {
+            Write-Log 'Обнаружена инвертированная настройка forced_sections, отбрасываем лишние разделы'
+        }
+        else {
+            Write-Log 'Обнаружена настройка forced_sections, отбрасываем лишние разделы'
+        }
+        $forced_sections = $settings.adder.forced_sections.Replace(' ', '')
+        $forced_sections_array = @()
+        $forced_sections.split(',') | ForEach-Object { $forced_sections_array += $_ }
+        if ( $inverse_forced -eq 'Y' ) {
+            $section_numbers = $section_numbers | Where-Object { $_ -notin $forced_sections_array }
+        }
+        else {
+            $section_numbers = $section_numbers | Where-Object { $_ -in $forced_sections_array }
+        }
+        Write-Log "Осталось разделов: $( $section_numbers.count )"
     }
-    else {
-        Write-Log 'Обнаружена настройка forced_sections, отбрасываем лишние разделы'
-    }
-    $forced_sections = $settings.adder.forced_sections.Replace(' ', '')
-    $forced_sections_array = @()
-    $forced_sections.split(',') | ForEach-Object { $forced_sections_array += $_ }
-    if ( $inverse_forced -eq 'Y' ) {
-        $section_numbers = $section_numbers | Where-Object { $_ -notin $forced_sections_array }
-    }
-    else {
-        $section_numbers = $section_numbers | Where-Object { $_ -in $forced_sections_array }
-    }
-    Write-Log "Осталось разделов: $( $section_numbers.count )"
+}
+catch {
+    Write-Log "Ошибка при обработке forced_sections: $($_.Exception.Message)" -Red
+    exit
 }
 if ( $section_numbers.count -eq 0 ) {
     Write-Log 'Значит и делать ничего не надо, выходим.'
@@ -522,6 +528,10 @@ if ( $new_torrents_keys ) {
                 )
             ) {
                 Write-Log "Раздача $($new_tracker_data.topic_title) ещё в показе"
+                continue
+            }
+            if ( $skip_gay -eq 'Y' -and $new_tracker_data.topic_title -like '*гей-тема*' ) {
+                Write-Log "Раздача $($new_tracker_data.topic_title) про геев"
                 continue
             }
             else {

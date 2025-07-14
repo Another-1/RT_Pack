@@ -121,6 +121,9 @@ $stopped = 0
 if (  $rss ) {
     $settings.clients.Remove( $rss.client ? $rss.client : 'RSS' )
 }
+
+$started_counts = @{}
+
 foreach ( $client_key in $settings.clients.keys ) {
     Write-Log ( 'Регулируем клиент ' + $client_key + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
 
@@ -138,20 +141,28 @@ foreach ( $client_key in $settings.clients.keys ) {
                 if ( -not( $busy_disks -and $states[$_].save_path[0] -in $busy_disks[$client_key] )) {
                     $start_keys += $_
                     $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
+                    if ( $null -eq $started_counts[$settings.sections[$tracker_torrents[$_].section].label] ) { $started_counts[$settings.sections[$tracker_torrents[$_].section].label] = 0 }
+                    $started_counts[$settings.sections[$tracker_torrents[$_].section].label] += 1
                 }
                 else { write-Log "Раздача $_ на слишком занятом сейчас диске" }
             }
-            elseif ( ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP') -or ( $states[$_].state -eq 'forcedUP' -and $stop_forced -eq 'Y' ) ) `
-                    -and $tracker_torrents[$_].seeders -gt ( $settings.sections[$tracker_torrents[$_].section].control_peers + $( $null -eq $hysteresis ? 0 : $hysteresis ) ) `
-                    -and !$long_ago[$_]
-            ) {
+            elseif ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) ) {
+                if ( ( $states[$_].state -ne 'forcedUP' -or $stop_forced -eq 'Y' ) `
+                        -and $tracker_torrents[$_].seeders -gt ( $settings.sections[$tracker_torrents[$_].section].control_peers + $( $null -eq $hysteresis ? 0 : $hysteresis ) ) `
+                        -and !$long_ago[$_]
+                ) {
 
-                if ( $stop_keys.count -eq $batch_size ) {
-                    Stop-Torrents $stop_keys $settings.clients[$client_key] -mess_sender 'Controller'
-                    $stopped += $stop_keys.count
-                    $stop_keys = @()
+                    if ( $stop_keys.count -eq $batch_size ) {
+                        Stop-Torrents $stop_keys $settings.clients[$client_key] -mess_sender 'Controller'
+                        $stopped += $stop_keys.count
+                        $stop_keys = @()
+                    }
+                    $stop_keys += $_
                 }
-                $stop_keys += $_
+                else {
+                    if ( $null -eq $started_counts[$settings.sections[$tracker_torrents[$_].section].label] ) { $started_counts[$settings.sections[$tracker_torrents[$_].section].label] = 0 }
+                    $started_counts[$settings.sections[$tracker_torrents[$_].section].label] += 1
+                }
             }
         }
         catch { } # на случай поглощённых раздач.
@@ -171,3 +182,15 @@ $lv_str2 = "Остановлено: $( Get-Spell -qty $stopped -spelling 1 -enti
 $lv_str = "$lv_str1`n$lv_str2"
 Write-Log ( $lv_str1 + $lv_str2 )
 if ( $report_controller -eq 'Y') { Send-TGMessage -message $lv_str -token $tg_token -chat_id $tg_chat -mess_sender 'Controller' }
+
+# $now = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+$now =  Get-Date -UFormat %s
+$grafana_data = @()
+foreach ($label in $started_counts.Keys) {
+    $grafana_data += [PSCustomObject]@{
+        time  = $now
+        label = $label
+        value = $started_counts[$label]
+    }
+}
+$grafana_data | ConvertTo-Json -Compress | Out-File -FilePath 'C:\Software\AdblockListGenerator\WWW\seeding.json'

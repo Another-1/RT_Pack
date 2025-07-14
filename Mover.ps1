@@ -103,10 +103,10 @@ if ( $client.sid ) {
     $i = 0
     $sum_size = 0
     if ( !$torrents_list ) {
-        $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose -completed:$($move_incomplete -ne 'Y') | Where-Object { $_.save_path -like "*${path_from}*" }
+        $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbos -completed:$($move_incomplete -ne 'Y') | Where-Object { $_.save_path -like "*${path_from}*" }
         if ( $client_to -ne $client ) {
             Initialize-Client $client_to
-            $already_list = Get-ClientTorrents -client $client_to -mess_sender 'Mover' -verbose 
+            $already_list = Get-ClientTorrents -client $client_to -mess_sender 'Mover' -verbos 
             $torrents_list = @( $torrents_list | Where-Object { $_.hash -notin $already_list.hash } )
         }
         if ( $min_move_days -gt 0 ) {
@@ -169,7 +169,7 @@ if ( $client.sid ) {
             }
             $verbose = $true
             if ( $client -eq $client_to ) {
-                Write-Log 'Клиент один и тот же, просто даём ему команду переместить файл'
+                # Write-Log 'Клиент один и тот же, просто даём ему команду переместить файл'
                 Set-SaveLocation -client $client -torrent $torrent -new_path $new_path.replace( '\', '/' ) -verbose:$( $verbose.IsPresent ) -old_path $torrent.save_path -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
                 Write-Progress -Activity 'Moving' -Status $torrent.name -PercentComplete ( $i * 100 / $torrents_list.Count )
                 $prev_path = $torrent.save_path
@@ -220,7 +220,7 @@ if ( $client.sid ) {
         if ( -not $keep_empty_folders.IsPresent -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
             Remove-Item -Path $prev_path -ErrorAction SilentlyContinue
         }
-        Write-Progress -Activity 'Moving' -Completed
     }
+    Write-Progress -Activity 'Moving' -Completed
     Write-Log "Отправлено в очередь перемещения $( to_kmg -bytes $sum_size -precision 2 )"
 }

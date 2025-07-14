@@ -71,7 +71,7 @@ Write-Log 'Выберите исходный клиент'
 $client = Select-Client
 Initialize-Client $client
 if ( !$torrents_list ) {
-    $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbose
+    $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbos
 }
 
 if ( !$tracker_torrents ) {
