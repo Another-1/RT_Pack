@@ -374,12 +374,12 @@ function Get-Clients ( [switch]$LocalOnly ) {
     if ( ( $settings.clients.Keys | Sort-Object -Unique ).count -lt $settings.clients.count ) { Write-Log 'Клиенты должны называться по-разному, поправьте в настройках TLO' -Red; exit }
 }
 
-function Initialize-Client ( $client, $mess_sender = '', [switch]$verbose, [switch]$force ) {
+function Initialize-Client ( $client, $mess_sender = '', [switch]$verbos, [switch]$force ) {
     if ( !$client.sid -or $force ) {
         $logindata = @{ username = $client.login; password = $client.password }
         $loginheader = @{ Referer = 'http://' + $client.IP + ':' + $client.port }
         try {
-            if ( $verbose ) { Write-Log ( 'Авторизуемся в клиенте ' + $client.Name ) }
+            if ( $verbos ) { Write-Log ( 'Авторизуемся в клиенте ' + $client.Name ) }
             $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/auth/login'
             $result = Invoke-WebRequest -Method POST -Uri $url -Headers $loginheader -Body $logindata -SessionVariable sid
             if ( $result.StatusCode -ne 200 ) {
@@ -390,7 +390,7 @@ function Initialize-Client ( $client, $mess_sender = '', [switch]$verbose, [swit
                 Write-Log ( 'Клиент вернул ошибку авторизации: ' + $result.Content ) -Red
                 exit
             }
-            if ( $verbose ) { Write-Log 'Успешная авторизация' }
+            if ( $verbos ) { Write-Log 'Успешная авторизация' }
             $client.sid = $sid
         }
         catch {
@@ -456,7 +456,7 @@ function Get-ClientTorrents {
         catch {
             Write-Log "[Get-ClientTorrents] Ошибка при получении списка раздач: $($_.Exception.Message)" -Red
             if ( $verbos.IsPresent ) {
-                Initialize-Client $client $mess_sender -force -verbose
+                Initialize-Client $client $mess_sender -force -verbos
             }
             else {
                 Initialize-Client $client $mess_sender -force
@@ -662,7 +662,7 @@ Function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
     $param = @{ json = ( @{ $param = $value } | ConvertTo-Json -Compress ) }
     try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
     catch {
-        Initialize-Client -client $client -mess_sender $mess_sender -verbose
+        Initialize-Client -client $client -mess_sender $mess_sender -verbos
         Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null 
     }
 }
@@ -672,7 +672,7 @@ Function Set-MaxTorrentPriority ( $client, $hash ) {
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/topPrio'
     try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
     catch {
-        Initialize-Client -client $client -mess_sender $mess_sender -verbose
+        Initialize-Client -client $client -mess_sender $mess_sender -verbos
         Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null 
     }
 }
@@ -682,7 +682,7 @@ Function Set-DlSpeedLimit ( $client, $hash, $limit ) {
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/setDownloadLimit'
     try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
     catch {
-        Initialize-Client -client $client -mess_sender $mess_sender -verbose
+        Initialize-Client -client $client -mess_sender $mess_sender -verbos
         Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null 
     }
 }
@@ -1137,7 +1137,7 @@ function Start-Torrents( $hashes, $client, $mess_sender, [switch]$force ) {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
     catch {
-        Initialize-Client -client $client -force -mess_sender $mess_sender -verbose
+        Initialize-Client -client $client -force -mess_sender $mess_sender -verbos
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
 }
@@ -1149,7 +1149,7 @@ function Stop-Torrents( $hashes, $client, $mess_sender ) {
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
     catch {
-        Initialize-Client -client $client -force -mess_sender $mess_sender -verbose
+        Initialize-Client -client $client -force -mess_sender $mess_sender -verbos
         Invoke-WebRequest -Method POST -Uri $url -WebSession $client.sid -Form $Params -ContentType 'application/x-bittorrent' | Out-Null
     }
 
@@ -1735,7 +1735,7 @@ function Get-ClientApiVersions ( $clients, $mess_sender ) {
     Write-Log 'Получаем версии API клиентов для правильной работы с ними'
     foreach ( $client_key in ( $clients.keys | Where-Object { $null -eq $clients[$_].api_verion } ) ) {
         $client = $clients[$client_key]
-        Initialize-Client $client -mess_sender $mess_sender -verbose
+        Initialize-Client $client -mess_sender $mess_sender -verbos
         $client.api_version = [version]( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/app/webapiVersion' ) -WebSession $client.sid ).content
         Write-Log "У клиента $( $client.name ) версия API $($client.api_version.ToString())"
         if ( $client.api_version -lt [version]'2.11.0' ) {
