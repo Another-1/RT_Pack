@@ -225,7 +225,12 @@ function Test-Setting {
         if ( $changed ) {
             if ( $set_names[$setting].type -eq ( 'number' ) -or $set_names[$setting].type -eq ( 'float' ) ) {
                 if ( $set_names[$setting].type -eq ( 'float' ) ) {
-                    $current = $current.ToSingle( $null )
+                    try { 
+                        $current = $current.replace(',', '.').ToSingle( $null )
+                    }
+                    catch {
+                        $current = $current.replace('.', ',').ToSingle( $null )
+                    }
                 }
                 else {
                     $current = $current.ToInt64( $null )
