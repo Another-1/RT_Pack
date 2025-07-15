@@ -1,4 +1,4 @@
-param ([switch]$offline )
+param ([switch]$offline, [switch]$verbos )
 
 $window_title = 'Rehasher'
 Write-Host "$([char]0x1B)]0;$window_title`a"
@@ -251,10 +251,14 @@ foreach ( $torrent in $full_data_sorted ) {
     if ( $wait_finish -eq 'Y' ) {
         Start-Sleep -Seconds $check_state_delay
         Write-Log 'Подождём окончания рехэша'
-        while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' ).state -like 'checking*' ) {
+        $verbos = $true
+        while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbos:($verbos.IsPresent) ).state -like 'checking*' ) {
+        # while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbos -break ).state -like 'checking*' ) {
+            Write-Log "Раздача пока рехэшится, ждём $check_state_delay секунд"
             Start-Sleep -Seconds $check_state_delay
         }
-        $tor_info = Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher'
+        if ( $verbos ) { Write-Log 'Смотрим, на сколько процентов рехэш был успешен. Для этого опять-таки ' }
+        $tor_info = Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -verbos:($verbos.IsPresent) -mess_sender 'Rehasher' -break
         $percentage = $tor_info[0].progress
         if ( $percentage -lt 1 ) {
             Write-Log ( 'Раздача "' + $torrent.name + '" битая! Полнота: ' + $percentage )

@@ -482,13 +482,13 @@ function Get-ClientTorrents {
         if ( $tg_token -ne '' ) { 
             Send-TGMessage -message ( 'Не удалось получить список раздач от клиента ' + $client.Name + ', Выполнение прервано.' ) -token $tg_token -chat_id $tg_chat -mess_sender $mess_sender
         }
-        Write-Log ( 'Не удалось получить список раздач от клиента ' + $client.Name )
+        Write-Log ( 'Не удалось получить список раздач от клиента ' + $client.Name ) -Red
         if ( $break.IsPresent ) {
             exit
         }
     }
     if ( !$torrents_list ) { $torrents_list = @() }
-    if ( $verbos ) {
+    if ( $verbos.IsPresent ) {
         if ( !$hash ) { Write-Log ( 'Получено от клиента ' + $client.Name + ': ' + ( Get-Spell -qty $torrents_list.Count ) ) }
     }
     return $torrents_list
