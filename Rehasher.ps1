@@ -252,11 +252,10 @@ foreach ( $torrent in $full_data_sorted ) {
         Start-Sleep -Seconds $check_state_delay
         Write-Log 'Подождём окончания рехэша'
         while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbos:($verbos.IsPresent) ).state -like 'checking*' ) {
-        # while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbos -break ).state -like 'checking*' ) {
-            Write-Log "Раздача пока рехэшится, ждём $check_state_delay секунд"
+            if ( $verbos.IsPresent ) { Write-Log "Раздача пока рехэшится, ждём $check_state_delay секунд" }
             Start-Sleep -Seconds $check_state_delay
         }
-        if ( $verbos ) { Write-Log 'Смотрим, на сколько процентов рехэш был успешен. Для этого опять-таки ' }
+        if ( $verbos.IsPresent ) { Write-Log 'Смотрим, на сколько процентов рехэш был успешен. Для этого опять-таки ' }
         $tor_info = Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -verbos:($verbos.IsPresent) -mess_sender 'Rehasher' -break
         $percentage = $tor_info[0].progress
         if ( $percentage -lt 1 ) {
