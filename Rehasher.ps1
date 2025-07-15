@@ -251,7 +251,6 @@ foreach ( $torrent in $full_data_sorted ) {
     if ( $wait_finish -eq 'Y' ) {
         Start-Sleep -Seconds $check_state_delay
         Write-Log 'Подождём окончания рехэша'
-        $verbos = $true
         while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbos:($verbos.IsPresent) ).state -like 'checking*' ) {
         # while ( ( Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -mess_sender 'Rehasher' -verbos -break ).state -like 'checking*' ) {
             Write-Log "Раздача пока рехэшится, ждём $check_state_delay секунд"
