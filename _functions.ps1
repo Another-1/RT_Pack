@@ -202,7 +202,7 @@ function Test-Setting {
             if ( $setting -like '*tlo_path') {
                 $ini_path = Join-Path $current 'data' 'config.ini'
                 if ( -not ( Test-Path $ini_path ) ) {
-                    Write-Log ( 'Не нахожу файла ' + ( $ini_path ) + ', проверьте ввод' ) -ForegroundColor -Red
+                    Write-Log ( 'Не нахожу файла ' + ( $ini_path ) + ', проверьте ввод' ) -Red
                     $current = ''
                 }
                 else { 
