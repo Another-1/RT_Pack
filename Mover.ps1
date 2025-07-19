@@ -108,6 +108,7 @@ if ( $client.sid ) {
 
         Write-Log 'Отсеиваем раздачи с не тем путём'
         $torrents_list = $torrents_list| Where-Object { $_.save_path -like "*${path_from}*" }
+        Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
 
         if ( $client_to -ne $client ) {
             Initialize-Client $client_to
