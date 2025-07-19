@@ -499,7 +499,7 @@ function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$n
     if ( !$clients ) { $clients = $settings.clients }
     foreach ($clientkey in $settings.clients.Keys ) {
         $client = $settings.clients[ $clientkey ]
-        Initialize-Client $client $mess_sender -verbose
+        Initialize-Client $client $mess_sender -verbos
         $client_torrents = Get-ClientTorrents -client $client -verbos -completed:$completed -mess_sender $mess_sender -break:$break.IsPresent
         if ( $noIDs.IsPresent -eq $false -and $client_torrents.count -gt 0 ) {
             Get-TopicIDs -client $client -torrent_list $client_torrents # -conn $db_conn

@@ -110,18 +110,25 @@ if ( $client.sid ) {
             $torrents_list = @( $torrents_list | Where-Object { $_.hash -notin $already_list.hash } )
         }
         if ( $min_move_days -gt 0 ) {
+            Write-Log 'Остеиваем слишком свежие раздачи'
             $max_add_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_move_days * 24 * 60 * 60
             $torrents_list = @( $torrents_list | Where-Object { $_.added_on -lt $max_add_date } )
+            Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
+
         }
 
         if ( $max_inactive_days -and $max_inactive_days -gt 0 ) {
+            Write-Log 'Остеиваем никому не нужные раздачи'
             $min_act_date = ( Get-Date -UFormat %s ).ToInt32($null) - $max_inactive_days * 24 * 60 * 60
             $torrents_list = @( $torrents_list | Where-Object { $_.last_activity -gt $min_act_date } )
+            Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
         }
 
         if ( $min_inactive_days -and $min_inactive_days -gt 0 ) {
+            Write-Log 'Остеиваем слишком активные раздачи'
             $max_act_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_inactive_days * 24 * 60 * 60
             $torrents_list = @( $torrents_list | Where-Object { $_.last_activity -lt $max_act_date } )
+            Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
         }
         # if ( $max_size -eq -1 * 1Gb ) {
         Write-Log 'Сортируем по полезности и подразделу'
@@ -134,17 +141,27 @@ if ( $client.sid ) {
         }
 
         if ( $category -and $category -ne '' ) {
+            Write-Log 'Отсеиваем раздачи из других категорий'
             $torrents_list = @( $torrents_list | Where-Object { $_.category -eq "${category}" } )
+            Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
         }
 
+        if ( $max_size -gt 0 -or $max_1_size -gt 0) {
+            Write-Log 'Отсеиваем слишком большие раздачи'
+        }
         if ( $max_size -gt 0 ) {
             $torrents_list = @( $torrents_list | Where-Object { $_.size -le $max_size } )
         }
 
         if ( $max_1_size -gt 0 ) {
+            Write-Log 'Отсеиваем слишком большие раздачи'
             $torrents_list = @( $torrents_list | Where-Object { $_.size -le $max_1_size } )
         }
+        if ( $max_size -gt 0 -or $max_1_size -gt 0) {
+            Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
+        }
 
+        if ( $torrent_list -and $torrent_list.count -gt 0 )
         If ( $id_subfolder.ToUpper() -eq 'Y' ) {
             Write-Log 'Получаем ID раздач из комментариев. Это может быть небыстро.'
             Get-TopicIDs -client $client -torrent_list $torrents_list -verbos
