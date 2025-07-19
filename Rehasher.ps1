@@ -104,7 +104,7 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
 
 Write-Log 'Получаем из БД TLO комбинации ID - hash'
 $conn = Open-TLODatabase
-$db_hash_to_id = Get-DBHashToId -conn $conn
+$db_hash_to_id = Get-DBHashToId -conn $conn # всё нормально, это нужно для Get-TopicIDs
 $conn.Close( )
 
 Write-Log 'Исключаем уже хэшируемые и стояшие в очереди на рехэш'

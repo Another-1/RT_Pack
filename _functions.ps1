@@ -357,7 +357,7 @@ function Get-Clients ( [switch]$LocalOnly ) {
     Write-Log 'Получаем из TLO данные о клиентах'
     $client_count = $ini_data['other'].qt.ToInt16($null)
     $i = 1
-    $ini_data.keys | Where-Object { $_ -match '^torrent-client' -and $ini_data[$_].client -eq 'qbittorrent' } | ForEach-Object {
+    $ini_data.keys | Where-Object { $_ -match '^torrent-client' -and $ini_data[$_].client -eq 'qbittorrent' } | Sort-Object -Property { $ini_data[$_].comment } | ForEach-Object {
         if ( ( $_ | Select-String ( '\d+$' ) ).matches.value.ToInt16($null) -le $client_count ) {
             $settings.clients[$ini_data[$_].comment] = [ordered]@{
                 IP            = $ini_data[$_].hostname
