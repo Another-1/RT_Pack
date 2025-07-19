@@ -103,8 +103,11 @@ if ( $client.sid ) {
     $i = 0
     $sum_size = 0
     if ( !$torrents_list ) {
-        $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbos -completed:$($move_incomplete -ne 'Y') | Where-Object { $_.save_path -like "*${path_from}*" }
-        Write-Log "Получено: $( Get-Spell $torrents_list.Count )"
+        $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbos -completed:$($move_incomplete -ne 'Y')
+        # Write-Log "Получено: $( Get-Spell $torrents_list.Count )"
+
+        Write-Log 'Отсеиваем раздачи с не тем путём'
+        $torrents_list = $torrents_list| Where-Object { $_.save_path -like "*${path_from}*" }
 
         if ( $client_to -ne $client ) {
             Initialize-Client $client_to
