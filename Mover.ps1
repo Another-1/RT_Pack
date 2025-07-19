@@ -163,8 +163,7 @@ if ( $client.sid ) {
             Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
         }
 
-        if ( $torrent_list -and $torrent_list.count -gt 0 )
-        If ( $id_subfolder.ToUpper() -eq 'Y' ) {
+        if ( $torrent_list -and $torrent_list.count -gt 0 -and $id_subfolder.ToUpper() -eq 'Y' ) {
             Write-Log 'Получаем ID раздач из комментариев. Это может быть небыстро.'
             Get-TopicIDs -client $client -torrent_list $torrents_list -verbos
         }
