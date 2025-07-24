@@ -253,6 +253,8 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
     $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 }
 
+$down = ( $clients_torrents | Where-Object { $_.state -in ( 'stalledDL', 'Downloading' ) } ).count.ToInt16( $null )
+
 $hash_to_id = @{}
 $id_to_info = @{}
 
