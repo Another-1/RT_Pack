@@ -806,7 +806,7 @@ if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or ( $obsolete.Count -gt 0
 elseif ( $update_stats -eq 'Y' -and $php_path ) {
     try { $prev_down = ( Get-Content -Path $down_file -ErrorAction SilentlyContinue ).ToInt16( $null ) }
     catch { $prev_down = (0).ToInt16($null) }
-    if ( $prev_down -ne $down ) {
+    if ( $prev_down -gt $down ) {
         Write-Log 'Обнаружено изменение количества качаемого, имеет смысл отправить отчёт'
         New-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
         $down | Out-File -FilePath $down_file
