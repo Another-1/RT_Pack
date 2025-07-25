@@ -809,8 +809,8 @@ elseif ( $update_stats -eq 'Y' -and $php_path ) {
     if ( $prev_down -gt $down ) {
         Write-Log 'Обнаружено изменение количества качаемого, имеет смысл отправить отчёт'
         New-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
-        $down | Out-File -FilePath $down_file
     }
+    $down | Out-File -FilePath $down_file
 }
 elseif ( $update_stats -ne 'Y' -or !$php_path ) {
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
