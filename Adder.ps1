@@ -816,10 +816,22 @@ elseif ( $update_stats -ne 'Y' -or !$php_path ) {
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
 }
 
-if ( ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or ( $obsolete.Count -gt 0 -and $settings.telegram.report_obsolete -eq 'Y' ) -or ( $broken.count -gt 0 -and $report_broken -eq 'Y' ) -or $notify_nowork -eq 'Y' -or $rss_add_cnt -gt 0 -or $rss_del_cnt -gt 0 ) -and $settings.telegram.tg_token -ne '' -and $settings.telegram.tg_chat -ne '' ) {
+if (
+    ( 
+        $refreshed.Count -gt 0 -or $added.Count -gt 0 `
+            -or ( $obsolete.Count -gt 0 -and $settings.telegram.report_obsolete -eq 'Y' ) `
+            -or ( $broken.count -gt 0 -and $report_broken -eq 'Y' ) `
+            -or $notify_nowork -eq 'Y' -or $rss_add_cnt -gt 0 -or $rss_del_cnt -gt 0 `
+    ) `
+        -and `
+        $settings.telegram.tg_token -ne '' -and $settings.telegram.tg_chat -ne '' ) {
     Send-TGReport -refreshed $refreshed -added $added -rss_add_cnt $rss_add_cnt -rss_del_cnt $rss_del_cnt -obsolete $obsolete -broken $broken -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
-elseif ( $settings.telegram.report_nowork -eq 'Y' -and $settings.telegram.tg_token -ne '' -and $settings.telegram.tg_chat -ne '' ) { 
+elseif (
+    $settings.telegram.report_nowork -eq 'Y' `
+        -and $settings.telegram.tg_token -ne '' `
+        -and $settings.telegram.tg_chat -ne '' `
+) { 
     Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' : ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) + ' отработал, ничего делать не пришлось.' ) -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
 
@@ -867,12 +879,12 @@ if ( $report_stalled -eq 'Y' ) {
             Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/api/update-help' -Headers $headers -Body ( $params | ConvertTo-Json ) -ErrorVariable send_result -UserAgent 'adder' | Out-Null
 
             if ( $send_result.count -eq 0 ) {
-                Write-Log ( 'Отправлено ' + $stalleds.hash.count + ' некачашек' )
             }
             else {
                 Write-Log 'Не удалось отправить некачашки, проверьте пароль.'
             }
         }
+        Write-Log ( 'Отправлено ' + $stalleds.hash.count + ' некачашек' )
     }
     else { Write-Log 'Некачашек не обнаружено' }
 }
