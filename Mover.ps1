@@ -174,7 +174,7 @@ if ( $client.sid ) {
     }
     # Write-Log "Предстоит переместить $( Get-Spell -qty $torrents_list.Count -spelling 2 -entity 'torrents' )"
     foreach ( $torrent in $torrents_list ) {
-        if ( -not $keep_empty_folders.IsPresent -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
+        if ( -not $keep_empty_folders.IsPresent -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path -ErrorAction SilentlyContinue ).Count -eq 0 ) {
             Remove-Item -Path $prev_path -ErrorAction SilentlyContinue
         }
 
