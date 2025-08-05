@@ -117,7 +117,7 @@ if ( $client.sid ) {
         }
         if ( $min_move_days -gt 0 ) {
             Write-Log 'Остеиваем слишком свежие раздачи'
-            $max_add_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_move_days * 24 * 60 * 60
+            $max_add_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_move_days.ToInt32($null) * 24 * 60 * 60
             $torrents_list = @( $torrents_list | Where-Object { $_.added_on -lt $max_add_date } )
             Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
 
@@ -132,7 +132,7 @@ if ( $client.sid ) {
 
         if ( $min_inactive_days -and $min_inactive_days -gt 0 ) {
             Write-Log 'Остеиваем слишком активные раздачи'
-            $max_act_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_inactive_days * 24 * 60 * 60
+            $max_act_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_inactive_days.ToInt32($null) * 24 * 60 * 60
             $torrents_list = @( $torrents_list | Where-Object { $_.last_activity -lt $max_act_date } )
             Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
         }
