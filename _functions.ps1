@@ -1403,6 +1403,18 @@ function Get-RepSeeds( $topic_id, $call_from ) {
     return ( ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).releases[0][1]
 }
 
+function Get-RepRegTime( $topic_id, $call_from ) {
+    Write-Log "Запрашиваем дату добавления раздачи $topic_id"
+    $url = "/krs/api/v1/releases/pvc?topic_ids=$topic_id&columns=reg_time"
+    try {
+        return ( ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).releases[0][1]
+    }
+    catch {
+        Write-Log 'Не получилось' -Red
+        return $null
+    }
+}
+
 function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
     if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
     Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'

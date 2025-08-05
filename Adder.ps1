@@ -632,15 +632,26 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
         $obsolete_torrents = $obsolete_torrents | Where-Object { $_.category -ne $rss.category }
     }
 
-    if ( $rss.client_IP ) {
-        $obsolete_torrents = $obsolete_torrents | Where-Object { $_.client_key -in $settings.tlo_clients.keys }
+    if ( $delayed_obsolete ) {
+        Write-Log 'Удаляем раздачи, которые были обновлены совсем недавно'
+        $tmp_torrents = @{}
+        $obsolete_torrents | Where-Object { $delayed_obsolete[ $_.category ] } | ForEach-Object {
+            $reg_time = Get-RepRegTime $_.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+            if ( ( $reg_time -and $reg_time -le ( Get-Date -AsUTC ).AddDays( 0 - $delayed_obsolete[ $_.category ] ) ) -or $null -eq $reg_time ) {
+                $tmp_torrents += $_
+            }
+        }
+        $obsolete_torrents = $tmp_torrents
+        Remove-Variable -Name tmp_torrents -ErrorAction SilentlyContinue
     }
 
-    $obsolete_torrents | ForEach-Object {
-        if ( !$obsolete ) { $obsolete = @{} }
-        Write-Log ( "Левая раздача " + $_.topic_id + ' в клиенте ' + $_.client_key )
-        if ( !$obsolete[$_.client_key] ) { $obsolete[ $_.client_key] = [System.Collections.ArrayList]::new() }
-        $obsolete[ $_.client_key ] += ( $_.topic_id )
+    if ( $obsolete_torrents.count -gt 0 ) {
+        $obsolete_torrents | ForEach-Object {
+            if ( !$obsolete ) { $obsolete = @{} }
+            Write-Log ( "Левая раздача " + $_.topic_id + ' в клиенте ' + $_.client_key )
+            if ( !$obsolete[$_.client_key] ) { $obsolete[ $_.client_key] = [System.Collections.ArrayList]::new() }
+            $obsolete[ $_.client_key ] += ( $_.topic_id )
+        }
     }
 }
 

@@ -125,7 +125,7 @@ if ( $client.sid ) {
 
         if ( $max_inactive_days -and $max_inactive_days -gt 0 ) {
             Write-Log 'Остеиваем никому не нужные раздачи'
-            $min_act_date = ( Get-Date -UFormat %s ).ToInt32($null) - $max_inactive_days * 24 * 60 * 60
+            $min_act_date = ( Get-Date -UFormat %s ).ToInt32($null) - $max_inactive_days.ToInt32($null) * 24 * 60 * 60
             $torrents_list = @( $torrents_list | Where-Object { $_.last_activity -gt $min_act_date } )
             Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
         }
