@@ -634,7 +634,7 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
 
     if ( $delayed_obsolete ) {
         Write-Log 'Удаляем раздачи, которые были обновлены совсем недавно'
-        $tmp_torrents = @{}
+        $tmp_torrents = @()
         $obsolete_torrents | Where-Object { $delayed_obsolete[ $_.category ] } | ForEach-Object {
             $reg_time = Get-RepRegTime $_.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
             if ( ( $reg_time -and $reg_time -le ( Get-Date -AsUTC ).AddDays( 0 - $delayed_obsolete[ $_.category ] ) ) -or $null -eq $reg_time ) {
