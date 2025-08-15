@@ -906,7 +906,7 @@ if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' ) {
         Update-Stats -wait -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # с паузой.
     }
     else {
-        Update-Stats -send_report:( ( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) -or $force_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона.
+        Update-Stats -send_report:( ( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $prev_down -gt $down ) ) -or $force_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона.
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
 }

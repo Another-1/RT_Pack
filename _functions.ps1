@@ -601,6 +601,16 @@ function Get-TorrentsContent ( $client, $hashes ) {
     Write-Progress -Activity 'Scanning' -Completed
     return $arr
 }
+
+function Get-TorrentPeers ( $client, $hash, [switch]$force ) {
+    if ( !$client.sid -or $force ) {
+        Initialize-Client $client
+    }
+    $data = @{ hash = $hash }
+    $uri = ( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/sync/torrentPeers'
+    Return Invoke-WebRequest -Uri $uri -Body $data -WebSession $client.sid
+}
+
 function Get-ClientTrackerStatus ( $client, $torrent_list, [switch]$verbose ) {
     if ( $torrent_list.count -gt 0 ) {
         if ( $verbose.IsPresent ) {
