@@ -253,6 +253,17 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
     $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 }
 
+if ( $banhammer -eq 'Y' ) {
+    Write-Log 'Ищем подозрительных пиров'
+    foreach ( $torrent in ( $clients_torrents | Where-Object { $_.state -in ( 'downloading', 'uploading', 'forcedUP', 'stalledDL' ) } ) ) {
+        $peers = ( ( Get-TorrentPeers -client $settings.clients[$torrent.client_key] -hash $torrent.hash ).content | ConvertFrom-Json -AsHashtable ).peers
+        foreach ( $peer_key in $peers.Keys | Where-Object { $peers[$_].up_speed -gt 0 -and $peers[$_].progress -eq 0 } ) {
+            Write-Log "$($peers[$peer_key].ip) - $($torrent.Name) - $($peers[$peer_key].client) - $( $peers[$peer_key].peer_id_client )" -Yellow
+            Send-TGMessage -message "Подозрительный пир $($peers[$peer_key].ip) на раздаче $($torrent.Name) с клиентом $($peers[$peer_key].client) и id $( $peers[$peer_key].peer_id_client )"
+        }
+    }
+}
+
 $down = ( $clients_torrents | Where-Object { $_.state -in ( 'stalledDL', 'Downloading' ) } ).count.ToInt16( $null )
 
 $hash_to_id = @{}
