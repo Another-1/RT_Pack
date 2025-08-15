@@ -253,6 +253,7 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
     $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 }
 
+$was_banned = $false
 if ( $banhammer -eq 'Y' ) {
     Write-Log 'Ищем подозрительных пиров'
     foreach ( $torrent in ( $clients_torrents | Where-Object { $_.state -in ( 'downloading', 'uploading', 'forcedUP', 'stalledDL' ) } ) ) {
@@ -268,8 +269,18 @@ if ( $banhammer -eq 'Y' ) {
                 Send-TGMessage -message "Забанен пир $($peers[$peer_key].ip) в клиенте $( $torrent.client_key ) на раздаче $($torrent.Name) с клиентом $($peers[$peer_key].client) и id $( $peers[$peer_key].peer_id_client )" -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
             }
             if ( $banlist -eq 'Y' ) {
+                $was_banned = $true
+                Write-Log 'Добавляем хост в ipfilter.dat'
                 Add-Content -Path ( Join-Path $PSScriptRoot 'ipfilter.dat' ) -Value "$($peers[$peer_key].ip) - $($peers[$peer_key].ip), 17, Banned by Adder"
             }
+        }
+    }
+    if ( $was_banned ) {
+        foreach ( $client_key in $settings.clients.Keys ) {
+            Write-Log "Перечитываем ipfilter.dat в клиенте $_"
+            Switch-Filtering -client $clients[$client_key] -enable $false -mess_sender 'Adder'
+            Start-Sleep -Seconds 1
+            Switch-Filtering $clients[$client_key] -enable $true -mess_sender 'Adder'
         }
     }
 }
