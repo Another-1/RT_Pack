@@ -277,7 +277,7 @@ if ( $banhammer -eq 'Y' ) {
     }
     if ( $was_banned ) {
         foreach ( $client_key in $settings.clients.Keys ) {
-            Write-Log "Перечитываем ipfilter.dat в клиенте $_"
+            Write-Log "Перечитываем ipfilter.dat в клиенте $client_key"
             Switch-Filtering -client $settings.clients[$client_key] -enable $false -mess_sender 'Adder'
             Start-Sleep -Seconds 1
             Switch-Filtering $settings.clients[$client_key] -enable $true -mess_sender 'Adder'
