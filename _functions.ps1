@@ -5,12 +5,13 @@ function Write-Log {
         [string]$str,
         [switch]$Red,
         [switch]$Green,
+        [switch]$Yellow,
         [switch]$NoNewLine,
         [switch]$skip_timestamp,
         [switch]$nologfile
     )
 
-    $color = $( $Red.IsPresent ? [System.ConsoleColor]::Red : $( $Green.IsPresent ? [System.ConsoleColor]::Green : $null ) )
+    $color = $( $Red.IsPresent ? [System.ConsoleColor]::Red : $( $Green.IsPresent ? [System.ConsoleColor]::Green : $( $Yellow.IsPresent ? [System.ConsoleColor]::Yellow : $null ) ) )
     $log_str = ''
     if ( $settings.interface.use_timestamp -eq 'Y' ) {
         $log_str = "$( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) "

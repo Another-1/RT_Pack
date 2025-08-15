@@ -40,7 +40,7 @@ foreach ( $client in $settings.clients.Values ) {
         foreach ( $torrent in ( $torrents_list | Where-Object { $_.state -in ( 'downloading', 'uploading', 'forcedUP', 'stalledDL' ) } ) ) {
             $peers = ( ( Get-TorrentPeers -client $client -hash $torrent.hash ).content | ConvertFrom-Json -AsHashtable ).peers
             foreach ( $peer_key in $peers.Keys | Where-Object { $peers[$_].up_speed -gt 0 -and $peers[$_].progress -eq 0 } ) {
-                Write-Log "$($torrent.Name) $($peers[$peer_key].ip) $($peers[$peer_key].client) $( $peers[$peer_key].peer_id_client )"
+                Write-Log "$($torrent.Name) $($peers[$peer_key].ip) $($peers[$peer_key].client) $( $peers[$peer_key].peer_id_client )" -Yellow
             }
         }
     }
