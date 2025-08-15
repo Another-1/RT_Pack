@@ -612,6 +612,15 @@ function Get-TorrentPeers ( $client, $hash, [switch]$force ) {
     Return Invoke-WebRequest -Uri $uri -Body $data -WebSession $client.sid
 }
 
+function Lock-IP ( $client, $ip ) {
+    if ( !$client.sid -or $force ) {
+        Initialize-Client $client
+    }
+    $data = @{ peers = "$($ip):1000" }
+    $uri = ( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/transfer/banPeers'
+    Invoke-WebRequest -Uri $uri -Body $data -WebSession $client.sid -Method Post
+}
+
 function Get-ClientTrackerStatus ( $client, $torrent_list, [switch]$verbose ) {
     if ( $torrent_list.count -gt 0 ) {
         if ( $verbose.IsPresent ) {
