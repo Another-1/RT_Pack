@@ -257,7 +257,7 @@ if ( $banhammer -eq 'Y' ) {
     Write-Log 'Ищем подозрительных пиров'
     foreach ( $torrent in ( $clients_torrents | Where-Object { $_.state -in ( 'downloading', 'uploading', 'forcedUP', 'stalledDL' ) } ) ) {
         $peers = ( ( Get-TorrentPeers -client $settings.clients[$torrent.client_key] -hash $torrent.hash ).content | ConvertFrom-Json -AsHashtable ).peers
-        foreach ( $peer_key in $peers.Keys | Where-Object { $peers[$_].up_speed -gt 0 -and $peers[$_].progress -eq 0 } ) {
+        foreach ( $peer_key in $peers.Keys | Where-Object { $peers[$_].up_speed -gt 0 -and $peers[$_].uploaded -eq 0 } ) {
             if ( $autoban -ne 'Y' ) {
                 Write-Log "$($peers[$peer_key].ip) - $($torrent.Name) - $($peers[$peer_key].client) - $( $peers[$peer_key].peer_id_client )" -Yellow
                 Send-TGMessage -message "Подозрительный пир $($peers[$peer_key].ip) в клиенте $( $torrent.client_key ) на раздаче $($torrent.Name) с клиентом $($peers[$peer_key].client) и id $( $peers[$peer_key].peer_id_client )" -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
@@ -266,6 +266,9 @@ if ( $banhammer -eq 'Y' ) {
                 Write-Log "Забанен $($peers[$peer_key].ip) - $($torrent.Name) - $($peers[$peer_key].client) - $( $peers[$peer_key].peer_id_client )" -Yellow
                 Lock-IP -client $settings.clients[$torrent.client_key] -ip $peers[$peer_key].ip
                 Send-TGMessage -message "Забанен пир $($peers[$peer_key].ip) в клиенте $( $torrent.client_key ) на раздаче $($torrent.Name) с клиентом $($peers[$peer_key].client) и id $( $peers[$peer_key].peer_id_client )" -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+            }
+            if ( $banlist -eq 'Y' ) {
+                Add-Content -Path ( Join-Path $PSScriptRoot 'ipfilter.dat' ) -Value "$($peers[$peer_key].ip) - $($peers[$peer_key].ip), 17, Banned by Adder"
             }
         }
     }
