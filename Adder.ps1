@@ -259,7 +259,7 @@ if ( $banhammer -eq 'Y' ) {
         $peers = ( ( Get-TorrentPeers -client $settings.clients[$torrent.client_key] -hash $torrent.hash ).content | ConvertFrom-Json -AsHashtable ).peers
         foreach ( $peer_key in $peers.Keys | Where-Object { $peers[$_].up_speed -gt 0 -and $peers[$_].progress -eq 0 } ) {
             Write-Log "$($peers[$peer_key].ip) - $($torrent.Name) - $($peers[$peer_key].client) - $( $peers[$peer_key].peer_id_client )" -Yellow
-            Send-TGMessage - -message "Подозрительный пир $($peers[$peer_key].ip) в клиенте $( $torrent.client_key ) на раздаче $($torrent.Name) с клиентом $($peers[$peer_key].client) и id $( $peers[$peer_key].peer_id_client )" -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+            Send-TGMessage -message "Подозрительный пир $($peers[$peer_key].ip) в клиенте $( $torrent.client_key ) на раздаче $($torrent.Name) с клиентом $($peers[$peer_key].client) и id $( $peers[$peer_key].peer_id_client )" -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
         }
     }
 }
