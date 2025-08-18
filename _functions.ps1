@@ -1285,11 +1285,13 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender 
     $tag_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/addTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
     try {
-        Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+        $req = ( Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid )
+        Write-Log ( 'Клиент ответил: ' + $req.StatusCode.ToString( ) + ' ' + $req.StatusDescription + $req.Content )
     }
     catch {
         Initialize-Client -client $client -force -mess_sender $mess_sender
         Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid | Out-Null
+        Write-Log ( 'Клиент ответил: ' + $req.StatusCode.ToString( ) + ' ' + $req.StatusDescription + $req.Content )
     }
 }
 
