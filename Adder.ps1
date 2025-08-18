@@ -734,7 +734,7 @@ if ( $rss ) {
         Set-ClientSetting $settings.clients[$rss.client] 'temp_path_enabled' $false
         Write-Log 'Отключаем преаллокацию'
         Set-ClientSetting $settings.clients[$rss.client] 'preallocate_all' $false
-        foreach ( $rss_record in $rss_data ) {
+        foreach ( $rss_record in ( $rss_data | Sort-Object -Property { $_[2] } ) ) {
             $requester = $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger'
             $rss_ids += $rss_record[1].ToInt64($null)
             if ( !$rss.skip -or $rss_record[1] -notin $rss.skip ) {
@@ -773,14 +773,14 @@ if ( $rss ) {
                         if ( $i -lt 10 ) {
                             if ( $success -eq $true ) {
                                 if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
-                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $requester # кто запросил
+                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $fresh_hash } -label $requester # кто запросил
                                 }
                                 Start-Sleep -Seconds 1
                                 if ( $rss_record[6] -eq 1 ) {
-                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( '_Restored' ) # восстановление?
+                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $fresh_hash } -label $( '_Restored' ) # восстановление?
                                 }
                                 else {
-                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $rss_record[3] } -label $( $rss_record[7] -le 3 ? '_Help' : '_Load' ) # через что запросил
+                                    Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $fresh_hash } -label $( $rss_record[7] -le 3 ? '_Help' : '_Load' ) # через что запросил
                                 }
                             }
                             $rss_add_cnt++
