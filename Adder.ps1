@@ -678,6 +678,7 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
             else { $tmp_torrents += $_ }
         }
         $obsolete_torrents = $tmp_torrents
+        Write-Log "Осталось $( $obsolete_torrents.count ) неактуальных раздач"
         Remove-Variable -Name tmp_torrents -ErrorAction SilentlyContinue
     }
 
