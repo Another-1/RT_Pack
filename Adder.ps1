@@ -663,6 +663,7 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
     if ( $rss ) {
         $obsolete_torrents = $obsolete_torrents | Where-Object { $_.category -ne $rss.category }
     }
+    Write-Log "Найдено $( $obsolete_torrents.count ) неактуальных раздач"
 
     if ( $delayed_obsolete ) {
         Write-Log 'Удаляем раздачи, которые были обновлены совсем недавно'
