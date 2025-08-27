@@ -269,7 +269,7 @@ function Test-ForumWorkingHours ( [switch]$verbose, [switch]$break ) {
     }
     if ( ( Get-Date($MoscowTime) -UFormat %H ) -eq '04' ) {
         if ( $use_working_minutes -ne 'Y' -or ( Get-Date($MoscowTime) -UFormat %M ) -in 35..45 ) {
-            Write-Log 'Профилактические работы на сервере' -ForegroundColor -Red
+            Write-Log 'Профилактические работы на сервере' -Red
             if ( $break.IsPresent ) {
                 exit
             }

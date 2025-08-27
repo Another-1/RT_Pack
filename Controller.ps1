@@ -183,14 +183,13 @@ $lv_str = "$lv_str1`n$lv_str2"
 Write-Log ( $lv_str1 + $lv_str2 )
 if ( $report_controller -eq 'Y') { Send-TGMessage -message $lv_str -token $tg_token -chat_id $tg_chat -mess_sender 'Controller' }
 
-# $now = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-$now =  Get-Date -UFormat %s
-$grafana_data = @()
-foreach ($label in $started_counts.Keys) {
-    $grafana_data += [PSCustomObject]@{
-        time  = $now
-        label = $label
-        value = $started_counts[$label]
-    }
-}
-$grafana_data | ConvertTo-Json -Compress | Out-File -FilePath 'C:\Software\AdblockListGenerator\WWW\seeding.json'
+# $now =  Get-Date -UFormat %s
+# $grafana_data = @()
+# foreach ($label in $started_counts.Keys) {
+#     $grafana_data += [PSCustomObject]@{
+#         time  = $now
+#         label = $label
+#         value = $started_counts[$label]
+#     }
+# }
+# $grafana_data | ConvertTo-Json -Compress | Out-File -FilePath 'C:\Software\AdblockListGenerator\WWW\seeding.json'
