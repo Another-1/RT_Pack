@@ -311,16 +311,17 @@ $new_torrents_keys = $tracker_torrents.keys | Where-Object { $null -eq $hash_to_
 $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
 Write-Log ( "Найдено: $spell" )
 
-$new_torrents_keys_2 = @()
+$new_torrents_keys_2 = @{}
 if ( $max_seeds -ne -1 ) {
     Write-Log "Отсеиваем (только от добавления) раздачи с количеством сидов больше $max_seeds"
-    $new_torrents_keys_2 = $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds }
+    # $new_torrents_keys_2 = $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds }
+    $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds } | ForEach-Object { $new_torrents_keys_2[$_] = 1 }
     Write-Log ( 'Отсеялось раздач: ' + ( $new_torrents_keys.count - $new_torrents_keys_2.count ) )
 
     # $spell = Get-Spell $new_torrents_keys_2.count 1 'torrents'
     # Write-Log ( "Осталось : $spell" )
 }
-else { $new_torrents_keys_2 = $new_torrents_keys }
+else { $new_torrents_keys | ForEach-Object { $new_torrents_keys_2[$_] = 1 } }
 
 if ( $get_hidden -and $get_hidden -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи из скрытых и праздничных разделов'
@@ -508,7 +509,7 @@ if ( $new_torrents_keys ) {
 
             }
         }
-        elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) -and $new_torrent_key -in $new_torrents_keys_2 ) {
+        elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) -and $null -ne $new_torrents_keys_2[$new_torrent_key] ) {
             # $mask_passed = $true
             # сначала проверяем по базе неподходящих раздач в БД TLO
             Remove-Variable mask_passed -ErrorAction SilentlyContinue
@@ -620,7 +621,7 @@ if ( $new_torrents_keys ) {
             }
         }
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) `
-                -and $new_torrent_key -notin $new_torrents_keys_2 ) {
+                -and !$new_torrents_keys_2[$new_torrent_key] ) {
             # раздача слишком многосидовая для добавления (но была бы нормальная для обновления, просто оказалось нечего обновлять)
         }
         elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( (Get-Date).ToUniversalTime().AddDays( 0 - $min_delay ) ) ) {
@@ -648,7 +649,9 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
     Write-Log 'Ищем неактуальные раздачи.'
     if ( $forced_sections -and $db_hash_to_id ) {
         # $hash_to_id = $hash_to_id.keys{ key = $_; value = $hash_to_id[ ( $hash_to_id.keys | Where-Object { $db_hash_to_id[$_] } ) ] }
-        $hash_to_id = $hash_to_id.keys | Where-Object { $tracker_torrents[$_] } | ForEach-Object { @{ $_ = $hash_to_id[$_] } }
+        # $hash_to_id = $hash_to_id.keys | Where-Object { $tracker_torrents[$_] } | ForEach-Object { @{ $_ = $hash_to_id[$_] } }
+        # $hash_to_id = $hash_to_id.keys | Where-Object { $db_hash_to_id[$_] } | ForEach-Object { @{ $_ = $db_hash_to_id[$_] } }
+        $hash_to_id.Keys | Where-Object { $null -eq $hash_to_id[$_] } | ForEach-Object { $hash_to_id[$_] = $db_hash_to_id[$_] }
     }
     $obsolete_keys = @($hash_to_id.Keys | Where-Object { !$tracker_torrents[$_] })
     if ( $rss.client_ip ) {
