@@ -238,7 +238,9 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torr
         $settings.adder.avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' ) 
         # $tracker_torrents = Get-RepTorrents -sections $all_sections -id $settings.connection.user_id -api_key $settings.connection.api_key -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$settings.adder.avg_seeds
         $conn = Open-TLODatabase
-        $tracker_torrents = Get-RepTorrents -sections $( $forced_sections -and ( $control -ne 'Y') ? $section_numbers : $all_sections ) -id $settings.connection.user_id -api_key $settings.connection.api_key `
+        # $tracker_torrents = Get-RepTorrents -sections $( $forced_sections -and ( $control -ne 'Y') ? $section_numbers : $all_sections ) -id $settings.connection.user_id -api_key $settings.connection.api_key `
+        #     -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$settings.adder.avg_seeds -conn $conn
+        $tracker_torrents = Get-RepTorrents -sections $all_sections -id $settings.connection.user_id -api_key $settings.connection.api_key `
             -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$settings.adder.avg_seeds -conn $conn
         $conn.Close()
     }
@@ -311,17 +313,13 @@ $new_torrents_keys = $tracker_torrents.keys | Where-Object { $null -eq $hash_to_
 $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
 Write-Log ( "Найдено: $spell" )
 
-$new_torrents_keys_2 = @{}
+$new_torrents_less_seeds = @{}
 if ( $max_seeds -ne -1 ) {
     Write-Log "Отсеиваем (только от добавления) раздачи с количеством сидов больше $max_seeds"
-    # $new_torrents_keys_2 = $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds }
-    $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds } | ForEach-Object { $new_torrents_keys_2[$_] = 1 }
-    Write-Log ( 'Отсеялось раздач: ' + ( $new_torrents_keys.count - $new_torrents_keys_2.count ) )
-
-    # $spell = Get-Spell $new_torrents_keys_2.count 1 'torrents'
-    # Write-Log ( "Осталось : $spell" )
+    $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds } | ForEach-Object { $new_torrents_less_seeds[$_] = 1 }
+    Write-Log ( 'Отсеялось раздач: ' + ( $new_torrents_keys.count - $new_torrents_less_seeds.count ) )
 }
-else { $new_torrents_keys | ForEach-Object { $new_torrents_keys_2[$_] = 1 } }
+else { $new_torrents_keys | ForEach-Object { $new_torrents_less_seeds[$_] = 1 } }
 
 if ( $get_hidden -and $get_hidden -eq 'N' ) {
     Write-Log 'Отсеиваем раздачи из скрытых и праздничных разделов'
@@ -364,12 +362,7 @@ if ( $nul -ne $get_blacklist -and $get_blacklist.ToUpper() -eq 'N' ) {
 
 if ( $masks_db ) {
     Write-Log 'Отфильтровываем уже известные раздачи по маскам'
-    # $new_torrents_keys = $new_torrents_keys | Where-Object { !$masks_db_plain[$tracker_torrents[$_].topic_id] }
-    # $new_torrents_keys_tmp = @()
-    # foreach ( $key in $new_torrents_keys ) {
     $new_torrents_keys = $new_torrents_keys | Where-Object { $null -eq $masks_db[$tracker_torrents[$_].section] -or $null -eq $masks_db[$tracker_torrents[$_].section][$tracker_torrents[$_].topic_id] }
-    # }
-    # }
     Write-Log ( 'Осталось раздач: ' + $new_torrents_keys.count )
 }
 
@@ -401,7 +394,10 @@ if ( $new_torrents_keys ) {
     
     $ProgressPreference = 'Continue'
     $cntr = 0
-    foreach ( $new_torrent_key in $new_torrents_keys | Where-Object { $settings.sections[$tracker_torrents[$_].section] -and ( !$never_obsolete -or $tracker_torrents[$_].section -notin $never_obsolete_array ) } ) {
+    foreach ( $new_torrent_key in $new_torrents_keys | `
+            Where-Object { $settings.sections[$tracker_torrents[$_].section] `
+                -and ( !$never_obsolete -or $tracker_torrents[$_].section -notin $never_obsolete_array ) `
+                -and ( !$forced_sections -or $tracker_torrents[$_].section -in $section_numbers ) } ) {
         $cntr++
         # Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
         Write-Progress -Activity 'Обработка найденных раздач' -Status $new_torrent_key -PercentComplete ( $cntr * 100 / $new_torrents_keys.count )
@@ -509,7 +505,7 @@ if ( $new_torrents_keys ) {
 
             }
         }
-        elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) -and $null -ne $new_torrents_keys_2[$new_torrent_key] ) {
+        elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) -and $null -ne $new_torrents_less_seeds[$new_torrent_key] ) {
             # $mask_passed = $true
             # сначала проверяем по базе неподходящих раздач в БД TLO
             Remove-Variable mask_passed -ErrorAction SilentlyContinue
@@ -621,7 +617,7 @@ if ( $new_torrents_keys ) {
             }
         }
         elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) `
-                -and !$new_torrents_keys_2[$new_torrent_key] ) {
+                -and !$new_torrents_less_seeds[$new_torrent_key] ) {
             # раздача слишком многосидовая для добавления (но была бы нормальная для обновления, просто оказалось нечего обновлять)
         }
         elseif ( !$existing_torrent -eq 'Y' -and $get_news -eq 'Y' -and $new_tracker_data.reg_time -ge ( (Get-Date).ToUniversalTime().AddDays( 0 - $min_delay ) ) ) {
