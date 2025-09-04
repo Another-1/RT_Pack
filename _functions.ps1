@@ -1081,23 +1081,6 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             #     }
             # }
 
-            if ( $tg_data.message -ne '' -and $broken.count -gt 0 ) { $tg_data.message += "`n" }
-            $first = $true
-            foreach ( $client in $broken.Keys ) {
-                if ( !$first ) { $tg_data.message += "`n" }
-                $first = $false
-                $tg_data.message += "Ошибки в клиенте $($client.name) :`n"
-                $broken[$client] | ForEach-Object {
-                    $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$_`n"
-                    Add-TGMessage $tg_data
-                    # Add-TGMessage "https://rutracker.org/forum/viewtopic.php?t=$_`n"
-                    if ( $id_to_info[$_].name ) {
-                        # Add-TGMessage ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
-                        $tg_data.line = $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n"
-                        Add-TGMessage $tg_data
-                    }
-                }
-            }
         }
         else { # краткая форма
             $tg_data.message = ''
@@ -1171,8 +1154,8 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             if ( !$first ) { $tg_data.message += "`n" }
             $first = $false
             $tg_data.message += "Ошибки в клиенте $($client.name) :`n"
-            $broken[$client] | ForEach-Object {
-                $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$_`n"
+            ($broken[$client]).keys | ForEach-Object {
+                $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$_`n$($broken[$client][$_])`n"
                 Add-TGMessage $tg_data
                 # Add-TGMessage "https://rutracker.org/forum/viewtopic.php?t=$_`n"
                 if ( $id_to_info[$_].name ) {

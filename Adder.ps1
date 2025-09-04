@@ -696,9 +696,9 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
     Write-Log 'Ищем проблемные раздачи.'
     $clients_torrents | Where-Object { $_.state -in ( 'missingFiles', 'error' ) } | ForEach-Object {
         if ( !$broken ) { $broken = @{ } }
-        Write-Log ( "Проблемная раздача " + $_.topic_id + ' в клиенте ' + $_.client_key )
-        if ( !$broken[$settings.clients[$_.client_key]] ) { $broken[ $settings.clients[$_.client_key]] = [System.Collections.ArrayList]::new() }
-        $broken[$settings.clients[$_.client_key]] += ( $_.topic_id )
+        Write-Log ( "Проблемная раздача " + $_.topic_id + ' в клиенте ' + $_.client_key + ' по пути ' + $_.save_path )
+        if ( !$broken[$settings.clients[$_.client_key]] ) { $broken[ $settings.clients[$_.client_key]] = @{} }
+        $broken[$settings.clients[$_.client_key]][$_.topic_id] = $_.save_path
     }
 }
 
