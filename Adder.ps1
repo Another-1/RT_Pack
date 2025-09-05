@@ -295,7 +295,7 @@ $id_to_info = @{}
 Write-Log 'Сортируем таблицы'
 $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
     if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
-    $hash_to_id[$_.infohash_v1] = $_.topic_id
+    $hash_to_id[$_.infohash_v1] = $_.topic_id.ToInt64($null)
 
     $id_to_info[$_.topic_id.ToInt64($null)] = @{
         client_key = $_.client_key # string
