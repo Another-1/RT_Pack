@@ -62,11 +62,13 @@ if ( !$debug ) {
     Test-Module 'PsIni' 'для чтения настроек TLO'
     Test-Module 'PSSQLite' 'для работы с базой TLO'
     Write-Log 'Проверяем актуальность скриптов' 
-    if ( ( Test-Version -name '_functions.ps1' -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) -eq $true ) {
-        Write-Log 'Запускаем новую версию _functions.ps1'
-        . ( Join-Path $PSScriptRoot '_functions.ps1' )
+    if ( $check_update -ne 'N' ) {
+        if ( ( Test-Version -name '_functions.ps1' -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) -eq $true ) {
+            Write-Log 'Запускаем новую версию _functions.ps1'
+            . ( Join-Path $PSScriptRoot '_functions.ps1' )
+        }
+        Test-Version -name ( $PSCommandPath | Split-Path -Leaf ) -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
     }
-    Test-Version -name ( $PSCommandPath | Split-Path -Leaf ) -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
 
 try { . ( Join-Path $PSScriptRoot '_client_ssd.ps1' ) } catch { }
