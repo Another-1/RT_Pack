@@ -62,7 +62,7 @@ function Test-Version {
     try {
         $old_hash = ( Get-FileHash -Path ( Join-Path $PSScriptRoot $name ) ).Hash
         $new_file_path = ( Join-Path $PSScriptRoot $name.replace( '.ps1', '.new' ) )
-        Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path | Out-Null
+        Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 | Out-Null
         if ( Test-Path $new_file_path ) {
             $new_hash = ( Get-FileHash -Path $new_file_path ).Hash
             if ( $old_hash -ne $new_hash ) {
