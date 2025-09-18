@@ -62,6 +62,22 @@ function Test-Version {
     try {
         $old_hash = ( Get-FileHash -Path ( Join-Path $PSScriptRoot $name ) ).Hash
         $new_file_path = ( Join-Path $PSScriptRoot $name.replace( '.ps1', '.new' ) )
+
+        if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
+            if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url используя прокси $($settings.connection.proxy.url )" }
+            if ( $settings.connection.proxy.credentials ) {
+                Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials | Out-Null
+            }
+            else {
+                Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 -Proxy $settings.connection.proxy.url | Out-Null
+            }
+        }
+        else {
+            if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url без прокси, напрямую" }
+            Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 | Out-Null
+        }
+
+
         Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 | Out-Null
         if ( Test-Path $new_file_path ) {
             $new_hash = ( Get-FileHash -Path $new_file_path ).Hash
