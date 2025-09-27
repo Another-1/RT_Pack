@@ -69,12 +69,12 @@ function Test-Version {
         #         Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials | Out-Null
         #     }
         #     else {
-        # Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 -Proxy $settings.connection.proxy.url | Out-Null
-        # }
+                # Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 -Proxy $settings.connection.proxy.url | Out-Null
+            # }
         # }
         # else {
         #     if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url без прокси, напрямую" }
-        Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 | Out-Null
+            Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 | Out-Null
         # }
 
         if ( Test-Path $new_file_path ) {
@@ -623,7 +623,7 @@ function Get-TorrentPeers ( $client, $hash, [switch]$force ) {
     }
     $data = @{ hash = $hash }
     $uri = ( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/sync/torrentPeers'
-    return Invoke-WebRequest -Uri $uri -Body $data -WebSession $client.sid
+    Return Invoke-WebRequest -Uri $uri -Body $data -WebSession $client.sid
 }
 
 function Lock-IP ( $client, $ip ) {
@@ -1039,8 +1039,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
     $tg_data = @{}
     $tg_data.messages = [System.Collections.ArrayList]::new()
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 -or $broken.Count -gt 0 -or $rss_add_cnt -gt 0 -or $rss_del_cnt -gt 0 ) {
-        if ( $brief_reports -ne 'Y') {
-            # полная форма
+        if ( $brief_reports -ne 'Y') { # полная форма
             $tg_data.message = ''
             $first = $true
             foreach ( $client in $refreshed.Keys ) {
@@ -1097,8 +1096,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             # }
 
         }
-        else {
-            # краткая форма
+        else { # краткая форма
             $tg_data.message = ''
             $keys = (  $refreshed.keys + $added.keys + $obsolete.Keys ) | Sort-Object -Unique
             [double]$added_b = 0
