@@ -713,7 +713,7 @@ if ( $rss ) {
     while ( $true ) {
         try {
             # $rss_data = ( Invoke-RestMethod -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).description.'#cdata-section'
-            $rss_data = ( ( Invoke-WebRequest -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) | ConvertFrom-Json ).result
+            $rss_data = ( ( Invoke-WebRequest -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')  -ConnectionTimeoutSeconds 30 ) | ConvertFrom-Json ).result
             Write-Log 'Лента скачана'
             break
         }
