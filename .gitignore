@@ -15,6 +15,7 @@ Migrator.ps1
 *.json
 *.ini
 *.db
+*.new
 *.torrent
 *new.ps1
 *.was
