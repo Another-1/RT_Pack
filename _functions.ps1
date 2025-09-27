@@ -62,21 +62,8 @@ function Test-Version {
     try {
         $old_hash = ( Get-FileHash -Path ( Join-Path $PSScriptRoot $name ) ).Hash
         $new_file_path = ( Join-Path $PSScriptRoot $name.replace( '.ps1', '.new' ) )
-
-        # if ( $settings.connection.proxy.use_for_forum.ToUpper() -eq 'Y' -and $settings.connection.proxy.ip -and $settings.connection.proxy.ip -ne '' ) {
-        #     if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url используя прокси $($settings.connection.proxy.url )" }
-        #     if ( $settings.connection.proxy.credentials ) {
-        #         Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials | Out-Null
-        #     }
-        #     else {
-                # Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 -Proxy $settings.connection.proxy.url | Out-Null
-            # }
-        # }
-        # else {
-        #     if ( $request_details -eq 'Y' ) { Write-Log "Идём на $login_url без прокси, напрямую" }
-            Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 | Out-Null
-        # }
-
+        Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 | Out-Null
+        # if ( req.StatusCode -eq 200 ) {
         if ( Test-Path $new_file_path ) {
             $new_hash = ( Get-FileHash -Path $new_file_path ).Hash
             if ( $old_hash -ne $new_hash ) {
@@ -107,9 +94,10 @@ function Test-Version {
             }
             Remove-Item $new_file_path -ErrorAction SilentlyContinue
         } 
+        # }
     }
     catch {
-        Write-Log "[Test-Version] Ошибка: $($_.Exception.Message)" -Red
+        Write-Log "[Test-Version] Ошибка: $($_.Exception.Message) при обновлении $name" -Red
     }
 }
 
@@ -623,7 +611,7 @@ function Get-TorrentPeers ( $client, $hash, [switch]$force ) {
     }
     $data = @{ hash = $hash }
     $uri = ( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/sync/torrentPeers'
-    Return Invoke-WebRequest -Uri $uri -Body $data -WebSession $client.sid
+    return Invoke-WebRequest -Uri $uri -Body $data -WebSession $client.sid
 }
 
 function Lock-IP ( $client, $ip ) {
@@ -1039,7 +1027,8 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
     $tg_data = @{}
     $tg_data.messages = [System.Collections.ArrayList]::new()
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $obsolete.Count -gt 0 -or $broken.Count -gt 0 -or $rss_add_cnt -gt 0 -or $rss_del_cnt -gt 0 ) {
-        if ( $brief_reports -ne 'Y') { # полная форма
+        if ( $brief_reports -ne 'Y') {
+            # полная форма
             $tg_data.message = ''
             $first = $true
             foreach ( $client in $refreshed.Keys ) {
@@ -1096,7 +1085,8 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             # }
 
         }
-        else { # краткая форма
+        else {
+            # краткая форма
             $tg_data.message = ''
             $keys = (  $refreshed.keys + $added.keys + $obsolete.Keys ) | Sort-Object -Unique
             [double]$added_b = 0
