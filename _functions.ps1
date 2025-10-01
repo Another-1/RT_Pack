@@ -22,6 +22,9 @@ function Write-Log {
     if ( $mention_script_log -eq 'Y') {
         $call_stack = Get-PSCallStack
         $script_name = "#$($call_stack[$call_stack.length - 1].command.replace( '.ps1', '')) "
+        if ( $script_name -eq '#<ScriptBlock> ' ) {
+            $script_name = "#$($call_stack[$call_stack.length - 2].command.replace( '.ps1', '')) "
+        }
         $log_str += $script_name
         Write-Host $script_name -ForegroundColor Green -NoNewline
     }
