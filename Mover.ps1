@@ -213,9 +213,10 @@ if ( $client.sid ) {
                     }
                 }
                 else { $copy_dest = $path_to }
-                Write-Log "Будем перемещать $($torrent.name) размером $( to_kmg $torrent.size 2 ) из $path_from в $path_to"
+                Write-Log "Будем перемещать $($torrent.name) размером $( to_kmg $torrent.size 2 ) из $($torrent.save_path) в $copy_dest"
                 if ( $path_from -ne $path_to -or $client.IP -ne $client_to.IP ) {
-                    Copy-Item -Path $torrent.save_path -Destination ( ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) ) -Recurse
+                    $secs = Measure-Command { Copy-Item -Path $torrent.save_path -Destination ( ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) ) -Recurse }
+                    Write-Log "Перемещение заняло $($secs.Seconds) секунд"
                 }
                 # robocopy $torrent.save_path ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) /MIR /nfl /ndl /eta /njh /njs
                 $fake_torrents_list = @( @{ hash = $torrent.hash } )
