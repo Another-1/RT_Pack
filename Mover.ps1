@@ -4,10 +4,10 @@ $window_title = 'Mover'
 Write-Host "$([char]0x1B)]0;$window_title`a"
 
 Write-Host 'Проверяем версию Powershell...'
-If ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
+if ( $PSVersionTable.PSVersion -lt [version]'7.1.0.0') {
     Write-Host 'У вас слишком древний Powershell, обновитесь с https://github.com/PowerShell/PowerShell#get-powershell ' -ForegroundColor Red
     Pause
-    Exit
+    exit
 }
 
 if ( Test-Path ( Join-Path $PSScriptRoot 'settings.json') ) {
@@ -107,7 +107,7 @@ if ( $client.sid ) {
         # Write-Log "Получено: $( Get-Spell $torrents_list.Count )"
 
         Write-Log 'Отсеиваем раздачи с не тем путём'
-        $torrents_list = $torrents_list| Where-Object { $_.save_path -like "*${path_from}*".Replace('[','`[').Replace(']','`]' ) }
+        $torrents_list = $torrents_list | Where-Object { $_.save_path -like "*${path_from}*".Replace('[', '`[').Replace(']', '`]' ) }
         Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
 
         if ( $client_to -ne $client ) {
@@ -199,12 +199,14 @@ if ( $client.sid ) {
             }
             else {
                 Remove-Variable prev_path -ErrorAction SilentlyContinue
-                # if ( -not ( Test-ForumWorkingHours ) ) {
-                #     Write-Log 'Подождём часик' -Red
-                #     Start-Sleep -Seconds ( 3600 )
-                # }
+
+                if ( $null -eq $torrent.topic_id ) {
+                    $fake_torrents_list = @( @{ hash = $torrent.hash } )
+                    Get-TopicIDs -client $client -torrent_list $fake_torrents_list
+                    $torrent.topic_id = $fake_torrents_list[0].topic_id 
+                }
                 if ( $pairs -and $pairs[$client_to.Name] ) {
-                    Foreach ( $pair in $pairs[$client_to.Name].Keys ) {
+                    foreach ( $pair in $pairs[$client_to.Name].Keys ) {
                         $copy_dest = $path_to.replace( $pair, $pairs[$client_to.Name][$pair] )
                         if ( $copy_dest -and $copy_dest -ne $path_to ) {
                             Write-Log "Используется подмена шары $path_to -> $copy_dest"
@@ -212,18 +214,14 @@ if ( $client.sid ) {
                         }
                     }
                 }
-                else { $copy_dest = $path_to }
+                else { $copy_dest = $new_path }
                 Write-Log "Будем перемещать $($torrent.name) размером $( to_kmg $torrent.size 2 ) из $($torrent.save_path) в $copy_dest"
                 if ( $path_from -ne $path_to -or $client.IP -ne $client_to.IP ) {
-                    $secs = Measure-Command { Copy-Item -Path $torrent.save_path -Destination ( ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) ) -Recurse }
+                    $secs = Measure-Command { Copy-Item -LiteralPath $torrent.save_path -Destination $copy_dest -Recurse -Force }
                     Write-Log "Перемещение заняло $($secs.Seconds) секунд"
                 }
-                # robocopy $torrent.save_path ( Join-Path $copy_dest ( $torrent.save_path.replace( $path_from, '' ) ) ) /MIR /nfl /ndl /eta /njh /njs
-                $fake_torrents_list = @( @{ hash = $torrent.hash } )
-                Get-TopicIDs -client $client -torrent_list $fake_torrents_list
-                # $torrent_file = Get-ForumTorrentFile $fake_torrents_list[0].topic_id -save_path $PSScriptRoot
-                Export-ClientTorrentFile -client $client -hash $torrent.hash -save_path ( Join-Path $PSScriptRoot "$( $fake_torrents_list[0].topic_id ).torrent" )
-                $torrent_file = Get-Item ( Join-Path $PSScriptRoot "$($fake_torrents_list[0].topic_id).torrent" )
+                Export-ClientTorrentFile -client $client -hash $torrent.hash -save_path ( Join-Path $PSScriptRoot "$( $torrent.topic_id ).torrent" )
+                $torrent_file = Get-Item ( Join-Path $PSScriptRoot  "$( $torrent.topic_id ).torrent" )
                 $is_OK = Add-ClientTorrent -client $client_to -file $torrent_file -path $new_path -category $torrent.category -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' ) -Skip_checking
                 if ( $is_ok ) {
                     Write-Log "$($torrent.name)   $( to_kmg $torrent.size 2 ) " -Green
