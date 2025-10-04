@@ -610,11 +610,11 @@ if ( $new_torrents_keys ) {
                         Set-Comment -client $client -torrent $client_torrent -label $news_label -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 
                     }
-                    if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_token ) {
+                    # if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_token ) {
                         if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
                         if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
                         $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
-                    }
+                    # }
                 }
             }
         }
