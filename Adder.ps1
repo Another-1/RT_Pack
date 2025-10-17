@@ -611,9 +611,9 @@ if ( $new_torrents_keys ) {
 
                     }
                     # if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_token ) {
-                        if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
-                        if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
-                        $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
+                    if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
+                    if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
+                    $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
                     # }
                 }
             }
@@ -713,7 +713,7 @@ if ( $rss ) {
     while ( $true ) {
         try {
             # $rss_data = ( Invoke-RestMethod -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).description.'#cdata-section'
-            $rss_data = ( ( Invoke-WebRequest -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')  -ConnectionTimeoutSeconds 30 ) | ConvertFrom-Json ).result
+            $rss_data = ( ( Invoke-WebRequest -Uri $rss.url -UserAgent ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -ConnectionTimeoutSeconds 30 ) | ConvertFrom-Json ).result
             Write-Log 'Лента скачана'
             break
         }
@@ -748,34 +748,45 @@ if ( $rss ) {
                     if ( !$ignored -or $requester -notin $ignored ) {
                         Write-Log "Проверим, что раздача $($rss_record[1]) ещё существует"
                         $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
-                        # $fresh_hash = ( ( Invoke-WebRequest -Uri "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" ).content | ConvertFrom-Json -AsHashtable ).result.Values[0]
+                        # $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0].info_hash
                         if ( !$fresh_hash ) {
-                            Write-Log 'Раздача уже не существует'
-                            continue
+                            Write-Log 'Не удалось получить хэш раздачи из API, возможно она на премодерации'
+                            Write-Log 'Зайдём с другого API и попробуем получить хэш'
+                            $unregistered_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0].info_hash
+                            if ( !$unregistered_hash ) {
+                                Write-Log 'Раздача уже не существует'
+                                continue
+                            }
+                            else {
+                                Write-Log "Другой API считает, что у этой раздачи хэш $unregistered_hash"
+                                if ( $unregistered_hash -in ( $clients_torrents | Where-Object { $_.client_key -eq 'RSS' } | ForEach-Object { $_.hash } ) ) {
+                                    Write-Log 'Раздача уже есть в клиенте RSS'
+                                    continue
+                                }
+                            }
                         }
-                        else { Write-Log "API считает, что у этой раздачи хэш $fresh_hash" }
+                        else {
+                            Write-Log "API считает, что у этой раздачи хэш $fresh_hash"
+                            $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
+
+                        }
                         Write-Log "Добавляем раздачу $( $rss_record[1] ) для $requester"
-                        $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
+
                         $chosen_save_path = $null -eq $rss.save_path_avenger -or $requester -ne 'Avenger' ? $rss.save_path : $rss.save_path_avenger
-
-                        # if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '1' ) {
                         $chosen_save_path = ( $chosen_save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $rss_record[1] # добавляем ID к имени папки для сохранения
-                        # }       
-                        # elseif ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '2' ) {
-                        #     $chosen_save_path = ( $chosen_save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $fresh_hash  # добавляем hash к имени папки для сохранения
-                        # }
 
-                        $success = Add-ClientTorrent -client $settings.clients[$rss.client] -file $new_torrent_file -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' )
+                        $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop $( $add_to_top -eq 'Y' ) `
+                            -file $( $null -ne $fresh_hash ? $new_torrent_file : $null ) -hash $( $null -ne $unregistered_hash ? $unregistered_hash : $null )
                         Write-Log 'Подождём секунду, чтобы раздача добавилась'
                         Start-Sleep -Seconds 1
                         Write-Log 'Проверяем, что раздача добавилась'
                         $i = 0
                         while ( $i -lt 10 -and $null -eq ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash $fresh_hash -mess_sender 'Adder' ) ) {
                             Write-Log 'Пока не добавилась, подождём ещё секунду'
-                            # Start-Sleep -Seconds $check_state_delay
                             Start-Sleep -Seconds 1
                             $i++
                         }
+                        if ( $null -eq $fresh_hash ) { $fresh_hash = $unregistered_hash }
                         if ( $i -lt 10 ) {
                             if ( $success -eq $true ) {
                                 if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
@@ -801,7 +812,7 @@ if ( $rss ) {
                 Write-Log "Раздача $( $rss_record[1] ) для $requester пропущена по ID"
             }
         }
-
+    
         $rss_del_cnt = 0
         if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
             Write-Log 'Удаляем старые ненужные RSS-раздачи'
@@ -809,6 +820,9 @@ if ( $rss ) {
                 $client = $settings.clients[$rss_torrent.client_key]
                 if ( $client.name -eq $rss.client ) {
                     $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
+                    if ( $null -eq $rss_torrent.topic_id ) { # искуственно пытаемся достать topic_id из данных RSS для раздач на премодерации (у них может не быть коммента)
+                        $rss_ids += ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash })[1]
+                    }
                     if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
                         # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                         if ( $rss.wait_keepers -eq 'Y') {
@@ -836,9 +850,9 @@ if ( $rss ) {
                     }
                 }
             }
-        }
-    }
-}
+        } # по включенному RSS Purge
+    } # по цспешно скачанной ленте
+} # по включенной работе с RSS
 
 if ( $control -eq 'Y' ) {
     Write-Log 'Запускаем встроенную регулировку'

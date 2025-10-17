@@ -647,9 +647,8 @@ function Get-ClientTrackerStatus ( $client, $torrent_list, [switch]$verbose ) {
     }
 }
 
-function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = '', [switch]$Skip_checking, [switch]$addToTop, [switch]$paused) {
+function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = '', [switch]$Skip_checking, [switch]$addToTop, [switch]$paused, $hash = $null ) {
     $Params = @{
-        torrents        = Get-Item $file
         category        = $category
         name            = 'torrents'
         root_folder     = 'false'
@@ -658,9 +657,17 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
         skip_checking   = $Skip_checking
         addToTopOfQueue = $addToTop
     }
-    if ( $path -and $null -ne $path ) { $Params.savepath = $path }
 
-    Write-Log "Отправляем скачанный torrent-файл раздачи $( $file.basename ) в клиент $( $client.name )"
+    if ( $path -and $null -ne $path ) { $Params.savepath = $path }
+    if ( $null -ne $file ) {
+        $params.torrents = Get-Item $file
+        Write-Log "Отправляем скачанный torrent-файл раздачи $( $file.basename ) в клиент $( $client.name )"
+    }
+    elseif ( $null -ne $hash ) {
+        $params.urls = "magnet:?xt=urn:btih:$hash"
+        Write-Log "Отправляем хэш раздачи $hash в клиент $( $client.name )"
+    }
+
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/add'
     $added_ok = $false
     $abort = $false
@@ -691,7 +698,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
             }
         }
     }
-    Remove-Item $File
+    if ( $file ) { Remove-Item $File -ErrorAction SilentlyContinue | Out-Null }
     return $added_ok
 }
 
