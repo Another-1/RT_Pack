@@ -752,7 +752,8 @@ if ( $rss ) {
                         if ( !$fresh_hash ) {
                             Write-Log 'Не удалось получить хэш раздачи из API, возможно она на премодерации'
                             Write-Log 'Зайдём с другого API и попробуем получить хэш'
-                            $unregistered_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0].info_hash
+                            $unregistered_data = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
+                            $unregistered_hash = $unregistered_data.info_hash
                             if ( !$unregistered_hash ) {
                                 Write-Log 'Раздача уже не существует'
                                 continue
