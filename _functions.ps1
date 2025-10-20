@@ -664,7 +664,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
         Write-Log "Отправляем скачанный torrent-файл раздачи $( $file.basename ) в клиент $( $client.name )"
     }
     elseif ( $null -ne $hash ) {
-        $params.urls = "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2Fbt.t-ru.org%2Fann%3Fmagnet"
+        $params.urls = "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2Fbt.t-ru.org%2Fann%3Fmagnet&tr=http%3A%2F%2Fbt2.t-ru.org%2Fann%3Fmagnet&tr=http%3A%2F%2Fbt3.t-ru.org%2Fann%3Fmagnet&tr=http%3A%2F%2Fbt4.t-ru.org%2Fann%3Fmagnet"
         Write-Log "Отправляем хэш раздачи $hash в клиент $( $client.name )"
     }
 
