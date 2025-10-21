@@ -821,7 +821,7 @@ if ( $rss ) {
                 $client = $settings.clients[$rss_torrent.client_key]
                 if ( $client.name -eq $rss.client ) {
                     $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
-                    if ( $null -eq $rss_torrent.topic_id ) { # искуственно пытаемся достать topic_id из данных RSS для раздач на премодерации (у них может не быть коммента)
+                    if ( $null -eq $rss_torrent.topic_id -and ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash  } ) ) { # искуственно пытаемся достать topic_id из данных RSS для раздач на премодерации (у них может не быть коммента)
                         $rss_ids += ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash })[1]
                     }
                     if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {

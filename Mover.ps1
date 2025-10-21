@@ -73,6 +73,7 @@ if ( $client_name ) {
         }
     }
 }
+pause
 else {
     Write-Log 'Выберите исходный клиент'
     $client = Select-Client
@@ -227,7 +228,7 @@ if ( $client.sid ) {
                 Write-Log "Будем перемещать $($torrent.name) размером $( to_kmg $torrent.size 2 ) из $($torrent.save_path) в $copy_dest"
                 if ( $path_from -ne $path_to -or $client.IP -ne $client_to.IP ) {
                     $secs = Measure-Command { Copy-Item -LiteralPath $torrent.save_path -Destination $copy_dest -Recurse -Force }
-                    Write-Log "Перемещение заняло $($secs.Hours -gt 0 ? "$($secs.Hours) ч. " : '')$($secs.Minutes -gt 0 ? "$($secs.Minutes) мин. " : '')$($secs.Seconds -gt 0 ? "$($secs.Seconds  ) сек." : '')"
+                    Write-Log "Перемещение заняло $($secs.Hours -gt 0 ? "$($secs.Hours) ч. " : '')$($secs.Minutes -gt 0 ? "$($secs.Minutes) мин. " : '')$($secs.Seconds -gt 0 ? "$($secs.Seconds ) сек." : '< 1 сек.' )"
                 }
                 Export-ClientTorrentFile -client $client -hash $torrent.hash -save_path ( Join-Path $PSScriptRoot "$( $torrent.topic_id ).torrent" )
                 $torrent_file = Get-Item ( Join-Path $PSScriptRoot  "$( $torrent.topic_id ).torrent" )
