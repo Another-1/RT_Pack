@@ -1,4 +1,4 @@
-param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, [switch]$reverse, [switch]$keep_empty_folders, $max_inactive_days, $min_inactive_days )
+param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, [switch]$reverse, [switch]$keep_empty_folders, $max_inactive_days, $min_inactive_days, $client_to_name )
 
 $window_title = 'Mover'
 Write-Host "$([char]0x1B)]0;$window_title`a"
@@ -62,7 +62,16 @@ if ( $client_name ) {
         Write-Log "Не найден клиент $client_name" -Red
         exit
     }
-    $client_to = $client
+    if ( !$client_to_name -or $null -eq $client_to_name ) {
+        $client_to = $client
+    }
+    else {
+        $client_to = $settings.clients[$client_to_name ]
+        if ( !$client_to ) {
+            Write-Log "Не найден клиент $client_to_name" -Red
+            exit
+        }
+    }
 }
 else {
     Write-Log 'Выберите исходный клиент'
