@@ -73,7 +73,6 @@ if ( $client_name ) {
         }
     }
 }
-pause
 else {
     Write-Log 'Выберите исходный клиент'
     $client = Select-Client
