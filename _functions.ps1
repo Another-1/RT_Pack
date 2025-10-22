@@ -1516,7 +1516,8 @@ function GetRepKeptTorrents( $sections, $call_from, $max_keepers, $max_keepers_e
     }
     if ( $null -ne $max_keepers -or $null -ne $max_keepers_extra ) {
         $max_keepers_tmp = $null -ne $max_keepers -and $max_keepers -gt -1 ? $max_keepers : 999999
-        $max_keepers_extra_tmp = $null -ne $max_keepers_extra  -and $max_keepers_extra -gt -1 ? $max_keepers_extra : 999999
+        if ( $null -ne $max_keepers_extra ) { $max_keepers_extra_tmp = $max_keepers_extra -gt -1 ? $max_keepers_extra : 999999 }
+        else { $max_keepers_extra_tmp = $max_keepers_tmp }
         $kept_ids = $keepers.keys | Where-Object { ( $keepers[$_].cnt -gt $max_keepers_extra_tmp -and $keepers[$_].keeping_priority -eq 2 ) -or ( $keepers[$_].cnt -gt $max_keepers_tmp -and $keepers[$_].keeping_priority -ne 2 ) } 
     }
     else { $kept_ids = $keepers.keys }
