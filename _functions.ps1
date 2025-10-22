@@ -62,7 +62,7 @@ function Test-Version {
         [string]$name,
         [string]$mess_sender = ''
     )
-    try {
+    # try {
         $old_hash = ( Get-FileHash -Path ( Join-Path $PSScriptRoot $name ) ).Hash
         $new_file_path = ( Join-Path $PSScriptRoot $name.replace( '.ps1', '.new' ) )
         Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 | Out-Null
@@ -98,11 +98,11 @@ function Test-Version {
             Remove-Item $new_file_path -ErrorAction SilentlyContinue
         } 
         # }
-    }
-    catch {
+    # }
+    # catch {
         Write-Log "[Test-Version] Ошибка: $($_.Exception.Message) при обновлении $name" -Red
         Write-Log "[Test-Version] $( $_.Exception.Data )" -Red
-    }
+    # }
 }
 
 function Test-Module {
