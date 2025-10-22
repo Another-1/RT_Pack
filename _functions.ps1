@@ -63,45 +63,48 @@ function Test-Version {
         [string]$mess_sender = ''
     )
     # try {
-        $old_hash = ( Get-FileHash -Path ( Join-Path $PSScriptRoot $name ) ).Hash
-        $new_file_path = ( Join-Path $PSScriptRoot $name.replace( '.ps1', '.new' ) )
-        Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 | Out-Null
-        # if ( req.StatusCode -eq 200 ) {
-        if ( Test-Path $new_file_path ) {
-            $new_hash = ( Get-FileHash -Path $new_file_path ).Hash
-            if ( $old_hash -ne $new_hash ) {
-                if ( $auto_update -eq 'N' -or $settings.others.auto_update -eq 'N') {
-                    $text = "$name обновился! Рекомендуется скачать новую версию."
-                    Write-Log $text -Red
-                    if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage -message $text -token $tg_token -chat_id $tg_chat -mess_sender $mess_sender }
+    $old_hash = ( Get-FileHash -Path ( Join-Path $PSScriptRoot $name ) ).Hash
+    $new_file_path = ( Join-Path $PSScriptRoot $name.replace( '.ps1', '.new' ) )
+    Invoke-WebRequest -Uri ( 'https://raw.githubusercontent.com/Another-1/RT_Pack/main/' + $name ) -OutFile $new_file_path -TimeoutSec 30 | Out-Null
+    # if ( req.StatusCode -eq 200 ) {
+    if ( Test-Path $new_file_path ) {
+        $new_hash = ( Get-FileHash -Path $new_file_path ).Hash
+        if ( $old_hash -ne $new_hash ) {
+            if ( $auto_update -eq 'N' -or $settings.others.auto_update -eq 'N') {
+                $text = "$name обновился! Рекомендуется скачать новую версию."
+                Write-Log $text -Red
+                if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage -message $text -token $tg_token -chat_id $tg_chat -mess_sender $mess_sender }
+            }
+            if ( ( $auto_update -eq 'Y' -or $settings.others.auto_update -eq 'Y' ) -and $debug -ne 1 ) {
+                Write-Log "$name обновился, сохраняю новую версию"
+                Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name ) -Force
+                Write-Log "Снимаю блокировку с запуска $name"
+                try {
+                    Unblock-File -Path ( Join-Path $PSScriptRoot $name ) -ErrorAction SilentlyContinue
                 }
-                if ( ( $auto_update -eq 'Y' -or $settings.others.auto_update -eq 'Y' ) -and $debug -ne 1 ) {
-                    Write-Log "$name обновился, сохраняю новую версию"
-                    Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name ) -Force
-                    Write-Log "Снимаю блокировку с запуска $name"
-                    Unblock-File -Path ( Join-Path $PSScriptRoot $name )
-                    if ( $name -ne '_functions.ps1' ) {
-                        Write-Log "Запускаем новую версию $name в отдельном окне, а тут выходим"
-                        Start-Process pwsh ( ( Join-Path $PSScriptRoot $name ) + ' -delay' )
-                        Remove-Item $new_file_path
-                        exit
-                    }
-                    else { 
-                        Remove-Item $new_file_path
-                        return $true
-                    }
+                catch {  }
+                if ( $name -ne '_functions.ps1' ) {
+                    Write-Log "Запускаем новую версию $name в отдельном окне, а тут выходим"
+                    Start-Process pwsh ( ( Join-Path $PSScriptRoot $name ) + ' -delay' )
+                    Remove-Item $new_file_path
+                    exit
                 }
                 else { 
-                    Write-Log "В режиме отладки обновление $name отключено"
+                    Remove-Item $new_file_path
+                    return $true
                 }
             }
-            Remove-Item $new_file_path -ErrorAction SilentlyContinue
-        } 
-        # }
+            else { 
+                Write-Log "В режиме отладки обновление $name отключено"
+            }
+        }
+        Remove-Item $new_file_path -ErrorAction SilentlyContinue
+    } 
+    # }
     # }
     # catch {
-        # Write-Log "[Test-Version] Ошибка: $($_.Exception.Message) при обновлении $name" -Red
-        # Write-Log "[Test-Version] $( $_.Exception.Data )" -Red
+    # Write-Log "[Test-Version] Ошибка: $($_.Exception.Message) при обновлении $name" -Red
+    # Write-Log "[Test-Version] $( $_.Exception.Data )" -Red
     # }
 }
 
