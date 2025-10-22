@@ -375,7 +375,8 @@ if ( $null -ne $max_keepers -and $max_keepers -gt -1 -and !$kept_ht ) {
         Write-Log "При этом не доверяем хранителям $($excluded_array -join ', ') "
     }
     $kept_ht = @{}
-    GetRepKeptTorrents -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -max_keepers $max_keepers -excluded $excluded_array | ForEach-Object { $kept_ht[$_.ToInt64($null)] = 1 }
+    GetRepKeptTorrents -sections $section_numbers -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') `
+        -max_keepers $max_keepers -max_keepers_extra $max_keepers_extra -excluded $excluded_array | ForEach-Object { $kept_ht[$_.ToInt64($null)] = 1 }
 }
 
 if ( $kept_ht ) {

@@ -1492,27 +1492,32 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
 
 function GetRepSectionKeepers( $section, $excluded = @(), $call_from ) {
     Write-Log "Выгружаем отчёты по подразделу $section"
-    $url = "/krs/api/v1/subforum/$section/reports?columns=status"
+    $url = "/krs/api/v1/subforum/$section/reports?columns=status,keeping_priority"
     $content = ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json
     if ( $null -eq $content ) { exit }
     if ( $excluded.count -gt 0 ) {
         $content = $content | Where-Object { $_.keeper_id -notin $excluded }
     }
     $content = $content | Select-Object kept_releases -ExpandProperty kept_releases
+    # $content = $content | Select-Object kept_releases -ExpandProperty
     return $content
 }
 
-function GetRepKeptTorrents( $sections, $call_from, $max_keepers, $excluded = @() ) {
+function GetRepKeptTorrents( $sections, $call_from, $max_keepers, $max_keepers_extra, $excluded = @() ) {
     $keepers = @{}
     foreach ( $section in $sections ) {
         $section_keepers = GetRepSectionKeepers -section $section -excluded $excluded
         $section_keepers | Where-Object { -bnot ( $_[1] -band 0b10 ) } | ForEach-Object {
             $id = $_[0].ToInt32($null)
-            if ( !$keepers[$id] ) { $keepers[$id] = 0 }
-            $keepers[$id]++
+            if ( !$keepers[$id] ) { $keepers[$id] = @{ cnt = 0; prio = $_[2] } }
+            $keepers[$id].cnt++
         }
     }
-    if ( $null -ne $max_keepers ) { $kept_ids = $keepers.keys | Where-Object { $keepers[$_] -gt $max_keepers } }
+    if ( $null -ne $max_keepers -or $null -ne $max_keepers_extra ) {
+        $max_keepers_tmp = $null -ne $max_keepers -and $max_keepers -gt -1 ? $max_keepers : 999999
+        $max_keepers_extra_tmp = $null -ne $max_keepers_extra  -and $max_keepers_extra -gt -1 ? $max_keepers_extra : 999999
+        $kept_ids = $keepers.keys | Where-Object { ( $keepers[$_].cnt -gt $max_keepers_extra_tmp -and $keepers[$_].keeping_priority -eq 2 ) -or ( $keepers[$_].cnt -gt $max_keepers_tmp -and $keepers[$_].keeping_priority -ne 2 ) } 
+    }
     else { $kept_ids = $keepers.keys }
     return $kept_ids
 }
