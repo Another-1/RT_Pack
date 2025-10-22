@@ -101,6 +101,7 @@ function Test-Version {
     }
     catch {
         Write-Log "[Test-Version] Ошибка: $($_.Exception.Message) при обновлении $name" -Red
+        Write-Log "[Test-Version] $( $_.Exception.Data )" -Red
     }
 }
 
