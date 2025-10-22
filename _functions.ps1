@@ -1600,7 +1600,7 @@ function Send-Handshake ( $sections, $use_avg_seeds ) {
     $url = '/krs/api/v1/mark_subforum_fetch'
     $headers = @{}
     $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
-    Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body ( $body | ConvertTo-Json -Compress ) -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
+    Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body ( $body | ConvertTo-Json -Compress ) `-headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
 }
 
 function Get-RepTopics( $call_from ) {
@@ -1700,21 +1700,21 @@ function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
                 if ( $settings.connection.proxy.credentials ) {
                     # Write-Log 'Указан прокси с аутентификацией'
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials -Body $body `
-                            -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
+                            -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' -ConnectionTimeoutSeconds 30 )
                     Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                     return
                 }
                 else {
                     # Write-Log 'Указан прокси без аутентификации'
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -Body $body `
-                            -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
+                            -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' -ConnectionTimeoutSeconds 30 )
                     Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                     return
                 }
             }
             else {
                 # Write-Log 'Прокси не используем'
-                $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' )
+                $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' -ConnectionTimeoutSeconds 30 )
                 Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
                 return
             }
