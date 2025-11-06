@@ -819,6 +819,7 @@ if ( $rss ) {
         if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
             Write-Log 'Удаляем старые ненужные RSS-раздачи'
             foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
+                if ( $null -eq $rss_torrent.topic_id ) { $rss_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.infohash_v1 } )[1] }
                 $client = $settings.clients[$rss_torrent.client_key]
                 if ( $client.name -eq $rss.client ) {
                     $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
