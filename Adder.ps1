@@ -745,7 +745,7 @@ if ( $rss ) {
             $requester = $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger'
             $rss_ids += $rss_record[1].ToInt64($null)
             if ( !$rss.skip -or $rss_record[1] -notin $rss.skip ) {
-                if ( !$id_to_info[$rss_record[1]] -and $rss_record[3] -in $clients_torrents.hash ) {
+                if ( !$id_to_info[$rss_record[1]] -and $rss_record[3] -notin $clients_torrents.hash ) {
                     if ( !$ignored -or $requester -notin $ignored ) {
                         Write-Log "Проверим, что раздача $($rss_record[1]) ещё существует"
                         $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
@@ -823,8 +823,7 @@ if ( $rss ) {
                 $client = $settings.clients[$rss_torrent.client_key]
                 if ( $client.name -eq $rss.client ) {
                     $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
-                    if ( $null -eq $rss_torrent.topic_id -and ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash } ) ) {
-                        # искуственно пытаемся достать topic_id из данных RSS для раздач на премодерации (у них может не быть коммента)
+                    if ( $null -eq $rss_torrent.topic_id -and ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash  } ) ) { # искуственно пытаемся достать topic_id из данных RSS для раздач на премодерации (у них может не быть коммента)
                         $rss_ids += ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash })[1]
                     }
                     if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
