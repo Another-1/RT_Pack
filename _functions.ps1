@@ -659,7 +659,7 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
         paused          = $Paused
         stopped         = $Paused
         skip_checking   = $Skip_checking
-        addToTopOfQueue = $addToTop
+        addToTopOfQueue = $addToTop # better
     }
 
     if ( $path -and $null -ne $path ) { $Params.savepath = $path }
