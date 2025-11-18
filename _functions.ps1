@@ -1678,6 +1678,7 @@ function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
         }
     }
     Write-Log 'Не удалось получить данные, выходим досрочно' -Red
+    Exit
 }
 
 function Get-DiskTypes {

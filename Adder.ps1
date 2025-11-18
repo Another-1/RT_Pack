@@ -777,7 +777,7 @@ if ( $rss ) {
                         $chosen_save_path = $null -eq $rss.save_path_avenger -or $requester -ne 'Avenger' ? $rss.save_path : $rss.save_path_avenger
                         $chosen_save_path = ( $chosen_save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $rss_record[1] # добавляем ID к имени папки для сохранения
 
-                        $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop $( $add_to_top -eq 'Y' ) `
+                        $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
                             -file $( $null -ne $fresh_hash ? $new_torrent_file : $null ) -hash $( $null -ne $unregistered_hash ? $unregistered_hash : $null )
                         Write-Log 'Подождём секунду, чтобы раздача добавилась'
                         Start-Sleep -Seconds 1
@@ -819,7 +819,15 @@ if ( $rss ) {
         if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
             Write-Log 'Удаляем старые ненужные RSS-раздачи'
             foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
-                if ( $null -eq $rss_torrent.topic_id ) { $rss_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.infohash_v1 } )[1] }
+                # if ( $null -eq $rss_torrent.topic_id ) { 
+                #     try {
+                #     $rss_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.infohash_v1 } )[1]
+                #     }
+                #     catch {
+                #         Write-Log "Не удалось получить topic_id для раздачи $($rss_torrent.topic_id) - $($rss_torrent.name)" -Red
+                #         Pause
+                #     }
+                # }
                 $client = $settings.clients[$rss_torrent.client_key]
                 if ( $client.name -eq $rss.client ) {
                     $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
