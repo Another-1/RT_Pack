@@ -819,26 +819,37 @@ if ( $rss ) {
         if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
             Write-Log 'Удаляем старые ненужные RSS-раздачи'
             foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
-                # if ( $null -eq $rss_torrent.topic_id ) { 
-                #     try {
-                #     $rss_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.infohash_v1 } )[1]
-                #     }
-                #     catch {
-                #         Write-Log "Не удалось получить topic_id для раздачи $($rss_torrent.topic_id) - $($rss_torrent.name)" -Red
-                #         Pause
-                #     }
-                # }
                 $client = $settings.clients[$rss_torrent.client_key]
                 if ( $client.name -eq $rss.client ) {
                     $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
-                    if ( $null -eq $rss_torrent.topic_id -and ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash  } ) ) { # искуственно пытаемся достать topic_id из данных RSS для раздач на премодерации (у них может не быть коммента)
-                        $rss_ids += ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash })[1]
+                    if ( $null -eq $rss_torrent.topic_id ) { 
+                        try {
+                            
+                            $rss_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.infohash_v1 } )[1]
+                        }
+                        catch {
+                            Write-Log "Не удалось получить topic_id для раздачи $($rss_torrent.name), просто удаляем"
+                            $rss_torrent.topic_id = 'XXXXXX'
+                            
+                        }
+        
+                        if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
+                            $rss_ids += ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash })[1]
+                        }
                     }
-                    if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
+                    # if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
+                    if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
                         # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                         if ( $rss.wait_keepers -eq 'Y') {
-                            Write-Log "Из RSS ушла раздача $($rss_torrent.topic_id) - $($rss_torrent.name), проверим наличие качающего хранителя"
-                            if ( Get-TopicKeepingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) {
+                            Write-Log "Из RSS ушла раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
+                            if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
+                                Write-Log 'Проверим наличие качающего хранителя'
+                                $NotGetting = ( Get-TopicKeepingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
+                            }
+                            else {
+                                $NotGetting = $true
+                            }
+                            if ( $NotGetting ) {
                                 Write-Log 'Нет качающих хранителей, удаляем'
                                 Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
                                 $rss_del_cnt++
@@ -947,7 +958,7 @@ if ( $report_stalled -eq 'Y' ) {
         for ( $i = 0; $i -le $stalleds.topic_id.Count; $i += $batch_size ) {
             $batch = ($stalleds[ $i..([math]::Min($i + $batch_size - 1, $stalleds.hash.Count - 1))]).topic_id
             $params = @{
-                'help_load' = ( $batch -join ',')
+                'help_load' = ( $batch -join ', ')
                 'help_pwd'  = $stalled_pwd
             }
             Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/api/update-help' -Headers $headers -Body ( $params | ConvertTo-Json ) -ErrorVariable send_result -UserAgent 'adder' | Out-Null
