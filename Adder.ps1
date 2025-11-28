@@ -779,7 +779,7 @@ if ( $rss ) {
                         $chosen_save_path = ( $chosen_save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $rss_record[1] # добавляем ID к имени папки для сохранения
 
                         $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                            -file $( $null -eq $unregistered_hash ? $new_torrent_file : $null ) -hash $( $null -ne $unregistered_hash ? $unregistered_hash : $null )
+                            -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul )
                         Write-Log 'Подождём секунду, чтобы раздача добавилась'
                         Start-Sleep -Seconds 1
                         Write-Log 'Проверяем, что раздача добавилась'
