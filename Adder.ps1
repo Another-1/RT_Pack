@@ -561,11 +561,11 @@ if ( $new_torrents_keys ) {
                             $new_tracker_data.topic_title -notmatch 'ерии:{0,1} (?:\d+)-(\d+)( \(\d+-\d+\)|) из (\1)\D' )
                 )
             ) {
-                Write-Log "Раздача $($new_tracker_data.topic_title) ещё в показе"
+                Write-Log "Раздача $($new_tracker_data.topic_id) $($new_tracker_data.topic_title) ещё в показе"
                 continue
             }
             if ( $skip_gay -eq 'Y' -and $new_tracker_data.topic_title -like '*гей-тема*' ) {
-                Write-Log "Раздача $($new_tracker_data.topic_title) про геев"
+                Write-Log "Раздача $($new_tracker_data.topic_id) $($new_tracker_data.topic_title) про геев"
                 continue
             }
             else {
@@ -753,6 +753,7 @@ if ( $rss ) {
                         if ( !$fresh_hash ) {
                             Write-Log 'Не удалось получить хэш раздачи из API, возможно она на премодерации'
                             Write-Log 'Зайдём с другого API и попробуем получить хэш'
+                            Remove-Variable -name 'unregistered_hash'
                             $unregistered_data = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
                             $unregistered_hash = $unregistered_data.info_hash
                             if ( !$unregistered_hash ) {
@@ -778,7 +779,7 @@ if ( $rss ) {
                         $chosen_save_path = ( $chosen_save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $rss_record[1] # добавляем ID к имени папки для сохранения
 
                         $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                            -file $( $null -ne $fresh_hash ? $new_torrent_file : $null ) -hash $( $null -ne $unregistered_hash ? $unregistered_hash : $null )
+                            -file $( $null -eq $unregistered_hash ? $new_torrent_file : $null ) -hash $( $null -ne $unregistered_hash ? $unregistered_hash : $null )
                         Write-Log 'Подождём секунду, чтобы раздача добавилась'
                         Start-Sleep -Seconds 1
                         Write-Log 'Проверяем, что раздача добавилась'
