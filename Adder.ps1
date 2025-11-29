@@ -845,12 +845,12 @@ if ( $rss ) {
                             Write-Log "Из RSS ушла раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
                             if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
                                 Write-Log 'Проверим наличие качающего хранителя'
-                                $NotGetting = ( Get-TopicKeepingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
+                                $downloading = ( Get-TopicDownloadingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
                             }
                             else {
-                                $NotGetting = $true
+                                $downloading = $false
                             }
-                            if ( $NotGetting ) {
+                            if ( -not $downloading ) {
                                 Write-Log 'Нет качающих хранителей, удаляем'
                                 Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
                                 $rss_del_cnt++
