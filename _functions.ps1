@@ -651,7 +651,7 @@ function Get-ClientTrackerStatus ( $client, $torrent_list, [switch]$verbose ) {
     }
 }
 
-function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = '', [switch]$Skip_checking, [switch]$addToTop, [switch]$paused, $hash = $null ) {
+function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = '', [switch]$Skip_checking, [switch]$addToTop, [switch]$paused, $hash = $null, [switch]$keepfile, [switch]$silent ) {
     $Params = @{
         category        = $category
         name            = 'torrents'
@@ -702,8 +702,8 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
             }
         }
     }
-    if ( $file ) { Remove-Item $File -ErrorAction SilentlyContinue | Out-Null }
-    return $added_ok
+    if ( $file -and -not $keepfile.IsPresent ) { Remove-Item $File -ErrorAction SilentlyContinue | Out-Null }
+    if ( $silent.IsPresent ) { return } else { return $added_ok }
 }
 
 function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {

@@ -219,6 +219,10 @@ if ( $standalone -ne $true ) {
     if ( $rss -and !$rss.client ) {
         $settings.clients['RSS'] = @{ IP = $rss.client_IP; port = $rss.client_port; login = $rss.client_login; password = $rss.client_password; name = 'RSS'; ssl = 0 }
         $rss.client = 'RSS'
+        if ( $rss2 -and !$rss2.client ) {
+            $settings.clients['RSS2'] = @{ IP = $rss2.client_IP; port = $rss2.client_port; login = $rss2.client_login; password = $rss2.client_password; name = 'RSS2'; ssl = 0 }
+            $rss2.client = 'RSS2'
+        }
     }
     Write-Log 'Достаём из TLO подробности о разделах'
     Get-IniSectionDetails $settings $ini_sections
@@ -656,6 +660,9 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
     if ( $rss.client_ip ) {
         $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -ne $rss.client }
     }
+    if ( $rss2 ) {
+        $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -ne $rss2.client }
+    }
     $obsolete_keys = $obsolete_keys | Where-Object { $refreshed_ids -notcontains $hash_to_id[$_] } | `
         Where-Object { $tracker_torrents.Values.topic_id -notcontains $hash_to_id[$_] } | Where-Object { !$ignored_obsolete -or $nul -eq $ignored_obsolete[$hash_to_id[$_]] }
     if ( $skip_obsolete ) {
@@ -748,12 +755,12 @@ if ( $rss ) {
                 if ( !$id_to_info[$rss_record[1]] -and $rss_record[3] -notin $clients_torrents.hash ) {
                     if ( !$ignored -or $requester -notin $ignored ) {
                         Write-Log "Проверим, что раздача $($rss_record[1]) ещё существует"
+                        Remove-Variable -Name 'unregistered_hash' -ErrorAction SilentlyContinue
                         $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
                         # $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0].info_hash
                         if ( !$fresh_hash ) {
                             Write-Log 'Не удалось получить хэш раздачи из API, возможно она на премодерации'
                             Write-Log 'Зайдём с другого API и попробуем получить хэш'
-                            Remove-Variable -name 'unregistered_hash' -ErrorAction SilentlyContinue
                             $unregistered_data = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
                             $unregistered_hash = $unregistered_data.info_hash
                             if ( !$unregistered_hash ) {
@@ -778,8 +785,21 @@ if ( $rss ) {
                         $chosen_save_path = $null -eq $rss.save_path_avenger -or $requester -ne 'Avenger' ? $rss.save_path : $rss.save_path_avenger
                         $chosen_save_path = ( $chosen_save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $rss_record[1] # добавляем ID к имени папки для сохранения
 
-                        $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
+                        if ( $rss2 ) {
+                            $chosen_save_path2 = $null -eq $rss2.save_path_avenger -or $requester -ne 'Avenger' ? $rss2.save_path : $rss2.save_path_avenger
+                            $chosen_save_path2 = ( $chosen_save_path2 -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $rss_record[1] # добавляем ID к имени папки для сохранения
+                        }
+
+                        if ( $rss2 ) {
+                            $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
+                            -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul ) -keepfile
+                            Add-ClientTorrent -client $settings.clients[$rss2.client] -path $chosen_save_path2 -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
+                                -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul ) -Silent
+                        }
+                        else {
+                            $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
                             -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul )
+                        }
                         Write-Log 'Подождём секунду, чтобы раздача добавилась'
                         Start-Sleep -Seconds 1
                         Write-Log 'Проверяем, что раздача добавилась'
@@ -794,13 +814,22 @@ if ( $rss ) {
                             if ( $success -eq $true ) {
                                 if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
                                     Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $fresh_hash } -label $requester # кто запросил
+                                    if ( $rss2 ) {
+                                        Set-Comment -client $settings.clients[$rss2.client] -torrent @{ hash = $fresh_hash } -label $requester # кто запросил
+                                    }
                                 }
                                 Start-Sleep -Seconds 1
                                 if ( $rss_record[6] -eq 1 ) {
                                     Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $fresh_hash } -label $( '_Restored' ) # восстановление?
+                                    if ( $rss2 ) {
+                                        Set-Comment -client $settings.clients[$rss2.client] -torrent @{ hash = $fresh_hash } -label $( '_Restored' ) # восстановление?
+                                    }
                                 }
                                 else {
                                     Set-Comment -client $settings.clients[$rss.client] -torrent @{ hash = $fresh_hash } -label $( $rss_record[7] -le 3 ? '_Help' : '_Load' ) # через что запросил
+                                    if ( $rss2 ) {
+                                        Set-Comment -client $settings.clients[$rss2.client] -torrent @{ hash = $fresh_hash } -label $( $rss_record[7] -le 3 ? '_Help' : '_Load' ) # через что запросил
+                                    }
                                 }
                             }
                             $rss_add_cnt++
@@ -819,13 +848,15 @@ if ( $rss ) {
         $rss_del_cnt = 0
         if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
             Write-Log 'Удаляем старые ненужные RSS-раздачи'
+            if ( $rss2 ) {
+                $client2 = $settings.clients[$rss2.client]
+            }
             foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
                 $client = $settings.clients[$rss_torrent.client_key]
                 if ( $client.name -eq $rss.client ) {
                     $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
                     if ( $null -eq $rss_torrent.topic_id ) { 
                         try {
-                            
                             $rss_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.infohash_v1 } )[1]
                         }
                         catch {
@@ -853,6 +884,9 @@ if ( $rss ) {
                             if ( -not $downloading ) {
                                 Write-Log 'Нет качающих хранителей, удаляем'
                                 Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                                if ( $rss2 ) {
+                                    Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
+                                }
                                 $rss_del_cnt++
                             }
                             else { Write-Log 'раздачу ещё кто-то качает, пусть полежит' }
@@ -860,6 +894,9 @@ if ( $rss ) {
                         else {
                             Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
                             Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                            if ( $rss2 ) {
+                                Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
+                            }
                             $rss_del_cnt++
                         }
                     }
@@ -868,6 +905,9 @@ if ( $rss ) {
                         if ( $rss_torrent.tracker_status -eq 4 ) {
                             Write-Log "Найдена снесённая с трекера раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
                             Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                            if ( $rss2 ) {
+                                Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
+                            }
                             $rss_del_cnt++
                         }
                     }
@@ -929,7 +969,7 @@ if ( $report_stalled -eq 'Y' ) {
     Write-Log 'Ищем некачашки'
     $month_ago = ( Get-Date -UFormat %s ).ToInt32($null) - 30 * 24 * 60 * 60
     $stalleds = @()
-    $clients_torrents | Where-Object { $_.state -in ( 'stalledDL', 'forcedDL' ) -and $_.added_on -le $month_ago -and $_.client_key -ne 'RSS' } | ForEach-Object {
+    $clients_torrents | Where-Object { $_.state -in ( 'stalledDL', 'forcedDL' ) -and $_.added_on -le $month_ago -and $_.client_key -ne 'RSS' -and $_.client_key -ne 'RSS2' } | ForEach-Object {
         $stalleds += @{ topic_id = $_.topic_id; hash = $_.infohash_v1; client_key = $_.client_key; trackers = $null }
     }
     if ( $stalleds.count -gt 0 ) {

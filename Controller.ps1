@@ -120,12 +120,16 @@ $started = 0
 $stopped = 0
 if (  $rss ) {
     $settings.clients.Remove( $rss.client ? $rss.client : 'RSS' )
+    if (  $rss2 ) {
+        $settings.clients.Remove( $rss2.client ? $rss2.client : 'RSS2' )
+    }
 }
+
 
 $started_counts = @{}
 
-# foreach ( $client_key in $settings.clients.keys ) {
-foreach ( $client_key in $settings.clients.keys | where-object { $_ -ne 'Aorus'} ) {
+foreach ( $client_key in $settings.clients.keys ) {
+    # foreach ( $client_key in $settings.clients.keys | where-object { $_ -ne 'Aorus'} ) {
     Write-Log ( 'Регулируем клиент ' + $client_key + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
 
     $start_keys = @()
@@ -184,7 +188,7 @@ $lv_str = "$lv_str1`n$lv_str2"
 Write-Log ( $lv_str1 + $lv_str2 )
 if ( $report_controller -eq 'Y') { Send-TGMessage -message $lv_str -token $tg_token -chat_id $tg_chat -mess_sender 'Controller' }
 
-$now =  Get-Date -UFormat %s
+$now = Get-Date -UFormat %s
 $grafana_data = @()
 foreach ($label in $started_counts.Keys) {
     $grafana_data += [PSCustomObject]@{
