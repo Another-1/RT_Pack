@@ -568,7 +568,7 @@ if ( $new_torrents_keys ) {
                 Write-Log "Раздача $($new_tracker_data.topic_id) $($new_tracker_data.topic_title) ещё в показе"
                 continue
             }
-            if ( $skip_gay -eq 'Y' -and $new_tracker_data.topic_title -like '*гей-тема*' ) {
+            if ( $skip_gay -eq 'Y' -and ( $new_tracker_data.topic_title -like '*гей-тема*' -or $new_tracker_data.topic_title -like '*лесби-тема*' -or $new_tracker_data.topic_title -like '*ЛГБТ*' ) ) {
                 Write-Log "Раздача $($new_tracker_data.topic_id) $($new_tracker_data.topic_title) про геев"
                 continue
             }
@@ -713,6 +713,7 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
 }
 
 if ( $rss ) {
+    $rss_left = @()
     $rss_ids = @()
     if ( !$rss.url ) { $rss.url = 'https://rto.my.to/ask_help.rss?output=json' }
     if ( $rss.url -notlike '*json') { $rss.url = $( $rss.url -match '\?' ? "$($rss.url)&output=json" : "$($rss.url)?output=json" ) }
@@ -871,6 +872,7 @@ if ( $rss ) {
                     }
                     # if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
                     if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
+                        $rss_left += $rss_torrent.topic_id
                         # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                         if ( $rss.wait_keepers -eq 'Y') {
                             Write-Log "Из RSS ушла раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"

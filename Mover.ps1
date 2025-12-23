@@ -1,4 +1,4 @@
-param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, [switch]$reverse, [switch]$keep_empty_folders, $max_inactive_days, $min_inactive_days, $client_to_name )
+param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, [switch]$reverse, [switch]$keep_empty_folders, $max_inactive_days, $min_inactive_days, $client_to_name, [switch]$move_partial )
 
 $window_title = 'Mover'
 Write-Host "$([char]0x1B)]0;$window_title`a"
@@ -48,9 +48,6 @@ if ( !$settings.others ) { $settings.others = [ordered]@{} }
 $settings.others.auto_update = Test-Setting 'auto_update' -required
 
 $tlo_path = Test-Setting 'tlo_path' -required
-### DEBUG ###
-# $tlo_path = '\\192.168.0.29\Software\1'   # Путь к папке Web-TLO
-### DEBUG ###
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 $ini_data = Get-IniContent $ini_path
 
@@ -112,8 +109,7 @@ if ( $client.sid ) {
     $i = 0
     $sum_size = 0
     if ( !$torrents_list ) {
-        $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbos -completed:$($move_incomplete -ne 'Y')
-        # Write-Log "Получено: $( Get-Spell $torrents_list.Count )"
+        $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbos -completed:$( $move_incomplete -ne 'Y' -and -not ( $move_partial.IsPresent ) )
 
         Write-Log 'Отсеиваем раздачи с не тем путём'
         $torrents_list = $torrents_list | Where-Object { $_.save_path -like "*${path_from}*".Replace('[', '`[').Replace(']', '`]' ) }
@@ -145,7 +141,6 @@ if ( $client.sid ) {
             $torrents_list = @( $torrents_list | Where-Object { $_.last_activity -lt $max_act_date } )
             Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
         }
-        # if ( $max_size -eq -1 * 1Gb ) {
         Write-Log 'Сортируем по полезности и подразделу'
 
         if ( $reverse.IsPresent ) {
@@ -181,7 +176,6 @@ if ( $client.sid ) {
             Get-TopicIDs -client $client -torrent_list $torrents_list -verbos
         }
     }
-    # Write-Log "Предстоит переместить $( Get-Spell -qty $torrents_list.Count -spelling 2 -entity 'torrents' )"
     foreach ( $torrent in $torrents_list ) {
         if ( -not $keep_empty_folders.IsPresent -and $prev_path -and ( Get-ChildItem -Path $torrent.save_path -ErrorAction SilentlyContinue ).Count -eq 0 ) {
             Start-Sleep -Seconds 1
@@ -201,7 +195,6 @@ if ( $client.sid ) {
             }
             $verbose = $true
             if ( $client -eq $client_to ) {
-                # Write-Log 'Клиент один и тот же, просто даём ему команду переместить файл'
                 Set-SaveLocation -client $client -torrent $torrent -new_path $new_path.replace( '\', '/' ) -verbose:$( $verbose.IsPresent ) -old_path $torrent.save_path -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
                 Write-Progress -Activity 'Moving' -Status $torrent.name -PercentComplete ( $i * 100 / $torrents_list.Count )
                 $prev_path = $torrent.save_path

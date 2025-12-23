@@ -129,8 +129,8 @@ if (  $rss ) {
 $started_counts = @{}
 
 foreach ( $client_key in $settings.clients.keys ) {
-    # foreach ( $client_key in $settings.clients.keys | where-object { $_ -ne 'Aorus'} ) {
-    Write-Log ( 'Регулируем клиент ' + $client_key + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
+# foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -ne 'Aorus' } ) {
+    # Write-Log ( 'Регулируем клиент ' + $client_key + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
 
     $start_keys = @()
     $stop_keys = @()
