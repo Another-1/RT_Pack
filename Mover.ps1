@@ -95,7 +95,7 @@ if ( !$max_1_size ) {
 else {
     $max_1_size = $max_1_size.ToInt16( $null ) * 1Gb
 }
-
+ 
 if ( !$min_move_days ) {
     $min_move_days = ( Get-String -obligatory -prompt 'Минимальное количество дней с добавления (при необходимости, 0 = без ограничений)' ).ToInt16($null)
 }
