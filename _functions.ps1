@@ -1304,7 +1304,7 @@ function Set-Comment ( $client, $torrent, $label, [switch]$silent, $mess_sender 
     $tag_url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.Port + '/api/v2/torrents/addTags'
     $tag_body = @{ hashes = $torrent.hash; tags = $label }
     try {
-        $req = ( Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid )
+        # $req = ( Invoke-WebRequest -Method POST -Uri $tag_url -Headers $loginheader -Body $tag_body -WebSession $client.sid )
         # Write-Log ( 'Клиент ответил: ' + $req.StatusCode.ToString( ) + ' ' + $req.StatusDescription + $req.Content )
     }
     catch {
@@ -1743,22 +1743,22 @@ function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
     Write-Log 'Функция отработала'
 }
     
-function Send-APIReport ( $sections, $id, $api_key, $call_from) {
-    Write-Log 'Отправляем список хранимых подразделов'
-    $headers = @{
-        Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key ))
-    }
-    $sections | ForEach-Object { 
-        $body = @{
-            'keeper_id'   = $id
-            'subforum_id' = $_
-            'status'      = 1
-        }
+# function Send-APIReport ( $sections, $id, $api_key, $call_from) {
+#     Write-Log 'Отправляем список хранимых подразделов'
+#     $headers = @{
+#         Authorization = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $id + ':' + $api_key ))
+#     }
+#     $sections | ForEach-Object { 
+#         $body = @{
+#             'keeper_id'   = $id
+#             'subforum_id' = $_
+#             'status'      = 1
+#         }
     
-        Send-HTTP -url "https://rep.rutracker.cc/krs/api/v1/subforum/set_status?keeper_id=$id&subforum_id=$_&status=1" -headers $headers -call_from $call_from
-    }
-    Write-Log 'Отправлям список хранимых раздач'
-}
+#         Send-HTTP -url "https://rep.rutracker.cc/krs/api/v1/subforum/set_status?keeper_id=$id&subforum_id=$_&status=1" -headers $headers -call_from $call_from
+#     }
+#     Write-Log 'Отправлям список хранимых раздач'
+# }
 
 function Select-Client {
     $backmap = @{}

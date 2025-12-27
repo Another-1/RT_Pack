@@ -877,7 +877,7 @@ if ( $rss ) {
                             $requesters = ( Get-ClientTorrents -client $client -hash $rss_torrent.hash ).tags.split(', ')
                             if ( $requesters.count -gt 1 ) { $requesters = $requesters | Where-Object { $_ -ne 'Another-one' } }
                             $requesters = ( $requesters | Where-Object { $_ -notlike '_*' } ) | Join-String -Separator ', '
-                            Write-Log "Из RSS ушла раздача для $requesters, $($rss_torrent.topic_id) - $($rss_torrent.name)"
+                            Write-Log "Из RSS ушла $( $rss_torrent.state -in ( 'stalledDL', 'Downloading' ) ? 'нескачанная' : 'скачанная' ) раздача для $requesters, $($rss_torrent.topic_id) - $($rss_torrent.name)"
                             if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
                                 Write-Log 'Проверим наличие качающего хранителя'
                                 $downloading = ( Get-TopicDownloadingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
