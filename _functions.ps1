@@ -1530,8 +1530,9 @@ function GetRepKeptTorrents( $sections, $call_from, $max_keepers, $max_keepers_e
 function Get-TopicDownloadingStatus( $topic_id, $call_from ) {
     $url = "/krs/api/v1/releases/reports?topic_ids=$topic_id&columns=status"
     $content = ( Get-RepHTTP -url $url -call_from $call_from ) | ConvertFrom-Json
-    $check = ( $content.result | ForEach-Object { $_[3] -band 0b10 } | Measure-Object -Maximum ).Maximum
-    $result = $check -eq 2
+    # $check = ( $content.result | ForEach-Object { $_[3] -band 0b10 } | Measure-Object -Maximum ).Maximum
+    # $result = $check -eq 2
+     $result = $content.result | Where-Object { $_[3] -band 0b10 } | ForEach-Object { $_[1] }
     return $result
 }
 

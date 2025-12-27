@@ -793,13 +793,13 @@ if ( $rss ) {
 
                         if ( $rss2 ) {
                             $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                            -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul ) -keepfile
+                                -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul ) -keepfile
                             Add-ClientTorrent -client $settings.clients[$rss2.client] -path $chosen_save_path2 -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
                                 -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul ) -Silent
                         }
                         else {
                             $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                            -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul )
+                                -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul )
                         }
                         Write-Log 'Подождём секунду, чтобы раздача добавилась'
                         Start-Sleep -Seconds 1
@@ -872,6 +872,7 @@ if ( $rss ) {
                     }
                     # if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
                     if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
+                        if ( !$usernames ) { $usernames = ( ( Invoke-WebRequest -Uri https://api.rutracker.cc/v1/static/keepers_user_data ).Content | ConvertFrom-Json -AsHashtable ).result }
                         # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                         if ( $rss.wait_keepers -eq 'Y') {
                             $requesters = ( Get-ClientTorrents -client $client -hash $rss_torrent.hash ).tags.split(', ')
@@ -893,7 +894,14 @@ if ( $rss ) {
                                 }
                                 $rss_del_cnt++
                             }
-                            else { Write-Log 'раздачу ещё кто-то качает, пусть полежит' }
+                            else {
+                                if ( $rss_torrent.state -in ( 'stalledDL', 'Downloading' ) ) {
+                                    Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит"
+                                }
+                                else {
+                                    Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит" -Red
+                                }
+                            }
                             $rss_left += $rss_torrent.topic_id
                         }
                         else {
