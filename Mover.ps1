@@ -108,7 +108,8 @@ Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
     $sum_size = 0
-    if ( !$torrents_list ) {
+    # if ( !$torrents_list ) {
+    if ( 1 -eq 1 ) {
         $torrents_list = Get-ClientTorrents -client $client -mess_sender 'Mover' -verbos -completed:$( $move_incomplete -ne 'Y' -and -not ( $move_partial.IsPresent ) )
 
         Write-Log 'Отсеиваем раздачи с не тем путём'

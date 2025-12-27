@@ -872,10 +872,12 @@ if ( $rss ) {
                     }
                     # if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
                     if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
-                        $rss_left += $rss_torrent.topic_id
                         # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                         if ( $rss.wait_keepers -eq 'Y') {
-                            Write-Log "Из RSS ушла раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
+                            $requesters = ( Get-ClientTorrents -client $client -hash $rss_torrent.hash ).tags.split(', ')
+                            if ( $requesters.count -gt 1 ) { $requesters = $requesters | Where-Object { $_ -ne 'Another-one' } }
+                            $requesters = ( $requesters | Where-Object { $_ -notlike '_*' } ) | Join-String -Separator ', '
+                            Write-Log "Из RSS ушла раздача для $requesters, $($rss_torrent.topic_id) - $($rss_torrent.name)"
                             if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
                                 Write-Log 'Проверим наличие качающего хранителя'
                                 $downloading = ( Get-TopicDownloadingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
@@ -892,6 +894,7 @@ if ( $rss ) {
                                 $rss_del_cnt++
                             }
                             else { Write-Log 'раздачу ещё кто-то качает, пусть полежит' }
+                            $rss_left += $rss_torrent.topic_id
                         }
                         else {
                             Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
