@@ -299,7 +299,7 @@ $hash_to_id = @{}
 $id_to_info = @{}
 
 Write-Log 'Сортируем таблицы'
-$clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
+$clients_torrents | Where-Object { $null -ne $_.topic_id -and $client_key -ne 'RSS2' } | ForEach-Object {
     if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
     $hash_to_id[$_.infohash_v1] = $_.topic_id.ToInt64($null)
 
@@ -713,6 +713,7 @@ if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_toke
 }
 
 if ( $rss ) {
+    $bad_guys = @{}
     $rss_left = @()
     $rss_ids = @()
     if ( !$rss.url ) { $rss.url = 'https://rto.my.to/ask_help.rss?output=json' }
@@ -755,7 +756,7 @@ if ( $rss ) {
             if ( !$rss.skip -or $rss_record[1] -notin $rss.skip ) {
                 if ( !$id_to_info[$rss_record[1]] -and $rss_record[3] -notin $clients_torrents.hash ) {
                     if ( !$ignored -or $requester -notin $ignored ) {
-                        Write-Log "Проверим, что раздача $($rss_record[1]) ещё существует"
+                        Write-Log "Проверим, что раздача $($rss_record[1] ) для $requester ещё существует"
                         Remove-Variable -Name 'unregistered_hash' -ErrorAction SilentlyContinue
                         $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
                         # $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0].info_hash
@@ -900,6 +901,10 @@ if ( $rss ) {
                                 }
                                 else {
                                     Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит" -Red
+                                    $downloading | ForEach-Object {
+                                        if ( !$bad_guys[$usernames[$_.ToString()][0]] ) { $bad_guys[$usernames[$_.ToString()][0]] = @() }
+                                        $bad_guys[$usernames[$_.ToString()][0]] += "https://rutracker.org/forum/viewtopic.php?t=$($rss_torrent.topic_id)"
+                                    }
                                 }
                             }
                             $rss_left += $rss_torrent.topic_id
@@ -924,6 +929,11 @@ if ( $rss ) {
                             $rss_del_cnt++
                         }
                     }
+                }
+            } # конец цикла по клиентам
+            if ( $bad_guys.count -gt 0 ) {
+                $bad_guys.Keys | ForEach-Object {
+                    Write-Log "Попинайте хранителя $_ по раздачам:`n$( $bad_guys[$_] | Join-String -Separator "`n" )`n"
                 }
             }
         } # по включенному RSS Purge

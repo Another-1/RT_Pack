@@ -210,9 +210,9 @@ if ( $client.sid ) {
                 }
                 if ( $pairs -and $pairs[$client_to.Name] ) {
                     foreach ( $pair in $pairs[$client_to.Name].Keys ) {
-                        $copy_dest = $path_to.replace( $pair, $pairs[$client_to.Name][$pair] )
-                        if ( $copy_dest -and $copy_dest -ne $path_to ) {
-                            Write-Log "Используется подмена шары $path_to -> $copy_dest"
+                        $copy_dest = $new_path.replace( $pair, $pairs[$client_to.Name][$pair] )
+                        if ( $copy_dest -and $copy_dest -ne $new_path ) {
+                            Write-Log "Используется подмена шары $pair -> $( $pairs[$client_to.Name][$pair] )"
                             break
                         }
                     }
