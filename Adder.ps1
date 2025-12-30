@@ -873,7 +873,11 @@ if ( $rss ) {
                     }
                     # if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
                     if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
-                        if ( !$usernames ) { $usernames = ( ( Invoke-WebRequest -Uri https://api.rutracker.cc/v1/static/keepers_user_data ).Content | ConvertFrom-Json -AsHashtable ).result }
+                        if ( !$usernames ) {
+                            
+                            $content = Get-ApiHTTP '/v1/static/keepers_user_data' -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                            $usernames = ( $Content | ConvertFrom-Json -AsHashtable ).result
+                        }
                         # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
                         if ( $rss.wait_keepers -eq 'Y') {
                             $requesters = ( Get-ClientTorrents -client $client -hash $rss_torrent.hash ).tags.split(', ')
