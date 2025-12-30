@@ -1622,7 +1622,7 @@ function Get-RepTopics( $call_from ) {
     return ( Get-RepHTTP -url $url -call_from $call_from ) | ConvertFrom-Json -AsHashtable
 }
 function Get-ForumHTTP ( $url, $body, $headers, $call_from ) {
-    return Get-HTTP -url "$( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.api_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_forum
+    return Get-HTTP -url "$( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.forum_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_forum
 }
 
 function Get-ApiHTTP ( $url, $body, $headers, $call_from ) {
