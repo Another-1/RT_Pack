@@ -52,7 +52,7 @@ $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 $ini_data = Get-IniContent $ini_path
 
 Get-Clients
-# Get-ClientApiVersions $settings.clients
+Get-ClientApiVersions $settings.clients
 if ( $client_name ) {
     $client = $settings.clients[$client_name ]
     if ( !$client ) {
@@ -232,6 +232,9 @@ if ( $client.sid ) {
                         Remove-ClientTorrent -client $client -hash $torrent.hash -deleteFiles
                         if ( ( Get-ChildItem -Path $torrent.save_path ).Count -eq 0 ) {
                             Remove-Item -Path $torrent.save_path -ErrorAction SilentlyContinue
+                        }
+                        if ( $debug -eq 1 ) {
+                            Stop-Torrents -hashes @( $torrent.hash ) -client $client_to -mess_sender  ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
                         }
                     }
                     else {

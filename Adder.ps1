@@ -1006,6 +1006,7 @@ if ( $report_stalled -eq 'Y' ) {
         }
         Write-Log ( 'Найдено некачашек итого: ' + $stalleds.hash.count )
         foreach ( $stalled in $stalleds ) {
+            Write-Log "Смотрим статус трекера по некачашке $($stalled.infohash_v1) $($stalled.topic_id)"
             $params = @{
                 hash = $stalled.hash
             }
