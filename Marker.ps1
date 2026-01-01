@@ -51,7 +51,7 @@ if ( $tg_token -ne '') {
 }
 
 Get-Clients
-if ( $rss_mark.ToUpper() -eq 'N' -and $rss ) { 
+if ( $rss_mark -and $rss_mark.ToUpper() -eq 'N' -and $rss ) { 
     if ( $rss.client ) {
         $settings.clients.Remove( $rss.client )
     }
