@@ -108,8 +108,13 @@ function Test-Version {
     # }
 }
 
-function Test-Module ( $module, $description, $MinimumVersion='1.0.0.0') {
-    Write-Log "Проверяем наличие модуля $module $description"
+function Test-Module ( $module, $description, $MinimumVersion = '1.0.0.0') {
+    if ( $MinimumVersion -eq '1.0.0.0') {
+        Write-Log "Проверяем наличие модуля $module $description"
+    }
+    else {
+        Write-Log "Проверяем наличие свежего (не древнее чем $MinimumVersion) модуля $module $description"
+    }
     try {
         if ( -not ( [bool](Get-InstalledModule -Name $module -MinimumVersion $MinimumVersion -ErrorAction SilentlyContinue) ) ) {
             Write-Log "Не установлен модуль $module $description, ставим" -Red
@@ -117,8 +122,8 @@ function Test-Module ( $module, $description, $MinimumVersion='1.0.0.0') {
             #     Install-Module -Name $module -MaximumVersion 3.6.3 -Scope CurrentUser -Force
             # }
             # else {
-                Uninstall-Module -Name $module -ErrorAction SilentlyContinue
-                Install-Module -Name $module -Scope CurrentUser -Force
+            Uninstall-Module -Name $module -ErrorAction SilentlyContinue
+            Install-Module -Name $module -Scope CurrentUser -Force
             # }
         }
         Write-Log "Модуль $module обнаружен" -Green
@@ -1539,7 +1544,7 @@ function Get-TopicDownloadingStatus( $topic_id, $call_from ) {
     $content = ( Get-RepHTTP -url $url -call_from $call_from ) | ConvertFrom-Json
     # $check = ( $content.result | ForEach-Object { $_[3] -band 0b10 } | Measure-Object -Maximum ).Maximum
     # $result = $check -eq 2
-     $result = $content.result | Where-Object { $_[3] -band 0b10 } | ForEach-Object { $_[1] }
+    $result = $content.result | Where-Object { $_[3] -band 0b10 } | ForEach-Object { $_[1] }
     return $result
 }
 
@@ -1686,7 +1691,7 @@ function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
         }
     }
     Write-Log 'Не удалось получить данные, выходим досрочно' -Red
-    Exit
+    exit
 }
 
 function Get-DiskTypes {
