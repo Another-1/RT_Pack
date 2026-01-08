@@ -700,6 +700,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 $obsolete[ $_.client_key ] += ( $_.topic_id )
             }
         }
+        else { Write-Log 'Неактуальных раздач не найдено' }
     }
 
     if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_token -and $report_broken -and $report_broken -eq 'Y' ) {
