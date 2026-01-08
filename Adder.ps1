@@ -59,7 +59,7 @@ else {
 
 if ( !$debug ) {
     Test-PSVersion
-    Test-Module -module 'PsIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
+    Test-Module -module 'PSIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
     Test-Module 'PSSQLite' 'для работы с базой TLO'
     Write-Log 'Проверяем актуальность скриптов' 
     if ( $check_update -ne 'N' ) {

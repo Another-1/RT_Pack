@@ -17,9 +17,9 @@ Write-Log 'Проверяем версии скриптов'
 Test-Version ( '_functions.ps1' ) 'Banner'
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Banner'
 
-if ( -not ( [bool](Get-InstalledModule -Name PsIni -ErrorAction SilentlyContinue) ) ) {
+if ( -not ( [bool](Get-InstalledModule -Name PSIni -ErrorAction SilentlyContinue) ) ) {
     Write-Log 'Не установлен модуль PSIni для чтения настроек Web-TLO, ставим...'
-    Install-Module -Name PsIni -Scope CurrentUser -Force
+    Install-Module -Name PSIni -Scope CurrentUser -Force
 }
 
 Write-Log 'Скачиваем файл'

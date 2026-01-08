@@ -39,9 +39,9 @@ if ( ( Test-Version '_functions.ps1' 'Mover' ) -eq $true ) {
 }
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Mover'
 
-if ( -not ( [bool](Get-InstalledModule -Name PsIni -ErrorAction SilentlyContinue) ) ) {
+if ( -not ( [bool](Get-InstalledModule -Name PSIni -ErrorAction SilentlyContinue) ) ) {
     Write-Output 'Не установлен модуль PSIni для чтения настроек Web-TLO, ставим...'
-    Install-Module -Name PsIni -Scope CurrentUser -Force
+    Install-Module -Name PSIni -Scope CurrentUser -Force
 }
 
 if ( !$settings.others ) { $settings.others = [ordered]@{} }

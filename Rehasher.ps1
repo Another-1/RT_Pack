@@ -69,7 +69,7 @@ if ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine 
     exit
 }
 
-Test-Module -module 'PsIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
+Test-Module -module 'PSIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
 Test-Module 'PSSQLite' 'для работы с базой TLO'
 
 if ( $standalone -eq $true ) { $settings.interface.use_timestamp = Test-Setting 'use_timestamp' -json_path 'interface' -required } else { $settings.interface.use_timestamp = Test-Setting 'use_timestamp' -required }

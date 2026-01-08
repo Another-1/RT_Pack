@@ -40,7 +40,7 @@ Test-ForumWorkingHours -verbose -break
 
 if ( !$debug ) {
     Test-PSVersion
-    Test-Module -module 'PsIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
+    Test-Module -module 'PSIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
     Write-Log 'Проверяем актуальность скриптов' 
     if ( ( Test-Version -name '_functions.ps1' -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) -eq $true ) {
         Write-Log 'Запускаем новую версию _functions.ps1'

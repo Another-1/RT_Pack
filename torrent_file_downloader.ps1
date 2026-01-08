@@ -8,7 +8,7 @@ Write-Output "Подгружаем настройки из $settings_file"
 try { . $settings_file; Write-Output 'Настройки подгружены' } catch { Write-Host 'Не найден файл настроек' -ForegroundColor Red; exit 1 }
 $tlo_path = Test-Setting 'tlo_path' -required
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
-Test-Module -module 'PsIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
+Test-Module -module 'PSIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
 Write-Log 'Читаем настройки Web-TLO'
 $ini_data = Remove-Quotes( Import-Ini $ini_path )
 

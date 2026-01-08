@@ -118,7 +118,7 @@ function Test-Module ( $module, $description, $MinimumVersion = '1.0.0.0') {
     try {
         if ( -not ( [bool](Get-InstalledModule -Name $module -MinimumVersion $MinimumVersion -ErrorAction SilentlyContinue) ) ) {
             Write-Log "Не установлен модуль $module $description, ставим" -Red
-            # if ( $module -eq 'PsIni') {
+            # if ( $module -eq 'PSIni') {
             #     Install-Module -Name $module -MaximumVersion 3.6.3 -Scope CurrentUser -Force
             # }
             # else {
