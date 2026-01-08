@@ -119,12 +119,12 @@ function Test-Module {
     try {
         if ( -not ( [bool](Get-InstalledModule -Name $module -ErrorAction SilentlyContinue) ) ) {
             Write-Log "Не установлен модуль $module $description, ставим" -Red
-            if ( $module -eq 'PsIni') {
-                Install-Module -Name $module -MaximumVersion 3.6.3 -Scope CurrentUser -Force
-            }
-            else {
+            # if ( $module -eq 'PsIni') {
+            #     Install-Module -Name $module -MaximumVersion 3.6.3 -Scope CurrentUser -Force
+            # }
+            # else {
                 Install-Module -Name $module -Scope CurrentUser -Force
-            }
+            # }
         }
         Write-Log "Модуль $module обнаружен" -Green
         Import-Module $module -ErrorAction Stop
