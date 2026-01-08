@@ -10,7 +10,7 @@ $tlo_path = Test-Setting 'tlo_path' -required
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 Test-Module 'PsIni' 'для чтения настроек TLO'
 Write-Log 'Читаем настройки Web-TLO'
-$ini_data = Get-IniContent $ini_path
+$ini_data = Remove-Quotes( Import-Ini $ini_path )
 
 Test-ForumWorkingHours -verbose -break
 

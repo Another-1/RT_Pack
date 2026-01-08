@@ -55,7 +55,7 @@ if ( $standalone -eq $false ) {
     $tlo_path = Test-Setting 'tlo_path' -required
     $ini_path = Join-Path $tlo_path 'data' 'config.ini'
     Write-Log 'Читаем настройки Web-TLO'
-    $ini_data = Get-IniContent $ini_path
+    $ini_data = Remove-Quotes( Import-Ini $ini_path )
 }
 if ( !$settings.connection -and $standlone -ne $true ) {
     if ( !$settings.connection ) { $settings.connection = [ordered]@{} }

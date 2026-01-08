@@ -49,7 +49,7 @@ $settings.others.auto_update = Test-Setting 'auto_update' -required
 
 $tlo_path = Test-Setting 'tlo_path' -required
 $ini_path = Join-Path $tlo_path 'data' 'config.ini'
-$ini_data = Get-IniContent $ini_path
+$ini_data = Remove-Quotes( Import-Ini $ini_path )
 
 Get-Clients
 Get-ClientApiVersions $settings.clients

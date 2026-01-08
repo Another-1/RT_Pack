@@ -288,11 +288,22 @@ function Test-ForumWorkingHours ( [switch]$verbose, [switch]$break ) {
     if ( -not $break.IsPresent ) { return $true }
 }
 
+function Remove-Quotes ( $ini_data ) {
+    $tmp = @{}
+    foreach ( $key in $ini_data.keys ) {
+        if ( !$tmp[$key] ) { $tmp[$key] = @{} }
+        foreach ( $key2 in $ini_data[$key].keys ) {
+            $tmp[$key][$key2] = $ini_data[$key][$key2].Replace('"', '')
+        }
+    }
+    return $tmp
+}
+
 function Set-ConnectDetails ( $settings ) {
 
     if ( !$settings.connection ) { $settings.connection = [ordered]@{} }
     $settings.connection.login = $ini_data.'torrent-tracker'.login
-    $settings.connection.password = $ini_data.'torrent-tracker'.password.replace( '\\', '\' )
+    $settings.connection.password = $ini_data.'torrent-tracker'.password
     $settings.connection.forum_url = $ini_data.'torrent-tracker'.forum_url
     $settings.connection.forum_ssl = ( $ini_data.'torrent-tracker'.forum_ssl -eq '1' ? 'Y' : 'N' )
     $settings.connection.user_id = $ini_data.'torrent-tracker'.user_id

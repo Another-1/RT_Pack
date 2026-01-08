@@ -30,7 +30,7 @@ try {
         Write-Log 'Файл обновился, перечитываем'
         Write-Log 'Читаем настройки Web-TLO'
         $ini_path = $tlo_path + '\data\config.ini'
-        $ini_data = Get-IniContent $ini_path
+        $ini_data = Remove-Quotes( Import-Ini $ini_path )
         $clients = Get-Clients
         Move-Item -Path $new_path -Destination $ipfilter_path -Force
         foreach ( $client_key in $clients.Keys ) {

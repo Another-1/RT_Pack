@@ -20,7 +20,7 @@ $separator = $( $PSVersionTable.OS.ToLower().contains('windows') ? '\' : '/' )
 $settings_file = Join-Path $PSScriptRoot 'settings.json'
 if ( Test-Path $settings_file ) {
     # $debug = 1
-    # Write-Output "Подгружаем настройки из $settings_file"
+    # Write-Output "Подгружаем нiniастройки из $settings_file"
     $settings = Get-Content -Path $settings_file | ConvertFrom-Json -AsHashtable
     $standalone = $true
 }
@@ -89,7 +89,7 @@ if ( $standalone -eq $false ) {
     $tlo_path = Test-Setting 'tlo_path' -required
     $ini_path = Join-Path $tlo_path 'data' 'config.ini'
     Write-Log 'Читаем настройки Web-TLO'
-    $ini_data = Get-IniContent $ini_path
+    $ini_data = Remove-Quotes( Import-Ini $ini_path )
 }
 if ( !$settings.adder ) { $settings.adder = [ordered]@{} }
 $json_section = ( $standalone -eq $true ? 'adder' : '' )
@@ -137,7 +137,7 @@ if ( !$settings.connection -and $standlone -ne $true ) {
     Set-Proxy( $settings )
 }
 
-if ( $ini_data ) { $section_numbers = $ini_data.sections.subsections.split( ',' ) } else { $section_numbers = $settings.sections.keys }
+if ( $ini_data ) { $section_numbers = $ini_data.sections.subsections.replace('"', '').split( ',' ) } else { $section_numbers = $settings.sections.keys }
 $all_sections = $section_numbers
 $ini_sections = $section_numbers
 if ( !$settings.adder.never_obsolete -and $never_obsolete ) { $settings.adder.never_obsolete = $never_obsolete }

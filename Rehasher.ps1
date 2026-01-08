@@ -77,7 +77,7 @@ if ( $standalone -eq $false ) {
     $tlo_path = Test-Setting 'tlo_path' -required
     $ini_path = Join-Path $tlo_path 'data' 'config.ini'
     Write-Log 'Читаем настройки Web-TLO'
-    $ini_data = Get-IniContent $ini_path
+    $ini_data = Remove-Quotes( Import-Ini $ini_path )
 }
 
 $min_repeat_epoch = ( Get-Date -UFormat %s ).ToInt32($null) - ( $frequency * 24 * 60 * 60 ) # количество секунд между повторными рехэшами одной раздачи
