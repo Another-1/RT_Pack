@@ -108,21 +108,16 @@ function Test-Version {
     # }
 }
 
-function Test-Module {
-    param(
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string]$module,
-        [string]$description = ''
-    )
+function Test-Module ( $module, $description, $MinimumVersion='1.0.0.0') {
     Write-Log "Проверяем наличие модуля $module $description"
     try {
-        if ( -not ( [bool](Get-InstalledModule -Name $module -ErrorAction SilentlyContinue) ) ) {
+        if ( -not ( [bool](Get-InstalledModule -Name $module -MinimumVersion $MinimumVersion -ErrorAction SilentlyContinue) ) ) {
             Write-Log "Не установлен модуль $module $description, ставим" -Red
             # if ( $module -eq 'PsIni') {
             #     Install-Module -Name $module -MaximumVersion 3.6.3 -Scope CurrentUser -Force
             # }
             # else {
+                Uninstall-Module -Name $module -ErrorAction SilentlyContinue
                 Install-Module -Name $module -Scope CurrentUser -Force
             # }
         }
