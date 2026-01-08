@@ -6,7 +6,7 @@ if ( Test-Path -Path ( Join-Path $PSScriptRoot 'settings.json') ) {
 }
 else {
     if ( Test-Path ( Join-Path $PSScriptRoot _settings.ps1 ) ) { . ( Join-Path $PSScriptRoot _settings.ps1 ) }
-    Test-Module 'PsIni' 'для чтения настроек TLO'
+    Test-Module -module 'PsIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
     $tlo_path = Test-Setting 'tlo_path' -required
     $ini_path = Join-Path $tlo_path 'data' 'config.ini'
     Write-Log 'Читаем настройки Web-TLO'
