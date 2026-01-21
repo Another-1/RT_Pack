@@ -52,7 +52,7 @@ $ini_path = Join-Path $tlo_path 'data' 'config.ini'
 $ini_data = Remove-Quotes( Import-Ini $ini_path )
 
 Get-Clients
-Get-ClientApiVersions $settings.clients
+# Get-ClientApiVersions $settings.clients
 if ( $client_name ) {
     $client = $settings.clients[$client_name ]
     if ( !$client ) {
@@ -74,9 +74,11 @@ else {
     Write-Log 'Выберите исходный клиент'
     $client = Select-Client
     Write-Log ( 'Выбран клиент ' + $client.Name )
+    Get-ClientApiVersions -clients @{ $client.name = $client }
     Write-Log "`nВыберите целевой клиент"
     $client_to = Select-Client
     Write-Log ( 'Выбран клиент ' + $client_to.Name )
+    if ( $client_to.Name -ne $client.name ) { Get-ClientApiVersions -clients @{ $client_to.name = $client_to } }
     Set-ConnectDetails $settings
     Set-Proxy $settings
 }
