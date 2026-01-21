@@ -720,6 +720,11 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
         $rss_ids = @()
         if ( !$rss.url ) { $rss.url = 'https://rto.my.to/ask_help.rss?output=json' }
         if ( $rss.url -notlike '*json') { $rss.url = $( $rss.url -match '\?' ? "$($rss.url)&output=json" : "$($rss.url)?output=json" ) }
+        $stalled_headers = @{
+            'X-Help-Pwd'   = $stalled_pwd
+            'Content-Type' = 'application/json'
+        }
+    
         $retry_cnt = 1
         Write-Log "Скачиваем RSS-ленту по адресу $($rss.url)"
         while ( $true ) {
@@ -904,6 +909,14 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                 else {
                                     if ( $rss_torrent.state -in ( 'stalledDL', 'Downloading' ) ) {
                                         Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит"
+                                        if ( $debug -eq 1 ) {
+                                            $params = @{
+                                                'help_load' = $rss_torrent.topic_id
+                                                # 'help_pwd'  = $stalled_pwd
+                                            }
+                                
+                                            Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/api/update-help' -UserAgent 'avenger' -Headers $stalled_headers -Body $( $params | ConvertTo-Json ) -ErrorVariable send_result | Out-Null
+                                        }
                                     }
                                     else {
                                         Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит" -Red

@@ -75,7 +75,7 @@ function Test-Version {
                 Write-Log $text -Red
                 if ( $alert_oldies -eq 'Y' -and $tg_token -ne '' ) { Send-TGMessage -message $text -token $tg_token -chat_id $tg_chat -mess_sender $mess_sender }
             }
-            if ( ( $auto_update -eq 'Y' -or $settings.others.auto_update -eq 'Y' ) -and $debug -ne 1 ) {
+            elseif ( ( $auto_update -eq 'Y' -or $settings.others.auto_update -eq 'Y' ) -and $debug -ne 1 ) {
                 Write-Log "$name обновился, сохраняю новую версию"
                 Copy-Item -Path $new_file_path -Destination ( Join-Path $PSScriptRoot $name ) -Force
                 Write-Log "Снимаю блокировку с запуска $name"
