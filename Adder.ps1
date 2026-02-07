@@ -394,6 +394,7 @@ $added = @{}
 $refreshed = @{}
 
 if ( (Test-ForumWorkingHours) -eq $true ) {
+# if ( 1 -eq 1 ) {
     if ( $new_torrents_keys ) {
         Write-Log 'Сортируем раздачи по клиентам'
         $new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $tracker_torrents[$_].tor_size_bytes } | Sort-Object -Property { $settings.sections[$tracker_torrents[$_].section].client } -Stable
@@ -983,6 +984,9 @@ elseif ( $update_stats -eq 'Y' -and $php_path ) {
 elseif ( $update_stats -ne 'Y' -or !$php_path ) {
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
 }
+
+# if ( $report_added -eq 'N') { $added = @{} }
+# if ( $report_refreshed -eq 'N') { $refreshed = @{} }
 
 if (
     ( 

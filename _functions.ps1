@@ -1056,39 +1056,41 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             # полная форма
             $tg_data.message = ''
             $first = $true
-            foreach ( $client in $refreshed.Keys ) {
-                if ( !$first ) { $tg_data.message += "`n" }
-                $first = $false
-                $tg_data.line = "Обновлены в клиенте <b>$client</b>`n"
-                Add-TGMessage $tg_data
-                $refreshed[$client].keys | Sort-Object | ForEach-Object {
-                    $refreshed[$client][$_] | ForEach-Object {
-                        # Add-TGMessage ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" )
-                        $tg_data.line = ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" )
-                        Add-TGMessage $tg_data
+            if ( $report_refreshed -ne 'N') {
+                foreach ( $client in $refreshed.Keys ) {
+                    if ( !$first ) { $tg_data.message += "`n" }
+                    $first = $false
+                    $tg_data.line = "Обновлены в клиенте <b>$client</b>`n"
+                    Add-TGMessage $tg_data
+                    $refreshed[$client].keys | Sort-Object | ForEach-Object {
+                        $refreshed[$client][$_] | ForEach-Object {
+                            # Add-TGMessage ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" )
+                            $tg_data.line = ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + $_.comment + "`n" + $_.name + ' (' + ( to_kmg $_.old_size 2 ) + ' -> ' + ( to_kmg $_.new_size 2 ) + ")`n`n" )
+                            Add-TGMessage $tg_data
+                        }
                     }
                 }
             }
-
             if ( $tg_data.message -ne '' ) { $tg_data.message += "`n`n" }
             # if ( $message -ne '' ) { Add-TGMessage $messages $message "`n`n" }
 
             $first = $true
-            foreach ( $client in $added.Keys ) {
-                if ( !$first ) { $tg_data.message += "`n" }
-                $first = $false
-                $tg_data.line = "Добавлены в клиент <b>$client</b>`n"
-                Add-TGMessage $tg_data
-                # Add-TGMessage "Добавлены в клиент <b>$client</b>`n"
-                $added[$client].keys | Sort-Object | ForEach-Object {
-                    $added[$client][$_] | ForEach-Object {
-                        $tg_data.line = ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + "`n" + $_.name + ' (' + ( to_kmg $_.size 1 ) + ')' + "`n`n")
-                        Add-TGMessage $tg_data
-                        # Add-TGMessage ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + "`n" + $_.name + ' (' + ( to_kmg $_.size 1 ) + ')' + "`n`n" )
+            if ( $report_added -ne 'N' ) {
+                foreach ( $client in $added.Keys ) {
+                    if ( !$first ) { $tg_data.message += "`n" }
+                    $first = $false
+                    $tg_data.line = "Добавлены в клиент <b>$client</b>`n"
+                    Add-TGMessage $tg_data
+                    # Add-TGMessage "Добавлены в клиент <b>$client</b>`n"
+                    $added[$client].keys | Sort-Object | ForEach-Object {
+                        $added[$client][$_] | ForEach-Object {
+                            $tg_data.line = ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + "`n" + $_.name + ' (' + ( to_kmg $_.size 1 ) + ')' + "`n`n")
+                            Add-TGMessage $tg_data
+                            # Add-TGMessage ( 'https://rutracker.org/forum/viewtopic.php?t=' + $_.id + "`n" + $_.name + ' (' + ( to_kmg $_.size 1 ) + ')' + "`n`n" )
+                        }
                     }
                 }
             }
-
             # if ( $tg_data.message -ne '' -and $obsolete.count -gt 0 ) { $tg_data.message += "`n" }
             # $first = $true
             # foreach ( $client in $obsolete.Keys ) {
@@ -1121,14 +1123,14 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
                 # Add-TGMessage "<u>Клиент <b>$client</b></u>`n"
                 $tg_data.line = "<u>Клиент <b>$client</b></u>`n"
                 Add-TGMessage $tg_data
-                if ( $refreshed -and $refreshed[$client] ) {
+                if ( $refreshed -and $refreshed[$client] -and $report_refreshed -ne 'N' ) {
                     $stat = ( $refreshed[$client].keys | ForEach-Object { $refreshed[$client][$_] }) | Measure-Object -Property new_size -Sum
                     $stat_was = ( $refreshed[$client].keys | ForEach-Object { $refreshed[$client][$_] }) | Measure-Object -Property old_size -Sum
                     $tg_data.line = "Обновлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
                     Add-TGMessage $tg_data
                     $refreshed_b += ( $stat.Sum - $stat_was.Sum )
                 }
-                if ( $added -and $added[$client] ) {
+                if ( $added -and $added[$client] -and $report_added -ne 'N' ) {
                     $stat = ( $added[$client].keys | ForEach-Object { $added[$client][$_] }) | Measure-Object -Property size -Sum
                     $tg_data.line = "Добавлено: $( Get-Spell -qty $stat.Count -spelling 1 -entity 'torrents' ), $( to_kmg $stat.Sum 2 ) `n"
                     Add-TGMessage $tg_data
