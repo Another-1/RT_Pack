@@ -1147,12 +1147,12 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             $tg_data.line = "`n<u><b>Итого</b></u>`nБыло: $(to_kmg $was 3 )`nСтало: $( to_kmg $now 3 )"
             Add-TGMessage $tg_data
         }
-        if ( $rss_add_cnt -gt 0 ) {
+        if ( $rss_add_cnt -gt 0 -and $report_rss -ne 'N' ) {
             if ( $tg_data.message -ne '' ) { $tg_data.message += "`n" }
             $tg_data.line = "Добавлено из RSS: $( Get-Spell -qty $rss_add_cnt -spelling 1 -entity 'torrents' )`n"
             Add-TGMessage $tg_data
         }
-        if ( $rss_del_cnt -gt 0 ) {
+        if ( $rss_del_cnt -gt 0  -and $report_rss -ne 'N' ) {
             if ( $tg_data.message -ne '' ) { $tg_data.message += "`n" }
             $tg_data.line = "Удалено из RSS: $( Get-Spell -qty $rss_del_cnt -spelling 1 -entity 'torrents' )`n"
             Add-TGMessage $tg_data
