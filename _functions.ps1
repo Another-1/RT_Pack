@@ -894,6 +894,7 @@ function Get-File ( $uri, $save_path, $user_agent, $headers = $null, $from ) {
             else { Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -MaximumRedirection 999 -ConnectionTimeoutSeconds 30 -SkipHttpErrorCheck -UserAgent $user_agent -Headers $headers; break }
         }
         catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
+        # if ( $i -eq 11 )
     }
     
 }
@@ -1152,7 +1153,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             $tg_data.line = "Добавлено из RSS: $( Get-Spell -qty $rss_add_cnt -spelling 1 -entity 'torrents' )`n"
             Add-TGMessage $tg_data
         }
-        if ( $rss_del_cnt -gt 0  -and $report_rss -ne 'N' ) {
+        if ( $rss_del_cnt -gt 0 -and $report_rss -ne 'N' ) {
             if ( $tg_data.message -ne '' ) { $tg_data.message += "`n" }
             $tg_data.line = "Удалено из RSS: $( Get-Spell -qty $rss_del_cnt -spelling 1 -entity 'torrents' )`n"
             Add-TGMessage $tg_data
@@ -1490,8 +1491,8 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     while ( $counter -lt 10 ) {
         try {
             foreach ( $section in $sections ) {
-                $section_torrents = Get-RepSectionTorrents `
-                    -section $section -ok_states $ok_states -call_from $call_from -avg_seeds:$avg_seeds.IsPresent -min_avg $min_avg -min_seeders $min_seeders -min_release_date $min_release_date -get_low $get_lows -get_mids $get_mids -get_highs $get_highs
+                $section_torrents = Get-RepSectionTorrents  -section $section -ok_states $ok_states -call_from $call_from -avg_seeds:$avg_seeds.IsPresent  -min_avg $min_avg `
+                -min_seeders $min_seeders -min_release_date $min_release_date -get_low $get_lows -get_mids $get_mids -get_highs $get_highs -nonstop
                 $section_torrents.keys | Where-Object { $null -eq $tracker_torrents[$_] } | ForEach-Object { $tracker_torrents[$_] = $section_torrents[$_] }
             }
             break
@@ -1550,12 +1551,12 @@ function Get-TopicDownloadingStatus( $topic_id, $call_from ) {
     return $result
 }
 
-function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_seeds, $min_avg, $min_release_date, $min_seeders ) {
+function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_seeds, $min_avg, $min_release_date, $min_seeders, [switch]$nonstop) {
     $use_avg_seeds = ( $avg_seeds.IsPresent ? $true : ( $ini_data.sections.avg_seeders -eq '1' ) )
     $avg_days = $ini_data.sections.avg_seeders_period
     $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
     $url = "/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders,topic_title,keeper_seeders$subst"
-    $content = ( Get-RepHTTP -url $url -call_from $call_from )
+    $content = ( Get-RepHTTP -url $url -call_from $call_from -nonstop:$nonstop.IsPresent )
     $json = $content | ConvertFrom-Json
     $columns = @{}
     $i = 0
@@ -1634,18 +1635,20 @@ function Get-RepTopics( $call_from ) {
     # return ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json -AsHashtable
     return ( Get-RepHTTP -url $url -call_from $call_from ) | ConvertFrom-Json -AsHashtable
 }
-function Get-ForumHTTP ( $url, $body, $headers, $call_from ) {
-    return Get-HTTP -url "$( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.forum_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_forum
+function Get-ForumHTTP ( $url, $body, $headers, $call_from, [switch]$nonstop ) {
+    return Get-HTTP -url "$( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.forum_url)$url" `
+        -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_forum -nonstop:$nonstop.IsPresent
 }
 
 function Get-ApiHTTP ( $url, $body, $headers, $call_from ) {
     return Get-HTTP -url "$( $settings.connection.api_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.api_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_api
 }
 
-function Get-RepHTTP ( $url, $body, $call_from ) {
+function Get-RepHTTP ( $url, $body, $call_from, [switch]$nonstop ) {
     $headers = @{}
     $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
-    return Get-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
+    return Get-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" `
+    -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep -nonstop:$nonstop.IsPresent
 }
 
 function Set-Proxy( $settings ) {
@@ -1658,7 +1661,7 @@ function Set-Proxy( $settings ) {
     }
 }
 
-function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
+function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy, [switch]$nonstop ) {
     $retry_cnt = 1
     while ( $true ) {
         try {
@@ -1692,8 +1695,13 @@ function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy ) {
             elseif ( $retry_cnt -ge 10 ) { break }
         }
     }
-    Write-Log 'Не удалось получить данные, выходим досрочно' -Red
-    exit
+    if ( $nonstop.IsPresent ) {
+        Write-Log 'Не удалось получить данные' -Red
+    }
+    else {
+        Write-Log 'Не удалось получить данные, выходим досрочно' -Red
+        exit
+    }
 }
 
 function Get-DiskTypes {

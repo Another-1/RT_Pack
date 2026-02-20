@@ -751,6 +751,111 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
         }
         else {
             $rss_add_cnt = 0
+            $rss_del_cnt = 0
+            if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
+                $rss_ids = $rss_data | ForEach-Object { $_[1] }
+                Write-Log 'Удаляем старые ненужные RSS-раздачи'
+                if ( $rss2 ) {
+                    $client2 = $settings.clients[$rss2.client]
+                }
+
+                foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
+                    $client = $settings.clients[$rss_torrent.client_key]
+                    if ( $client.name -eq $rss.client ) {
+                        $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
+                        if ( $null -eq $rss_torrent.topic_id ) { 
+                            try {
+                                $rss_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.infohash_v1 } )[1]
+                            }
+                            catch {
+                                Write-Log "Не удалось получить topic_id для раздачи $($rss_torrent.name), просто удаляем"
+                                $rss_torrent.topic_id = 'XXXXXX'
+                            
+                            }
+        
+                            if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
+                                $rss_ids += ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash })[1]
+                            }
+                        }
+                        # if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
+                        if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
+                            if ( !$usernames ) {
+                            
+                                $content = Get-ApiHTTP '/v1/static/keepers_user_data' -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                                $usernames = ( $Content | ConvertFrom-Json -AsHashtable ).result
+                            }
+                            # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
+                            if ( $rss.wait_keepers -eq 'Y') {
+                                $requesters = ( Get-ClientTorrents -client $client -hash $rss_torrent.hash ).tags.split(', ')
+                                if ( $requesters.count -gt 1 ) { $requesters = $requesters | Where-Object { $_ -ne 'Another-one' } }
+                                $requesters = ( $requesters | Where-Object { $_ -notlike '_*' } ) | Join-String -Separator ', '
+                                Write-Log "Из RSS ушла $( $rss_torrent.state -in ( 'stalledDL', 'Downloading' ) ? 'нескачанная' : 'скачанная' ) раздача для $requesters, $($rss_torrent.topic_id) - $($rss_torrent.name)"
+                                if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
+                                    Write-Log 'Проверим наличие качающего хранителя'
+                                    $downloading = ( Get-TopicDownloadingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
+                                }
+                                else {
+                                    $downloading = $false
+                                }
+                                if ( -not $downloading ) {
+                                    Write-Log 'Нет качающих хранителей, удаляем'
+                                    Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                                    if ( $rss2 ) {
+                                        Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
+                                    }
+                                    $rss_del_cnt++
+                                }
+                                else {
+                                    if ( $rss_torrent.state -in ( 'stalledDL', 'Downloading' ) ) {
+                                        Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит"
+                                        if ( $debug -eq 1 ) {
+                                            $params = @{
+                                                'help_load' = $rss_torrent.topic_id
+                                                # 'help_pwd'  = $stalled_pwd
+                                            }
+                                
+                                            Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/api/update-help' -UserAgent 'avenger' -Headers $stalled_headers -Body $( $params | ConvertTo-Json ) -ErrorVariable send_result | Out-Null
+                                        }
+                                    }
+                                    else {
+                                        Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит" -Red
+                                        $downloading | ForEach-Object {
+                                            if ( !$bad_guys[$usernames[$_.ToString()][0]] ) { $bad_guys[$usernames[$_.ToString()][0]] = @() }
+                                            $bad_guys[$usernames[$_.ToString()][0]] += "https://rutracker.org/forum/viewtopic.php?t=$($rss_torrent.topic_id)"
+                                        }
+                                    }
+                                }
+                                $rss_left += $rss_torrent.topic_id
+                            }
+                            else {
+                                Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
+                                Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                                if ( $rss2 ) {
+                                    Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
+                                }
+                                $rss_del_cnt++
+                            }
+                        }
+                        else {
+                            Get-ClientTrackerStatus -client $client -torrent_list @( $rss_torrent )
+                            if ( $rss_torrent.tracker_status -eq 4 ) {
+                                Write-Log "Найдена снесённая с трекера раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
+                                Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                                if ( $rss2 ) {
+                                    Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
+                                }
+                                $rss_del_cnt++
+                            }
+                        }
+                    }
+                } # конец цикла по клиентам
+                if ( $bad_guys.count -gt 0 ) {
+                    $bad_guys.Keys | ForEach-Object {
+                        Write-Log "Попинайте хранителя $_ по раздачам:`n$( $bad_guys[$_] | Join-String -Separator "`n" )`n"
+                    }
+                }
+            } # по включенному RSS Purge
+
             if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
             if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace ( '^\s+', '') -replace ( '\s+$', '') ) }
             if ( $rss.handle_avenger -and $rss.handle_avenger.ToUpper() -eq 'N' ) { $rss_data = $rss_data | Where-Object { $_[7] -le 3 } }
@@ -758,6 +863,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
             Set-ClientSetting $settings.clients[$rss.client] 'temp_path_enabled' $false
             Write-Log 'Отключаем преаллокацию'
             Set-ClientSetting $settings.clients[$rss.client] 'preallocate_all' $false
+
             foreach ( $rss_record in ( $rss_data | Sort-Object -Property { $_[2] } ) ) {
                 $requester = $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger'
                 $rss_ids += $rss_record[1].ToInt64($null)
@@ -855,108 +961,6 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 }
             }
     
-            $rss_del_cnt = 0
-            if ( $rss.purge -and $rss.purge.ToUpper() -eq 'Y' -and $rss.category -and $rss.category -ne '' ) {
-                Write-Log 'Удаляем старые ненужные RSS-раздачи'
-                if ( $rss2 ) {
-                    $client2 = $settings.clients[$rss2.client]
-                }
-                foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
-                    $client = $settings.clients[$rss_torrent.client_key]
-                    if ( $client.name -eq $rss.client ) {
-                        $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
-                        if ( $null -eq $rss_torrent.topic_id ) { 
-                            try {
-                                $rss_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.infohash_v1 } )[1]
-                            }
-                            catch {
-                                Write-Log "Не удалось получить topic_id для раздачи $($rss_torrent.name), просто удаляем"
-                                $rss_torrent.topic_id = 'XXXXXX'
-                            
-                            }
-        
-                            if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
-                                $rss_ids += ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash })[1]
-                            }
-                        }
-                        # if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
-                        if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
-                            if ( !$usernames ) {
-                            
-                                $content = Get-ApiHTTP '/v1/static/keepers_user_data' -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                                $usernames = ( $Content | ConvertFrom-Json -AsHashtable ).result
-                            }
-                            # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
-                            if ( $rss.wait_keepers -eq 'Y') {
-                                $requesters = ( Get-ClientTorrents -client $client -hash $rss_torrent.hash ).tags.split(', ')
-                                if ( $requesters.count -gt 1 ) { $requesters = $requesters | Where-Object { $_ -ne 'Another-one' } }
-                                $requesters = ( $requesters | Where-Object { $_ -notlike '_*' } ) | Join-String -Separator ', '
-                                Write-Log "Из RSS ушла $( $rss_torrent.state -in ( 'stalledDL', 'Downloading' ) ? 'нескачанная' : 'скачанная' ) раздача для $requesters, $($rss_torrent.topic_id) - $($rss_torrent.name)"
-                                if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
-                                    Write-Log 'Проверим наличие качающего хранителя'
-                                    $downloading = ( Get-TopicDownloadingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
-                                }
-                                else {
-                                    $downloading = $false
-                                }
-                                if ( -not $downloading ) {
-                                    Write-Log 'Нет качающих хранителей, удаляем'
-                                    Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
-                                    if ( $rss2 ) {
-                                        Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
-                                    }
-                                    $rss_del_cnt++
-                                }
-                                else {
-                                    if ( $rss_torrent.state -in ( 'stalledDL', 'Downloading' ) ) {
-                                        Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит"
-                                        if ( $debug -eq 1 ) {
-                                            $params = @{
-                                                'help_load' = $rss_torrent.topic_id
-                                                # 'help_pwd'  = $stalled_pwd
-                                            }
-                                
-                                            Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/api/update-help' -UserAgent 'avenger' -Headers $stalled_headers -Body $( $params | ConvertTo-Json ) -ErrorVariable send_result | Out-Null
-                                        }
-                                    }
-                                    else {
-                                        Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит" -Red
-                                        $downloading | ForEach-Object {
-                                            if ( !$bad_guys[$usernames[$_.ToString()][0]] ) { $bad_guys[$usernames[$_.ToString()][0]] = @() }
-                                            $bad_guys[$usernames[$_.ToString()][0]] += "https://rutracker.org/forum/viewtopic.php?t=$($rss_torrent.topic_id)"
-                                        }
-                                    }
-                                }
-                                $rss_left += $rss_torrent.topic_id
-                            }
-                            else {
-                                Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
-                                Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
-                                if ( $rss2 ) {
-                                    Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
-                                }
-                                $rss_del_cnt++
-                            }
-                        }
-                        else {
-                            Get-ClientTrackerStatus -client $client -torrent_list @( $rss_torrent )
-                            if ( $rss_torrent.tracker_status -eq 4 ) {
-                                Write-Log "Найдена снесённая с трекера раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
-                                Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
-                                if ( $rss2 ) {
-                                    Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
-                                }
-                                $rss_del_cnt++
-                            }
-                        }
-                    }
-                } # конец цикла по клиентам
-                if ( $bad_guys.count -gt 0 ) {
-                    $bad_guys.Keys | ForEach-Object {
-                        Write-Log "Попинайте хранителя $_ по раздачам:`n$( $bad_guys[$_] | Join-String -Separator "`n" )`n"
-                    }
-                }
-            } # по включенному RSS Purge
         } # по цспешно скачанной ленте
     } # по включенной работе с RSS
 }

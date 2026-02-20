@@ -128,7 +128,6 @@ if ( $client.sid ) {
             $max_add_date = ( Get-Date -UFormat %s ).ToInt32($null) - $min_move_days.ToInt32($null) * 24 * 60 * 60
             $torrents_list = @( $torrents_list | Where-Object { $_.added_on -lt $max_add_date } )
             Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
-
         }
 
         if ( $max_inactive_days -and $max_inactive_days -gt 0 ) {
@@ -222,7 +221,8 @@ if ( $client.sid ) {
                 else { $copy_dest = $new_path }
                 Write-Log "Будем перемещать $($torrent.name) размером $( to_kmg $torrent.size 2 ) из $($torrent.save_path) в $copy_dest"
                 if ( $path_from -ne $path_to -or $client.IP -ne $client_to.IP ) {
-                    $secs = Measure-Command { Copy-Item -LiteralPath $torrent.save_path -Destination $copy_dest -Recurse -Force }
+                    New-Item -Path $copy_dest -ItemType Directory -ErrorAction SilentlyContinue
+                    $secs = Measure-Command { Copy-Item -LiteralPath $torrent.content_path -Destination $copy_dest -Recurse -Force }
                     Write-Log "Перемещение заняло $($secs.Hours -gt 0 ? "$($secs.Hours) ч. " : '')$($secs.Minutes -gt 0 ? "$($secs.Minutes) мин. " : '')$($secs.Seconds -gt 0 ? "$($secs.Seconds ) сек." : '< 1 сек.' )"
                 }
                 Export-ClientTorrentFile -client $client -hash $torrent.hash -save_path ( Join-Path $PSScriptRoot "$( $torrent.topic_id ).torrent" )
