@@ -89,6 +89,12 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
         $settings.clients['RSS'] = @{ IP = $rss.client_IP; port = $rss.client_port; login = $rss.client_login; password = $rss.client_password; name = 'RSS'; ssl = 0 }
         $rss.client = 'RSS'
     }
+    if ( $rehash_clients ) {
+        $clients_to_remove = $settings.clients.keys | Where-Object { $_ -notin $rehash_clients }
+        $clients_to_remove | ForEach-Object {
+            $settings.clients.Remove( $_ )
+        }
+    }
     $off = $offline.IsPresent
     # $off = $true
     if ( $off ) {
