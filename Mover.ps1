@@ -33,16 +33,14 @@ if ( $use_timestamp -eq 'Y' ) { $use_timestamp = 'N' }
 Write-Host 'Подгружаем функции'
 . ( Join-Path $PSScriptRoot _functions.ps1 )
 
+Test-Module -module 'PSIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
+Test-Module 'PSSQLite' 'для работы с базой TLO'
+
 if ( ( Test-Version '_functions.ps1' 'Mover' ) -eq $true ) {
     Write-Log 'Запускаем новую версию  _functions.ps1'
     . ( Join-Path $PSScriptRoot '_functions.ps1' )
 }
 Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Mover'
-
-if ( -not ( [bool](Get-InstalledModule -Name PSIni -ErrorAction SilentlyContinue) ) ) {
-    Write-Output 'Не установлен модуль PSIni для чтения настроек Web-TLO, ставим...'
-    Install-Module -Name PSIni -Scope CurrentUser -Force
-}
 
 if ( !$settings.others ) { $settings.others = [ordered]@{} }
 $settings.others.auto_update = Test-Setting 'auto_update' -required
