@@ -969,18 +969,14 @@ function Get-ForumTorrentInfo ( $id, $call_from ) {
 }
 
 function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
-    # Test-ForumWorkingHours
-    # $MoscowTZ = [System.TimeZoneInfo]::FindSystemTimeZoneById("Russian Standard Time")
-    # $MoscowTime = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $MoscowTZ)
-    $lock_file = "$PSScriptRoot\in_progress.lck"
-    $in_progress = Test-Path -Path $lock_file
-    # If ( ( ( Get-Date($MoscowTime) -UFormat %H ).ToInt16( $nul ) + 2 ) % 2 -eq 0 -or ( $check -eq $false ) ) {
-    if ( !$in_progress ) {
+    # $lock_file = "$PSScriptRoot\in_progress.lck"
+    # $in_progress = Test-Path -Path $lock_file
+    # if ( !$in_progress ) {
         if ( $wait ) {
             Write-Log 'Подождём 5 минут, вдруг быстро скачаются добавленные/обновлённые.'
             Start-Sleep -Seconds 300
         }
-        New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
+        # New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
         try {
             Write-Log 'Обновляем БД TLO'
             . $php_path ( Join-Path $tlo_path 'cron' 'update.php' )
@@ -993,10 +989,9 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
         finally {
             Remove-Item $lock_file -ErrorAction SilentlyContinue
         }
-    }
-    else {
-        Write-Log "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -Red
-    }
+    # }
+    # else {
+    #     Write-Log "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -Red
     # }
 }
 
