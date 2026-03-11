@@ -987,7 +987,7 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
             }
         }
         finally {
-            Remove-Item $lock_file -ErrorAction SilentlyContinue
+            # Remove-Item $lock_file -ErrorAction SilentlyContinue
         }
     # }
     # else {
