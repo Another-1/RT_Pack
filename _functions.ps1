@@ -1044,7 +1044,7 @@ function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
     else {
         $securepass = ConvertTo-SecureString $tg_proxy.password -AsPlainText -Force
         $tg_proxy_credentials = New-Object System.Management.Automation.PSCredential -ArgumentList $tg_proxy.login, $securepass
-        Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) -Proxy $tg_proxy_url -ProxyCredential $settings.connection.proxy.credentials | Out-Null
+        Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) -Proxy $tg_proxy_url -ProxyCredential $tg_proxy_credentials | Out-Null
     }
 }
 
