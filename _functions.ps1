@@ -1033,7 +1033,13 @@ function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
             "text"                     = $message
         }
     }
-    Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
+    if ( !$tg_proxy ) {
+        Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
+    }
+    else {
+        # Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) -Proxy $tg_proxy.IP + ':' + $tg_proxy.Port -ProxyCredential $tg_proxy.credentials | Out-Null
+        Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) -Proxy ('socks5://'+ $tg_proxy.IP + ':' + $tg_proxy.Port ) | Out-Null
+    }
 }
 
 function Add-TGMessage ( $tg_data ) {
