@@ -1033,12 +1033,18 @@ function Send-TGMessage ( $message, $token, $chat_id, $mess_sender = '' ) {
             "text"                     = $message
         }
     }
+    $tg_proxy_url = ( $tg_proxy.type -like 'http*' ? 'http://' : 'socks5://' ) + $tg_proxy.IP + ':' + $tg_proxy.Port
     if ( !$tg_proxy ) {
         Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) | Out-Null
     }
-    else {
+    elseif ( !$tg_proxy.login ) {
         # Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) -Proxy $tg_proxy.IP + ':' + $tg_proxy.Port -ProxyCredential $tg_proxy.credentials | Out-Null
-        Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) -Proxy ('socks5://'+ $tg_proxy.IP + ':' + $tg_proxy.Port ) | Out-Null
+        Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) -Proxy $tg_proxy_url | Out-Null
+    }
+    else {
+        $securepass = ConvertTo-SecureString $tg_proxy.password -AsPlainText -Force
+        $tg_proxy_credentials = New-Object System.Management.Automation.PSCredential -ArgumentList $tg_proxy.login, $securepass
+        Invoke-WebRequest -Uri ( "https://api.telegram.org/bot$token/sendMessage" ) -Method Post -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Json -Compress -InputObject $payload) -Proxy $tg_proxy_url -ProxyCredential $settings.connection.proxy.credentials | Out-Null
     }
 }
 
