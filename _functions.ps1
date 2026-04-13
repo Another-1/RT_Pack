@@ -416,11 +416,11 @@ function Initialize-Client ( $client, $mess_sender = '', [switch]$verbos, [switc
             if ( $verbos ) { Write-Log ( 'Авторизуемся в клиенте ' + $client.Name ) }
             $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/auth/login'
             $result = Invoke-WebRequest -Method POST -Uri $url -Headers $loginheader -Body $logindata -SessionVariable sid
-            if ( $result.StatusCode -ne 200 ) {
+            if ( $result.StatusCode -ne 200 -and $result.StatusCode -ne 204 ) {
                 Write-Log 'You are banned.' -Red
                 exit
             }
-            if ( $result.Content.ToUpper() -ne 'OK.') {
+            if ( $result.content -isnot [array] -and $result.Content.ToUpper() -ne 'OK.' ) {
                 Write-Log ( 'Клиент вернул ошибку авторизации: ' + $result.Content ) -Red
                 exit
             }

@@ -120,7 +120,7 @@ if ( ( $update_stats -eq 'Y' -or $force_update -eq 'Y' ) -and $standalone -ne $t
         $php_path = Test-Setting 'php_path' -required
         if ( Test-Path $php_path ) { break }
         Write-Log 'Не нахожу такого файла, проверьте ввод' -ForegroundColor -Red
-        Remove-Variable -Name $php_path
+        Remove-Variable -Name php_path -ErrorAction SilentlyContinue
     }
 }
 
