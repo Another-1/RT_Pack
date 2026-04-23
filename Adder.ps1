@@ -1046,7 +1046,7 @@ if ( $report_stalled -eq 'Y' ) {
             'Content-Type' = 'application/json'
         }
         Write-Log 'Отправляем список некачашек'
-        $batch_size = 100
+        $batch_size = 50
         for ( $i = 0; $i -le $stalleds.topic_id.Count; $i += $batch_size ) {
             $batch = ($stalleds[ $i..([math]::Min($i + $batch_size - 1, $stalleds.hash.Count - 1))]).topic_id
             $params = @{
