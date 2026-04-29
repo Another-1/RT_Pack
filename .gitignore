@@ -34,3 +34,5 @@ Kicker.ps1
 userlist.txt
 runner.ps1
 down.txt
+optimize_blacklist.ps1
+blacklist.txt
