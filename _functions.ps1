@@ -234,12 +234,14 @@ function Test-Setting {
         } while ( ( $current -eq '' -and $required ) -or ( $set_names[$setting].type -eq 'YN' -and $current -notmatch '[YN]' ) )
         if ( $changed ) {
             if ( $set_names[$setting].type -eq ( 'number' ) -or $set_names[$setting].type -eq ( 'float' ) ) {
-                if ( $set_names[$setting].type -eq ( 'float' ) ) {
-                    try { 
-                        $current = $current.replace(',', '.').ToSingle( $null )
-                    }
-                    catch {
-                        $current = $current.replace('.', ',').ToSingle( $null )
+                if ( $set_names[$setting].type -eq 'float' ) {
+                    if ( $current.GetType() -eq [System.String] ) {
+                        try { 
+                            $current = $current.replace(',', '.').ToSingle( $null )
+                        }
+                        catch {
+                            $current = $current.replace('.', ',').ToSingle( $null )
+                        }
                     }
                 }
                 else {
