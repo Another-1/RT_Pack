@@ -972,23 +972,29 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
     # $lock_file = "$PSScriptRoot\in_progress.lck"
     # $in_progress = Test-Path -Path $lock_file
     # if ( !$in_progress ) {
-        if ( $wait ) {
-            Write-Log 'Подождём 5 минут, вдруг быстро скачаются добавленные/обновлённые.'
-            Start-Sleep -Seconds 300
-        }
-        # New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
-        try {
-            Write-Log 'Обновляем БД TLO'
-            . $php_path ( Join-Path $tlo_path 'cron' 'update.php' )
+    if ( $wait ) {
+        Write-Log 'Подождём 5 минут, вдруг быстро скачаются добавленные/обновлённые.'
+        Start-Sleep -Seconds 300
+    }
+    # New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
+    try {
+        Write-Log 'Обновляем БД TLO'
+        if ( [version]( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version -gt [version]'3.9.9.9' ) {
+            . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:update
             Write-Log 'Обновляем списки других хранителей'
+            . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:keepers
+        }
+        else {
+            . $php_path ( Join-Path $tlo_path 'cron' 'update.php' )
             . $php_path ( Join-Path $tlo_path 'cron' 'keepers.php' )
-            if ( $send_report ) {
-                Send-Report
-            }
         }
-        finally {
-            # Remove-Item $lock_file -ErrorAction SilentlyContinue
+        if ( $send_report ) {
+            Send-Report
         }
+    }
+    finally {
+        # Remove-Item $lock_file -ErrorAction SilentlyContinue
+    }
     # }
     # else {
     #     Write-Log "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -Red
@@ -997,7 +1003,13 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
 
 function Send-Report () {
     Write-Log 'Шлём отчёт'
-    . $php_path ( Join-Path $tlo_path 'cron' 'reports.php' )
+
+    if ( [version]( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version -gt [version]'3.9.9.9' ) {
+        . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:reports
+    }
+    else {
+        . $php_path ( Join-Path $tlo_path 'cron' 'reports.php' )
+    }
 }
 
 function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles, $torrent = $null ) {
@@ -1498,8 +1510,8 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     while ( $counter -lt 10 ) {
         try {
             foreach ( $section in $sections ) {
-                $section_torrents = Get-RepSectionTorrents  -section $section -ok_states $ok_states -call_from $call_from -avg_seeds:$avg_seeds.IsPresent  -min_avg $min_avg `
-                -min_seeders $min_seeders -min_release_date $min_release_date -get_low $get_lows -get_mids $get_mids -get_highs $get_highs -nonstop
+                $section_torrents = Get-RepSectionTorrents -section $section -ok_states $ok_states -call_from $call_from -avg_seeds:$avg_seeds.IsPresent -min_avg $min_avg `
+                    -min_seeders $min_seeders -min_release_date $min_release_date -get_low $get_lows -get_mids $get_mids -get_highs $get_highs -nonstop
                 $section_torrents.keys | Where-Object { $null -eq $tracker_torrents[$_] } | ForEach-Object { $tracker_torrents[$_] = $section_torrents[$_] }
             }
             break
@@ -1655,7 +1667,7 @@ function Get-RepHTTP ( $url, $body, $call_from, [switch]$nonstop ) {
     $headers = @{}
     $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
     return Get-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" `
-    -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep -nonstop:$nonstop.IsPresent
+        -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep -nonstop:$nonstop.IsPresent
 }
 
 function Set-Proxy( $settings ) {
