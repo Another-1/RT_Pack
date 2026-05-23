@@ -1626,17 +1626,17 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
             catch { $line.seeders = 0 }
         }
     }
-    $lines.Keys | ForEach-Object {
-        if ( 
+    if ( $min_avg -or $min_seeders -or $min_release_date ) {
+        $lines.Keys | ForEach-Object {
+            if ( 
                 ( $min_avg -and $min_avg -ge $lines[$_].avg_seeders ) `
-                -or ( $min_release_date -and $lines[$_].reg_time -gt $min_release_date ) `
-                -or ( $null -ne $min_seeders -and $lines[$_].seeders -gt $min_seeders )
-        ) {
-            $lines.Remove( $_ )
+                    -or ( $min_release_date -and $lines[$_].reg_time -gt $min_release_date ) `
+                    -or ( $null -ne $min_seeders -and $lines[$_].seeders -gt $min_seeders )
+            ) {
+                $lines.Remove( $_ )
+            }
         }
-
     }
-
     Write-Log ( "По подразделу $section выявлено: $( Get-Spell $($lines.count) )" ) # -skip_timestamp -nologfile
     # if ( !$lines.count ) {
     #     Write-Log 'Не получилось' -Red

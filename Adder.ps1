@@ -851,7 +851,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 } # конец цикла по клиентам
                 if ( $bad_guys.count -gt 0 ) {
                     $bad_guys.Keys | ForEach-Object {
-                        Write-Log "Попинайте хранителя $_ по раздачам:`n$( $bad_guys[$_] | Join-String -Separator "`n" )`n"
+                        Write-Log "Попинайте хранителя $( $_.replace( '&amp;', '&' ) ) по раздачам:`n$( $bad_guys[$_] | Join-String -Separator "`n" )`n"
                     }
                 }
             } # по включенному RSS Purge
