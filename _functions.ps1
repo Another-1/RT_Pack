@@ -1611,7 +1611,7 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
         # ) {
         #     $lines[$release[$hash_column]] = $line | Select-Object tor_status, reg_time, topic_poster, tor_size_bytes, keeping_priority, seeder_last_seen, seeders, topic_title, section, topic_id, avg_seeders, keeper_seeders
         # }
-        $lines[$release[$hash_column]] = for ( $j = 0; $j -le $columns.Count; $j++ ) { ( $j -lt  $columns.Count ? $(if ( $j -ne $hash_column ) { @{$columns[ $j ] = $release[ $j ] } }) : @{ section = $section } ) }
+        $lines[$release[$hash_column]] = for ( $j = 0; $j -le $columns.Count; $j++ ) { ( $j -lt $columns.Count ? $(if ( $j -ne $hash_column ) { @{$columns[ $j ] = $release[ $j ] } }) : @{ section = $section } ) }
     }
 
     if ( $use_avg_seeds -eq 'Y' ) {
@@ -1627,9 +1627,10 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
         }
     }
     $lines.Keys | ForEach-Object {
-        if ( ( $min_avg -and ( $min_avg -ge $lines[$_].avg_seeders ) ) `
-                -or ( $min_release_date -and $lines[$_].reg_time -gt $min_release_date )  `
-                -or ( $min_seeders -and ( $min_seeders -and $lines[$_].seeders -gt $min_seeders ) )
+        if ( 
+                ( $min_avg -and $min_avg -ge $lines[$_].avg_seeders ) `
+                -or ( $min_release_date -and $lines[$_].reg_time -gt $min_release_date ) `
+                -or ( $min_seeders -and $min_seeders -and $lines[$_].seeders -gt $min_seeders )
         ) {
             $lines.Remove( $_ )
         }
