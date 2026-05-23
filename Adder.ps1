@@ -494,7 +494,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             new_size = $new_tracker_data.tor_size_bytes
                         }
                     }
-                    if ( $update_trigger ) {
+                    if ( $update_trigger -and $psversionTable.Platform.ToLower() -like '*win*' ) {
                         if ( !$disk_types ) { $disk_types = Get-DiskTypes }
                         if ( $disk_types -and $disk_types[ $existing_torrent.save_path[0] ] -eq 'HDD' ) {
                             Write-Log 'Фиксируем факт обновления в БД обновлений'
@@ -1011,7 +1011,7 @@ elseif (
     Send-TGMessage -message ( ( $mention_script_tg -eq 'Y' ? 'Я' : ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) + ' отработал, ничего делать не пришлось.' ) -token $settings.telegram.tg_token -chat_id $settings.telegram.tg_chat -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
 
-if ( $update_trigger ) {
+if ( $update_trigger -and $psversionTable.Platform.ToLower() -like '*win*' ) {
     $up_conn.Close()
 }
 
