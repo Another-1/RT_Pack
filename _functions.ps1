@@ -893,10 +893,10 @@ function Get-File ( $uri, $save_path, $user_agent, $headers = $null, $from ) {
                 }
                 break
             }
-            else { Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -MaximumRedirection 999 -ConnectionTimeoutSeconds 30 -SkipHttpErrorCheck -UserAgent $user_agent -Headers $headers; break }
+            else { Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -MaximumRedirection 999 -ConnectionTimeoutSeconds 30 -SkipHttpErrorCheck -UserAgent $user_agent -Headers $headers }
+            if ( ( ( Get-Content -Path $save_path -ErrorAction SilentlyContinue ) | Join-String ) -notlike '*error code*' ) { break } else { raise '5xx' }
         }
         catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
-        # if ( $i -eq 11 )
     }
     
 }
