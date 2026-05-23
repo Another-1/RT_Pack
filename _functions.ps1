@@ -1519,7 +1519,8 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
             break
         }
         catch {
-            Write-Log 'Похоже, наткнулись на обновление API, подождём минуту и начнём заново' -Red
+            # Write-Log 'Похоже, наткнулись на обновление API, подождём минуту и начнём заново' -Red
+            Write-Log "Ошибка: $_" -Red
             $counter++
             Start-Sleep -Seconds 60
             Write-Log "Попытка $counter"
