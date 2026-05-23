@@ -1578,39 +1578,64 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
     $subst = $( $use_avg_seeds -eq 'Y' ? ',average_seeds_sum,average_seeds_count' : '')
     $url = "/krs/api/v1/subforum/$section/pvc?columns=tor_status,reg_time,topic_poster,info_hash,tor_size_bytes,keeping_priority,seeder_last_seen,seeders,topic_title,keeper_seeders$subst"
     $content = ( Get-RepHTTP -url $url -call_from $call_from -nonstop:$nonstop.IsPresent )
+    # Write-Log "Получили список раздач по подразделу $section"
     $json = $content | ConvertFrom-Json
     $columns = @{}
     $i = 0
     $json.columns | ForEach-Object { $columns[$i] = $_; $i++ }
-    $line = @{}
-    $line.section = $section
+    # $line = @{}
+    # $line.section = $section
     $lines = @{}
     $hash_column = $columns.keys | Where-Object { $columns[$_] -eq 'info_hash' }
     $status_column = $columns.keys | Where-Object { $columns[$_] -eq 'tor_status' }
     foreach ( $release in $json.releases | Where-Object { $_[$status_column] -in $ok_states } ) {
-        $j = 0
-        foreach ( $field in $release ) {
-            if ( $j -ne $hash_column) { $line[$columns[$j]] = $field }
-            $j++
-        }
-        try {
-            if ( $use_avg_seeds -eq 'Y' ) {
-                $line.avg_seeders = ( $line.average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $line.average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
+        # $j = 0
+        # foreach ( $field in $release ) {
+        #     if ( $j -ne $hash_column) { $line[$columns[$j]] = $field }
+        #     $j++
+        # }
+        # try {
+        #     if ( $use_avg_seeds -eq 'Y' ) {
+        #         $line.avg_seeders = ( $line.average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $line.average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
+        #     }
+        #     else {
+        #         $line.avg_seeders = $line.seeders
+        #     }
+        # }
+        # catch { $line.seeders = 0 }
+        # if (
+        #     ( !$min_avg -or ( $min_avg -ge $line.avg_seeders ) ) `
+        #         -and ( !$min_release_date -or ( $min_release_date -and $line.reg_time -le $min_release_date ) ) `
+        #         -and ( !$min_seeders -or ( $min_seeders -and $line.seeders -ge $min_seeders ) )
+        # ) {
+        #     $lines[$release[$hash_column]] = $line | Select-Object tor_status, reg_time, topic_poster, tor_size_bytes, keeping_priority, seeder_last_seen, seeders, topic_title, section, topic_id, avg_seeders, keeper_seeders
+        # }
+        $lines[$release[$hash_column]] = for ( $j = 0; $j -le $columns.Count; $j++ ) { ( $j -lt  $columns.Count ? $(if ( $j -ne $hash_column ) { @{$columns[ $j ] = $release[ $j ] } }) : @{ section = $section } ) }
+    }
+
+    if ( $use_avg_seeds -eq 'Y' ) {
+        $lines.Keys | ForEach-Object {
+            try {
+                
+                $lines[$_].avg_seeders = ( $lines[$_].average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $lines[$_].average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
             }
-            else {
-                $line.avg_seeders = $line.seeders
-            }
-        }
-        catch { $line.seeders = 0 }
-        if (
-            ( !$min_avg -or ( $min_avg -ge $line.avg_seeders ) ) `
-                -and ( !$min_release_date -or ( $min_release_date -and $line.reg_time -le $min_release_date ) ) `
-                -and ( !$min_seeders -or ( $min_seeders -and $line.seeders -ge $min_seeders ) )
-        ) {
-            $lines[$release[$hash_column]] = $line | Select-Object tor_status, reg_time, topic_poster, tor_size_bytes, keeping_priority, seeder_last_seen, seeders, topic_title, section, topic_id, avg_seeders, keeper_seeders
+            # else {
+            #     $line.avg_seeders = $line.seeders
+            # }
+            catch { $line.seeders = 0 }
         }
     }
-    Write-Log ( "По разделу $section получено: $( Get-Spell $($lines.count) )" ) # -skip_timestamp -nologfile
+    $lines.Keys | ForEach-Object {
+        if ( ( $min_avg -and ( $min_avg -ge $lines[$_].avg_seeders ) ) `
+                -or ( $min_release_date -and $lines[$_].reg_time -gt $min_release_date )  `
+                -or ( $min_seeders -and ( $min_seeders -and $lines[$_].seeders -gt $min_seeders ) )
+        ) {
+            $lines.Remove( $_ )
+        }
+
+    }
+
+    Write-Log ( "По подразделу $section выявлено: $( Get-Spell $($lines.count) )" ) # -skip_timestamp -nologfile
     # if ( !$lines.count ) {
     #     Write-Log 'Не получилось' -Red
     #     exit 
