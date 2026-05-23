@@ -1506,7 +1506,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     $tracker_torrents = @{}
     $counter = 0
     if ( $call_from -like '*Adder*' -and $no_telemetry -ne 'Y') {
-        Send-Handshake -sections $sections -use_avg_seeds $use_avg_seeds
+        Send-Handshake -sections $sections -use_avg_seeds $avg_seeds
     }
 
     while ( $counter -lt 10 ) {
@@ -1614,7 +1614,7 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
         $lines[$release[$hash_column]] = for ( $j = 0; $j -le $columns.Count; $j++ ) { ( $j -lt $columns.Count ? $(if ( $j -ne $hash_column ) { @{$columns[ $j ] = $release[ $j ] } }) : @{ section = $section } ) }
     }
 
-    if ( $use_avg_seeds -eq 'Y' ) {
+    if ( $use_avg_seeds ) {
         $lines.Keys | ForEach-Object {
             try {
                 

@@ -322,7 +322,7 @@ Write-Log ( "Найдено: $spell" )
 $new_torrents_less_seeds = @{}
 if ( $max_seeds -ne -1 ) {
     Write-Log "Отсеиваем (только от добавления) раздачи с количеством сидов больше $max_seeds"
-    $new_torrents_keys | Where-Object { $tracker_torrents[$_].avg_seeders -le $max_seeds } | ForEach-Object { $new_torrents_less_seeds[$_] = 1 }
+    $new_torrents_keys | Where-Object { ( $settings.adder.avg_seeds -eq $true ? $tracker_torrents[$_].avg_seeders : $tracker_torrents[$_].seeders ) -le $max_seeds } | ForEach-Object { $new_torrents_less_seeds[$_] = 1 }
     Write-Log ( 'Отсеялось раздач: ' + ( $new_torrents_keys.count - $new_torrents_less_seeds.count ) )
 }
 else { $new_torrents_keys | ForEach-Object { $new_torrents_less_seeds[$_] = 1 } }
@@ -964,7 +964,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
         } # по цспешно скачанной ленте
     } # по включенной работе с RSS
 }
-if ( $control -eq 'Y' ) {
+if ( $control_anyway -eq 'Y' ) {
     Write-Log 'Запускаем встроенную регулировку'
     . ( Join-Path $PSScriptRoot Controller.ps1 )
 }
