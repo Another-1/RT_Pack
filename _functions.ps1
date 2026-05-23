@@ -1630,7 +1630,7 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
         if ( 
                 ( $min_avg -and $min_avg -ge $lines[$_].avg_seeders ) `
                 -or ( $min_release_date -and $lines[$_].reg_time -gt $min_release_date ) `
-                -or ( $min_seeders -and $min_seeders -and $lines[$_].seeders -gt $min_seeders )
+                -or ( $null -ne $min_seeders -and $lines[$_].seeders -gt $min_seeders )
         ) {
             $lines.Remove( $_ )
         }
