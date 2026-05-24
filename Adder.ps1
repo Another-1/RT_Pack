@@ -394,7 +394,7 @@ $added = @{}
 $refreshed = @{}
 
 if ( (Test-ForumWorkingHours) -eq $true ) {
-# if ( 1 -eq 1 ) {
+    # if ( 1 -eq 1 ) {
     if ( $new_torrents_keys ) {
         Write-Log 'Сортируем раздачи по клиентам'
         $new_torrents_keys = $new_torrents_keys | Sort-Object -Property { $tracker_torrents[$_].tor_size_bytes } | Sort-Object -Property { $settings.sections[$tracker_torrents[$_].section].client } -Stable
@@ -856,14 +856,9 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 }
             } # по включенному RSS Purge
 
-            if ( $rss_data -and $rss_data.count -gt 0 ) { Write-Log 'Добавляем новые раздачи из RSS' }
             if ( $rss.ignored ) { $ignored = @( ( $rss.ignored -split ( ',') ) -replace ( '^\s+', '') -replace ( '\s+$', '') ) }
             if ( $rss.handle_avenger -and $rss.handle_avenger.ToUpper() -eq 'N' ) { $rss_data = $rss_data | Where-Object { $_[7] -le 3 } }
-            Write-Log 'Отключаем отдельный путь для недокачанных раздач'
-            Set-ClientSetting $settings.clients[$rss.client] 'temp_path_enabled' $false
-            Write-Log 'Отключаем преаллокацию'
-            Set-ClientSetting $settings.clients[$rss.client] 'preallocate_all' $false
-
+            $first_rss = $true
             foreach ( $rss_record in ( $rss_data | Sort-Object -Property { $_[2] } ) ) {
                 $requester = $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger'
                 $rss_ids += $rss_record[1].ToInt64($null)
@@ -895,6 +890,14 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                 Write-Log "API считает, что у этой раздачи хэш $fresh_hash"
                                 $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
 
+                            }
+                            if ( $first_rss ) {
+                                Write-Log 'Добавляем новые раздачи из RSS'
+                                Write-Log 'Отключаем отдельный путь для недокачанных раздач'
+                                Set-ClientSetting $settings.clients[$rss.client] 'temp_path_enabled' $false
+                                Write-Log 'Отключаем преаллокацию'
+                                Set-ClientSetting $settings.clients[$rss.client] 'preallocate_all' $false
+                                $first_rss = $false
                             }
                             Write-Log "Добавляем раздачу $( $rss_record[1] ) для $requester"
 
