@@ -1611,19 +1611,19 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
         # ) {
         #     $lines[$release[$hash_column]] = $line | Select-Object tor_status, reg_time, topic_poster, tor_size_bytes, keeping_priority, seeder_last_seen, seeders, topic_title, section, topic_id, avg_seeders, keeper_seeders
         # }
-        $lines[$release[$hash_column]] = for ( $j = 0; $j -le $columns.Count; $j++ ) { ( $j -lt $columns.Count ? $(if ( $j -ne $hash_column ) { @{$columns[ $j ] = $release[ $j ] } }) : @{ section = $section } ) }
+        $line = @{ section = $section }
+        for ( $j = 0; $j -lt $columns.Count; $j++ ) {
+            if ( $j -ne $hash_column ) { $line[$columns[$j]] = $release[$j] }
+        }
+        $lines[$release[$hash_column]] = $line
     }
 
     if ( $use_avg_seeds ) {
         $lines.Keys | ForEach-Object {
             try {
-                
                 $lines[$_].avg_seeders = ( $lines[$_].average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $lines[$_].average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
             }
-            # else {
-            #     $line.avg_seeders = $line.seeders
-            # }
-            catch { $line.seeders = 0 }
+            catch { $lines[$_].avg_seeders = 0 }
         }
     }
     if ( $min_avg -or $min_seeders -or $min_release_date ) {
