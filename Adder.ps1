@@ -807,7 +807,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                 }
                                 else {
                                     if ( $rss_torrent.state -in ( 'stalledDL', 'Downloading' ) ) {
-                                        Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит"
+                                        Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()] ? $usernames[$_.ToString()][0] : $_ } | Join-String -Separator ', ' ). Пусть полежит"
                                         if ( $debug -eq 1 ) {
                                             $params = @{
                                                 'help_load' = $rss_torrent.topic_id
@@ -818,9 +818,11 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                         }
                                     }
                                     else {
-                                        Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()][0] } | Join-String -Separator ', ' ). Пусть полежит" -Red
-                                        $downloading | ForEach-Object {
-                                            if ( !$bad_guys[$usernames[$_.ToString()][0]] ) { $bad_guys[$usernames[$_.ToString()][0]] = @() }
+                                        Write-Log "Раздачу ВСЁ ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()] ? $usernames[$_.ToString()][0] : $_ } | Join-String -Separator ', ' ). Пусть полежит" -Red
+                                        $downloading | Where-Object { $usernames[$_.ToString()] } | ForEach-Object {
+                                            if ( !$bad_guys[$usernames[$_.ToString()][0]] ) {
+                                                $bad_guys[$usernames[$_.ToString()][0]] = @()
+                                            }
                                             $bad_guys[$usernames[$_.ToString()][0]] += "https://rutracker.org/forum/viewtopic.php?t=$($rss_torrent.topic_id)"
                                         }
                                     }
