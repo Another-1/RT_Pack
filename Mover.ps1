@@ -33,14 +33,16 @@ if ( $use_timestamp -eq 'Y' ) { $use_timestamp = 'N' }
 Write-Host 'Подгружаем функции'
 . ( Join-Path $PSScriptRoot _functions.ps1 )
 
-Test-Module -module 'PSIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
-Test-Module 'PSSQLite' 'для работы с базой TLO'
+if ( !$debug ) {
+    Test-Module -module 'PSIni' -description 'для чтения настроек TLO' -MinimumVersion '4.0.0.0'
+    Test-Module 'PSSQLite' 'для работы с базой TLO'
 
-if ( ( Test-Version '_functions.ps1' 'Mover' ) -eq $true ) {
-    Write-Log 'Запускаем новую версию  _functions.ps1'
-    . ( Join-Path $PSScriptRoot '_functions.ps1' )
+    if ( ( Test-Version '_functions.ps1' 'Mover' ) -eq $true ) {
+        Write-Log 'Запускаем новую версию  _functions.ps1'
+        . ( Join-Path $PSScriptRoot '_functions.ps1' )
+    }
+    Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Mover'
 }
-Test-Version ( $PSCommandPath | Split-Path -Leaf ) 'Mover'
 
 if ( !$settings.others ) { $settings.others = [ordered]@{} }
 $settings.others.auto_update = Test-Setting 'auto_update' -required
@@ -224,7 +226,7 @@ if ( $client.sid ) {
                     Write-Log "Перемещение заняло $($secs.Hours -gt 0 ? "$($secs.Hours) ч. " : '')$($secs.Minutes -gt 0 ? "$($secs.Minutes) мин. " : '')$($secs.Seconds -gt 0 ? "$($secs.Seconds ) сек." : '< 1 сек.' )"
                 }
                 Export-ClientTorrentFile -client $client -hash $torrent.hash -save_path ( Join-Path $PSScriptRoot "$( $torrent.topic_id ).torrent" )
-                $torrent_file = Get-Item ( Join-Path $PSScriptRoot  "$( $torrent.topic_id ).torrent" )
+                $torrent_file = Get-Item ( Join-Path $PSScriptRoot "$( $torrent.topic_id ).torrent" )
                 $is_OK = Add-ClientTorrent -client $client_to -file $torrent_file -path $new_path -category $torrent.category -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' ) -Skip_checking
                 if ( $is_ok ) {
                     Write-Log "$($torrent.name)   $( to_kmg $torrent.size 2 ) " -Green
@@ -234,7 +236,7 @@ if ( $client.sid ) {
                             Remove-Item -Path $torrent.save_path -ErrorAction SilentlyContinue
                         }
                         if ( $debug -eq 1 ) {
-                            Stop-Torrents -hashes @( $torrent.hash ) -client $client_to -mess_sender  ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                            Stop-Torrents -hashes @( $torrent.hash ) -client $client_to -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
                         }
                     }
                     else {
