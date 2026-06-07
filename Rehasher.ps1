@@ -265,7 +265,7 @@ foreach ( $torrent in $full_data_sorted ) {
         $tor_info = Get-ClientTorrents -client $settings.clients[$torrent.client_key] -hash $torrent.hash -verbos:($verbos.IsPresent) -mess_sender 'Rehasher' -break
         $percentage = $tor_info[0].progress
         if ( $percentage -lt 1 ) {
-            Write-Log ( 'Раздача "' + $torrent.name + '" битая! Полнота: ' + $percentage )
+            Write-Log ( 'Раздача "' + $torrent.name + '" битая! Полнота: ' + $percentage +  + ", хэш: " + $torrent.hash )
             if ( $start_errored -eq 'Y' ) {
                 Start-Torrents $torrent.hash $settings.clients[$torrent.client_key]
             }
@@ -273,7 +273,7 @@ foreach ( $torrent in $full_data_sorted ) {
             $torrents_list = @( $torrent )
             Get-TopicIDs -client $settings.clients[$torrent.client_key] -torrent_list $torrents_list
             $message = 'Битая раздача <b>' + $torrent.name + "`n</b>в клиенте <b>" + $settings.clients[$torrent.client_key].name + '</b> http://' + $settings.clients[$torrent.client_key].IP + ':' + $settings.clients[$torrent.client_key].port + `
-                "`nполнота: " + [math]::Round($percentage * 100) + "%`nссылка: https://rutracker.org/forum/viewtopic.php?t=" + $torrent.topic_id 
+                "`nполнота: " + [math]::Round($percentage * 100) + "%`nссылка: https://rutracker.org/forum/viewtopic.php?t=" + $torrent.topic_id + "`nхэш: " + $torrent.hash
             Send-TGMessage -message $message -token $tg_token -chat_id $tg_chat -mess_sender 'Rehasher'
             Set-Comment $settings.clients[$torrent.client_key] $torrent 'Битая'
             Set-MaxTorrentPriority -client $settings.clients[$torrent.client_key] -hash $torrent.hash
