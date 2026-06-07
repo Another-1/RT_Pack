@@ -433,7 +433,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
             if ( $existing_torrent -and $get_updated -ne 'N' ) {
                 # if ( !$settings.connection.sid ) { Initialize-Forum }
                 $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
-                if ( $null -eq $new_torrent_file ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
+                if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
                 $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
                 # Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
                 if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
@@ -891,7 +891,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             else {
                                 Write-Log "API считает, что у этой раздачи хэш $fresh_hash"
                                 $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
-
+                                if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
                             }
                             if ( $first_rss ) {
                                 Write-Log 'Добавляем новые раздачи из RSS'
