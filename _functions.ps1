@@ -307,8 +307,15 @@ function Set-ConnectDetails ( $settings ) {
     $settings.connection.login = $ini_data.'torrent-tracker'.login
     $settings.connection.password = $ini_data.'torrent-tracker'.password
     $settings.connection.forum_url = $($ini_data.'torrent-tracker'.forum_url -eq 'custom' ? $ini_data.'torrent-tracker'.forum_url_custom : $ini_data.'torrent-tracker'.forum_url)
+    $settings.connection.forum_ssl = ( $ini_data.'torrent-tracker'.forum_ssl -eq '1' ? 'Y' : 'N' )
+    $settings.connection.user_id = $ini_data.'torrent-tracker'.user_id
     $settings.connection.api_url = $($ini_data.'torrent-tracker'.api_url -eq 'custom' ? $ini_data.'torrent-tracker'.api_url_custom : $ini_data.'torrent-tracker'.api_url)
+    $settings.connection.api_ssl = ( $ini_data.'torrent-tracker'.api_ssl -eq '1' ? 'Y' : 'N' )
     $settings.connection.report_url = $($ini_data.'torrent-tracker'.report_url -eq 'custom' ? $ini_data.'torrent-tracker'.report_url_custom : $ini_data.'torrent-tracker'.report_url)
+    if ( !$settings.connection.report_url -or $settings.connection.report_url -eq '' ) {
+        $settings.connection.report_url = 'rep.rutracker.cc'
+    }
+    $settings.connection.report_ssl = ( $ini_data.'torrent-tracker'.report_ssl -eq '1' ? 'Y' : 'N' )
     $settings.connection.api_key = $ini_data.'torrent-tracker'.api_key
 
     if ( $ini_data.proxy.activate_forum -eq '1' -or $ini_data.proxy.activate_api -eq '1' -or $ini_data.proxy.activate_report -eq '1' ) {
@@ -1667,7 +1674,7 @@ function Send-Handshake ( $sections, $use_avg_seeds ) {
     $url = '/krs/api/v1/mark_subforum_fetch'
     $headers = @{}
     $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
-    Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body ( $body | ConvertTo-Json -Compress ) `-headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
+    Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body ( $body | ConvertTo-Json -Compress ) -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
 }
 
 function Get-RepTopics( $call_from ) {
@@ -1702,7 +1709,7 @@ function Set-Proxy( $settings ) {
     }
 }
 
-function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy, [switch]$nonstop ) {
+function Get-HfTTP ( $url, $body, $headers, $call_from, $use_proxy, [switch]$nonstop ) {
     $retry_cnt = 1
     while ( $true ) {
         try {
