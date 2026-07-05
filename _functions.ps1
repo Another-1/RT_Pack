@@ -306,22 +306,15 @@ function Set-ConnectDetails ( $settings ) {
     if ( !$settings.connection ) { $settings.connection = [ordered]@{} }
     $settings.connection.login = $ini_data.'torrent-tracker'.login
     $settings.connection.password = $ini_data.'torrent-tracker'.password
-    $settings.connection.forum_url = $ini_data.'torrent-tracker'.forum_url
-    $settings.connection.forum_ssl = ( $ini_data.'torrent-tracker'.forum_ssl -eq '1' ? 'Y' : 'N' )
-    $settings.connection.user_id = $ini_data.'torrent-tracker'.user_id
-    $settings.connection.api_url = $ini_data.'torrent-tracker'.api_url
-    $settings.connection.api_ssl = ( $ini_data.'torrent-tracker'.api_ssl -eq '1' ? 'Y' : 'N' )
-    $settings.connection.report_url = $ini_data.'torrent-tracker'.report_url
-    $settings.connection.report_ssl = ( $ini_data.'torrent-tracker'.report_ssl -eq '1' ? 'Y' : 'N' )
+    $settings.connection.forum_url = $($ini_data.'torrent-tracker'.forum_url -eq 'custom' ? $ini_data.'torrent-tracker'.forum_url_custom : $ini_data.'torrent-tracker'.forum_url)
+    $settings.connection.api_url = $($ini_data.'torrent-tracker'.api_url -eq 'custom' ? $ini_data.'torrent-tracker'.api_url_custom : $ini_data.'torrent-tracker'.api_url)
+    $settings.connection.report_url = $($ini_data.'torrent-tracker'.report_url -eq 'custom' ? $ini_data.'torrent-tracker'.report_url_custom : $ini_data.'torrent-tracker'.report_url)
     $settings.connection.api_key = $ini_data.'torrent-tracker'.api_key
-    if ( !$settings.connection.report_url -or $settings.connection.report_url -eq '' ) {
-        $settings.connection.report_url = 'rep.rutracker.cc'
-        # $settings.connection.proxy.use_for_rep = $settings.connection.proxy.use_for_api
-    }
 
     if ( $ini_data.proxy.activate_forum -eq '1' -or $ini_data.proxy.activate_api -eq '1' -or $ini_data.proxy.activate_report -eq '1' ) {
         Write-Log ( 'Используем ' + $ini_data.proxy.type.Replace('socks5h', 'socks5') + ' прокси ' + $ini_data.proxy.hostname + ':' + $ini_data.proxy.port )
     }
+
     $settings.connection.proxy = [ordered]@{}
     $settings.connection.proxy.ip = $ini_data.proxy.hostname
     $settings.connection.proxy.port = $ini_data.proxy.port
