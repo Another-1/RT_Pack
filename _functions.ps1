@@ -186,6 +186,7 @@ function Test-Setting {
         'error_tag'             = @{ prompt = 'Тег для ошибочных раздач'; type = 'string' }
         'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота Кузи в /about_me)'; type = 'string' }
         'id_subfolder'          = @{ prompt = 'Создавать папки по ID если нет?'; type = 'YN' }
+        'id_postfix'            = @{ prompt = 'Дописывать ID в название папки?'; type = 'YN' }
     }
     if (-not $set_names.ContainsKey($setting)) {
         Write-Log "[Test-Setting] Ошибка: '$setting' не является допустимым параметром настройки." -Red
@@ -1709,7 +1710,7 @@ function Set-Proxy( $settings ) {
     }
 }
 
-function Get-HfTTP ( $url, $body, $headers, $call_from, $use_proxy, [switch]$nonstop ) {
+function Get-HTTP ( $url, $body, $headers, $call_from, $use_proxy, [switch]$nonstop ) {
     $retry_cnt = 1
     while ( $true ) {
         try {

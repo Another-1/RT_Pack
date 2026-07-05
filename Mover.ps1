@@ -104,8 +104,9 @@ if ( !$min_move_days ) {
 else { $min_move_days = $min_move_days.ToInt16($null) }
 
 if ( !$id_subfolder ) { $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write }
+# if ( $id_subfolder -eq 'N' -and !$id_postfix ) { $id_postfix = Test-Setting -setting id_postfix -required -default 'N' -no_ini_write } else { $id_postfix = 'N' }
 
-Write-Log "Указаны параметры:`nИсходный клиент: $($client.Name)`nЦелевой клиент: $($client_to.Name)`nИсходный кусок пути: $path_from`nЦелевой кусок пути: $path_to`nКатегория: $category`nСуммарный объём: $($max_size / 1Gb)`nОбъём раздачи: $($max_1_size / 1Gb)`nМинимальное количество дней: $min_move_days`nСоздавать подкаталоги: $id_subfolder"
+Write-Log "Указаны параметры:`nИсходный клиент: $($client.Name)`nЦелевой клиент: $($client_to.Name)`nИсходный кусок пути: $path_from`nЦелевой кусок пути: $path_to`nКатегория: $category`nСуммарный объём: $($max_size / 1Gb)`nОбъём раздачи: $($max_1_size / 1Gb)`nМинимальное количество дней: $min_move_days`nСоздавать подкаталоги: $id_subfolder`nДописывать ID в название папки: $id_postfix"
 Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
@@ -173,7 +174,7 @@ if ( $client.sid ) {
             Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
         }
 
-        if ( $torrents_list -and $torrents_list.count -gt 0 -and $id_subfolder.ToUpper() -eq 'Y' ) {
+        if ( $torrents_list -and $torrents_list.count -gt 0 -and ( $id_subfolder.ToUpper() -eq 'Y' -or $id_postfix.ToUpper() -eq 'Y' ) ) {
             Write-Log 'Получаем ID раздач из комментариев. Это может быть небыстро.'
             Get-TopicIDs -client $client -torrent_list $torrents_list -verbos
         }
@@ -188,6 +189,9 @@ if ( $client.sid ) {
         $new_path = $torrent.save_path.replace( $path_from, $path_to )
         if ( $id_subfolder -eq 'Y' -and $new_path -notlike "*$($torrent.topic_id)*" ) {
             $new_path = Join-Path $new_path $torrent.topic_id
+        }
+        elseif ( $id_postfix -eq 'Y' -and $new_path -notlike "*[$($torrent.topic_id)]" ) {
+            $new_path = "$new_path [$($torrent.topic_id)]"
         }
         if ( $new_path -ne $torrent.save_path -or $client -ne $client_to ) {
             $sum_size += $torrent.size
