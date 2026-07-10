@@ -1897,6 +1897,25 @@ function  Set-SaveLocation ( $client, $torrent, $new_path, $verbose = $false, $m
     }
 }
 
+function  Set-Name ( $client, $torrent, $new_name, $verbose = $false, $mess_sender, $old_name ) {
+    $error.Clear()
+    $data = @{
+        hash = $torrent.hash
+        name = $new_name
+    }
+    try {
+        if ( $verbose.IsPresent ) {
+            Write-Log "Отправляем команду на переименование торрента $ ($torrent.name ) в  $new_name"
+        }
+        Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/rename' ) -WebSession $client.sid -Body $data -Method POST | Out-Null
+    }
+    catch {
+        if ( $null -ne $error[0].Exception.Message ) {
+            # if ( $error[0].Exception.Message -match 'path') {
+            Write-Log "Не удалось переименовать торрент $($torrent.name) в $new_name. Ошибка $($error[0].ErrorDetails.Message), $($error[0].Exception.Message)" -Red
+        }
+    }
+}
 function Get-ClientApiVersions ( $clients, $mess_sender ) {
     Write-Log 'Получаем версии API клиентов для правильной работы с ними'
     foreach ( $client_key in ( $clients.keys | Where-Object { $null -eq $clients[$_].api_verion } ) ) {
