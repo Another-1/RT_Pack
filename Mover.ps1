@@ -1,4 +1,4 @@
-param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, $id_postfix, [switch]$reverse, [switch]$keep_empty_folders, $max_inactive_days, $min_inactive_days, $client_to_name, [switch]$move_partial )
+param ([switch]$verbose, $client_name, $path_from, $path_to, $category, $max_size, $max_1_size, $min_move_days, $id_subfolder, $id_postfix, [switch]$reverse, [switch]$keep_empty_folders, $max_inactive_days, $min_inactive_days, $client_to_name, [switch]$move_partial, $min_ratio )
 
 $window_title = 'Mover'
 Write-Host "$([char]0x1B)]0;$window_title`a"
@@ -105,6 +105,7 @@ else { $min_move_days = $min_move_days.ToInt16($null) }
 
 if ( !$id_subfolder ) { $id_subfolder = Test-Setting -setting id_subfolder -required -default 'N' -no_ini_write }
 if ( $id_subfolder.ToUpper() -ne 'Y' -and !$id_postfix ) { $id_postfix = Test-Setting -setting id_postfix -required -default 'N' -no_ini_write } else { $id_postfix = 'N' }
+if ( !$min_ratio ) { $min_ratio = Test-Setting -setting min_ratio -default 0 -no_ini_write }
 
 Write-Log "Указаны параметры:`nИсходный клиент: $($client.Name)`nЦелевой клиент: $($client_to.Name)`nИсходный кусок пути: $path_from`nЦелевой кусок пути: $path_to`nКатегория: $category`nСуммарный объём: $($max_size / 1Gb)`nОбъём раздачи: $($max_1_size / 1Gb)`nМинимальное количество дней: $min_move_days`nСоздавать подкаталоги: $id_subfolder`nДописывать ID в название папки: $id_postfix"
 Initialize-Client $client
@@ -144,6 +145,13 @@ if ( $client.sid ) {
             $torrents_list = @( $torrents_list | Where-Object { $_.last_activity -lt $max_act_date } )
             Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
         }
+
+        if ( $min_ratio -gt 0 ) {
+            Write-Log 'Остеиваем раздачи с низким ratio'
+            $torrents_list = @( $torrents_list | Where-Object { $_.ratio -ge $min_ratio } )
+            Write-Log "Осталось $( Get-Spell $torrents_list.Count )"
+        }
+
         Write-Log 'Сортируем по полезности и подразделу'
 
         if ( $reverse.IsPresent ) {

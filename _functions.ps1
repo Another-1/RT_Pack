@@ -187,7 +187,9 @@ function Test-Setting {
         'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота Кузи в /about_me)'; type = 'string' }
         'id_subfolder'          = @{ prompt = 'Создавать папки по ID если нет?'; type = 'YN' }
         'id_postfix'            = @{ prompt = 'Дописывать ID в название папки?'; type = 'YN' }
+        'min_ratio'             = @{ prompt = 'Минимальное ratio для перемещения?'; type = 'number' }
     }
+    
     if (-not $set_names.ContainsKey($setting)) {
         Write-Log "[Test-Setting] Ошибка: '$setting' не является допустимым параметром настройки." -Red
         return $null
@@ -487,7 +489,7 @@ function Get-ClientTorrents {
         try {
             $json_content = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
             $torrents_list = $json_content | ConvertFrom-Json | `
-                Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags, download_path, last_activity | `
+                Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags, download_path, last_activity, ratio | `
                 Where-Object { $_.save_path -match ('^' + $dsk ) }
         }
         catch {
