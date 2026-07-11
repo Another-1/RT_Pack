@@ -187,7 +187,7 @@ function Test-Setting {
         'stalled_pwd'           = @{ prompt = 'Пароль для отправки некачашек (см. у бота Кузи в /about_me)'; type = 'string' }
         'id_subfolder'          = @{ prompt = 'Создавать папки по ID если нет?'; type = 'YN' }
         'id_postfix'            = @{ prompt = 'Дописывать ID в название папки?'; type = 'YN' }
-        'min_ratio'             = @{ prompt = 'Минимальное ratio для перемещения?'; type = 'number' }
+        'min_ratio'             = @{ prompt = 'Минимальное ratio для перемещения?'; default = 0; type = 'number' }
     }
     
     if (-not $set_names.ContainsKey($setting)) {
@@ -205,7 +205,7 @@ function Test-Setting {
     else {
         if ( $default -and $default -ne '' ) { $set_names[$setting].default = $default }
         do {
-            $current = Read-Host -Prompt ( $set_names[$setting].prompt + $( ( $set_names[$setting].default -and $set_names[$setting].default -ne '' ) ? ' [' + $set_names[$setting].default + ']' : '' ) )
+            $current = Read-Host -Prompt ( $set_names[$setting].prompt + $( ( $null -ne $set_names[$setting].default -and $set_names[$setting].default.ToString() -ne '' ) ? ' [' + $set_names[$setting].default + ']' : '' ) )
             if ( $set_names[$setting].type -eq 'YN' ) {
                 if ( $current -ne '' ) { $current = $current.ToUpper() }
             }

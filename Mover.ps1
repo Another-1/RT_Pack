@@ -107,7 +107,7 @@ if ( !$id_subfolder ) { $id_subfolder = Test-Setting -setting id_subfolder -requ
 if ( $id_subfolder.ToUpper() -ne 'Y' -and !$id_postfix ) { $id_postfix = Test-Setting -setting id_postfix -required -default 'N' -no_ini_write } else { $id_postfix = 'N' }
 if ( !$min_ratio ) { $min_ratio = Test-Setting -setting min_ratio -default 0 -no_ini_write }
 
-Write-Log "Указаны параметры:`nИсходный клиент: $($client.Name)`nЦелевой клиент: $($client_to.Name)`nИсходный кусок пути: $path_from`nЦелевой кусок пути: $path_to`nКатегория: $category`nСуммарный объём: $($max_size / 1Gb)`nОбъём раздачи: $($max_1_size / 1Gb)`nМинимальное количество дней: $min_move_days`nСоздавать подкаталоги: $id_subfolder`nДописывать ID в название папки: $id_postfix"
+Write-Log "Указаны параметры:`nИсходный клиент: $($client.Name)`nЦелевой клиент: $($client_to.Name)`nИсходный кусок пути: $path_from`nЦелевой кусок пути: $path_to`nКатегория: $category`nСуммарный объём: $($max_size / 1Gb)`nОбъём раздачи: $($max_1_size / 1Gb)`nМинимальное количество дней: $min_move_days`nСоздавать подкаталоги: $id_subfolder`nДописывать ID в название папки: $id_postfix`nМинимальное ratio: $min_ratio"
 Initialize-Client $client
 if ( $client.sid ) {
     $i = 0
