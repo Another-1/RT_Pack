@@ -1,4 +1,4 @@
-param ([switch]$offline, [switch]$verbos )
+param ([switch]$offline, [switch]$verbos, $path, $client_name )
 
 $window_title = 'Rehasher'
 Write-Host "$([char]0x1B)]0;$window_title`a"
@@ -100,11 +100,18 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
     if ( $off ) {
         $client = Select-Client
         Get-ClientApiVersions -clients @{ $client.name = $client }
-        $clients_torrents = Get-ClientsTorrents -clients @{ $client.name = $client } -mess_sender 'Rehasher' -noIDs -completed
+        $clients_torrents = Get-ClientTorrents -client @{ $client.name = $client } -mess_sender 'Rehasher' -noIDs -completed
     }
     else {
-        Get-ClientApiVersions $settings.clients
-        $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
+        if ( $client_name -and $client_name -ne '' ) {
+            $client = $settings.clients[$client_name]
+            Get-ClientApiVersions -clients @{ $client.name = $client }
+            $clients_torrents = Get-ClientTorrents -client $client -mess_sender 'Rehasher' -completed
+        }
+        else {
+            Get-ClientApiVersions $settings.clients
+            $clients_torrents = Get-ClientsTorrents -mess_sender 'Rehasher' -noIDs -completed
+        }
     }
 }
 
@@ -119,13 +126,20 @@ $clients_torrents = $clients_torrents | Where-Object { $_.state -ne 'checkingUP'
 $already_hashing = $before - $clients_torrents.count
 Write-Log ( "Исключено раздач: $already_hashing" )
 
+if ( $path -and $path -ne '' ) {
+    Write-Log 'Исключаем раздачи с не тем путём'
+    $clients_torrents = $clients_torrents | Where-Object { $_.save_path -like "*${path}*".Replace('[', '`[').Replace(']', '`]' ) }
+}
+
 $db_data = @{}
 $database_path = $PSScriptRoot + $separator + 'rehashes.db'
 Write-Log 'Подключаемся к БД'
 $conn = Open-Database $database_path
 Invoke-SqliteQuery -Query 'CREATE TABLE IF NOT EXISTS rehash_dates (hash VARCHAR PRIMARY KEY NOT NULL, rehash_date INT)' -SQLiteConnection $conn
-Write-Log 'Выгружаем из БД даты рехэшей'
-Invoke-SqliteQuery -Query 'SELECT * FROM rehash_dates' -SQLiteConnection $conn | ForEach-Object { $db_data[$_.hash] = $_.rehash_date }
+if ( $client_name -and $client_name -ne '' ) {
+    Write-Log 'Выгружаем из БД даты рехэшей'
+    Invoke-SqliteQuery -Query 'SELECT * FROM rehash_dates' -SQLiteConnection $conn | ForEach-Object { $db_data[$_.hash] = $_.rehash_date }
+}
 
 $full_data_sorted = [System.Collections.ArrayList]::new()
 Write-Log 'Ищем раздачи в БД рехэшей'
@@ -143,7 +157,9 @@ $clients_torrents | ForEach-Object {
     }
 }
 
-Write-Log 'Ищем время ближайшего следующего рехэша'
+if ( !$path -or $path -eq '' ) {
+    Write-Log 'Ищем время ближайшего следующего рехэша'
+}
 $closest_rehash = (Get-Date -UFormat %s).ToInt32($null) + 3 * 365 * 24 * 60 * 60
 $full_data_sorted | ForEach-Object {
     if ( $_.completion_on -gt $min_freshes_epoch -and ( $_.rehash_date -gt $min_repeat_epoch -or $_.rehash_date -eq 0 ) ) {
@@ -151,20 +167,21 @@ $full_data_sorted | ForEach-Object {
     }
 }
 
-$closest_datetime = [System.TimeZoneInfo]::ConvertTimeFromUtc(([System.DateTimeOffset]::FromUnixTimeSeconds( $closest_rehash ).DateTime ), $(Get-TimeZone))
+if ( !$path -or $path -eq '' ) {
+    $closest_datetime = [System.TimeZoneInfo]::ConvertTimeFromUtc(([System.DateTimeOffset]::FromUnixTimeSeconds( $closest_rehash ).DateTime ), $(Get-TimeZone))
 
-if ( $rehash_freshes -ne 'Y') {
+    if ( $rehash_freshes -ne 'Y') {
+        $before = $full_data_sorted.count
+        Write-Log 'Исключаем свежескачанные раздачи'
+        $full_data_sorted = $full_data_sorted | Where-Object { $_.completion_on -lt $min_freshes_epoch }
+        Write-Log ( 'Исключено раздач: ' + ( $before - $full_data_sorted.count ) )
+    }
+
+    Write-Log 'Исключаем раздачи, которые рано рехэшить'
     $before = $full_data_sorted.count
-    Write-Log 'Исключаем свежескачанные раздачи'
-    $full_data_sorted = $full_data_sorted | Where-Object { $_.completion_on -lt $min_freshes_epoch }
+    $full_data_sorted = $full_data_sorted | Where-Object { $_.rehash_date -lt $min_repeat_epoch }
     Write-Log ( 'Исключено раздач: ' + ( $before - $full_data_sorted.count ) )
 }
-
-Write-Log 'Исключаем раздачи, которые рано рехэшить'
-$before = $full_data_sorted.count
-$full_data_sorted = $full_data_sorted | Where-Object { $_.rehash_date -lt $min_repeat_epoch }
-Write-Log ( 'Исключено раздач: ' + ( $before - $full_data_sorted.count ) )
-
 if ( $max_rehash_size_bytes -and $max_rehash_size_bytes -gt 0 ) {
     $before = $full_data_sorted.count
     Write-Log "Исключаем явно слишком большие раздачи (больше $( to_kmg $max_rehash_size_bytes ))"
@@ -173,8 +190,10 @@ if ( $max_rehash_size_bytes -and $max_rehash_size_bytes -gt 0 ) {
 $was_count = $full_data_sorted.count
 $was_sum_size = ( $full_data_sorted | Measure-Object -Property size -Sum ).Sum
 
-Write-Log 'Сортируем всё по дате рехэша и размеру'
-$full_data_sorted = $full_data_sorted | Sort-Object -Property size -Descending | Sort-Object -Property rehash_date -Stable
+if ( !$path -or $path -eq '' ) {
+    Write-Log 'Сортируем всё по дате рехэша и размеру'
+    $full_data_sorted = $full_data_sorted | Sort-Object -Property size -Descending | Sort-Object -Property rehash_date -Stable
+}
 
 if ( $mix_clients -eq 'Y' -and !$off ) {
     Write-Log 'Тщательнейшим образом перемешиваем клиентов'
@@ -209,7 +228,7 @@ if ( $mix_clients -eq 'Y' -and !$off ) {
 $sum_cnt = 0
 $sum_size = 0
 if ( $full_data_sorted.count -gt 0 ) {
-    Write-Log "Найдено $($full_data_sorted.count) раздач, которые пора рехэшить. Общий объём $(to_kmg( $full_data_sorted | Measure-Object -Property size -Sum ).Sum)"
+    Write-Log "Найдено $($full_data_sorted.count) раздач, которые $( !$path -or $path -eq '' ? 'пора' : 'надо' ) рехэшить. Общий объём $(to_kmg( $full_data_sorted | Measure-Object -Property size -Sum ).Sum)"
 }
 else {
     Write-Log 'Рехэшить пока нечего, выходим'
@@ -312,6 +331,8 @@ if ( $report_rehasher -eq 'Y' ) {
 
 Write-Log 'Удаляем из БД рехэшей раздачи, которых нет в клиентах'
 $ct_ht = @{}
-$clients_torrents.hash | ForEach-Object { $ct_ht[$_] = 1 }
-$db_data.Keys | Where-Object { !$ct_ht[$_] } | ForEach-Object { Invoke-SqliteQuery -Query "DELETE FROM rehash_dates WHERE hash = '$_'" -SQLiteConnection $conn }
-$conn.Close()
+if ( $clients_torrents.count -gt 0 -and ( !$path -or $path -eq '') ) {
+    $clients_torrents.hash | ForEach-Object { $ct_ht[$_] = 1 }
+    $db_data.Keys | Where-Object { !$ct_ht[$_] } | ForEach-Object { Invoke-SqliteQuery -Query "DELETE FROM rehash_dates WHERE hash = '$_'" -SQLiteConnection $conn }
+    $conn.Close()
+}
