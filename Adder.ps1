@@ -560,6 +560,9 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
 
                 if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
                     $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
+                    if ( !$new_tracker_data.topic_title ) {
+                        $new_tracker_data.topic_title = $new_tracker_data.topic_id
+                    }
                 }
                 if ( $skip_inprogress -eq 'Y' -and ( $new_tracker_data.topic_title -match 'из \d*\?' -or `
                         ( $new_tracker_data.topic_title -match 'сери[яи]:{0,1} (\d+)(-(\d+)|)(\s\(\d+-\d+\)|) из' -and `
@@ -814,7 +817,12 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                                 # 'help_pwd'  = $stalled_pwd
                                             }
                                 
-                                            Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/api/update-help' -UserAgent 'avenger' -Headers $stalled_headers -Body $( $params | ConvertTo-Json ) -ErrorVariable send_result | Out-Null
+                                            try {
+                                                Invoke-WebRequest -Method POST -Uri 'https://rto.my.to/api/update-help' -UserAgent 'avenger' -Headers $stalled_headers -Body $( $params | ConvertTo-Json ) -ErrorVariable send_result | Out-Null
+                                            }
+                                            catch { 
+                                                Write-Log 'Не удалось вернуть раздачу в Кузю' -Red
+                                             }
                                         }
                                     }
                                     else {

@@ -966,8 +966,8 @@ function Get-ForumTorrentInfo ( $id, $call_from ) {
     $size = $torinfo.size
 
     if (!$name) {
-        Write-Log 'Нет связи с API трекера, выходим' -Red
-        exit
+        Write-Log 'API не вернул информацию от торренте, штош...' -Red
+        # exit
     }
     
     return [PSCustomObject]@{ 'topic_title' = $name; 'size' = $size }
@@ -1502,8 +1502,21 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     $titles = ($content | ConvertFrom-Json -AsHashtable ).result
 
     if (!$titles) {
-        Write-Log 'Нет связи с API трекера, выходим' -Red
-        exit
+        Write-Log 'API не вернул таблицу статусов, будем угадывать' -Red
+       $titles = @{
+        0 = 'не проверено'
+        1 = 'закрыто'
+        2 = 'проверено'
+        3 = 'недооформлено'
+        4 = 'не оформлено'
+        5 = 'повтор'
+        6 = 'зарезервировано'
+        7 = 'поглощено'
+        8 = 'сомнительно'
+        9 = 'проверяется'
+        10 = 'временная'
+        11 = 'премодерация'
+       }
     }
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
     $tracker_torrents = @{}
