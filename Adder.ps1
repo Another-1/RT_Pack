@@ -437,7 +437,8 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
                 # Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
                 if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
-                    $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
+                    # $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
+                    $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=topic_title") | ConvertFrom-Json -AsHashtable ).releases[0][1]
                 }
                 $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
                 Write-Log $text -Green
@@ -524,8 +525,8 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                     # if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
                     if ( $masks_sect -and $masks_sect[$new_tracker_data.section.ToString()] ) {
                         if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
-                            Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section), так как API его не вернуло (бывает)"
-                            $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
+                            Write-Log "Получаем с API название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section), так как API его не вернуло (бывает)"
+                            $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=topic_title") | ConvertFrom-Json -AsHashtable ).releases[0][1]
                         }
                         # $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
                         #     if ( -not $mask_passed -and $new_tracker_data.topic_title -like $_ ) {
@@ -559,7 +560,8 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 # if ( $client.name -eq 'NAS-NEW' -and $new_tracker_data.section -eq '1574' ) { continue }
 
                 if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
-                    $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
+                    # $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
+                    $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=topic_title") | ConvertFrom-Json -AsHashtable ).releases[0][1]
                     if ( !$new_tracker_data.topic_title ) {
                         $new_tracker_data.topic_title = $new_tracker_data.topic_id
                     }
