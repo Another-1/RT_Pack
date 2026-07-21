@@ -1010,14 +1010,14 @@ function Send-Report ( $call_from ) {
     Write-Log 'Шлём отчёт'
 
     # Хранимые
-    if ( $new_reporting ) {
-        if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' } ) ) {
+    if ( $new_reporting -eq 'Y' ) {
+        if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ) ) {
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
                 'status'                = 1
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
-                'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' } ).hash.ToUpper()
+                'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from
             if ( ( $res | convertfrom-json ).invalid_hashes ) {
@@ -1025,13 +1025,13 @@ function Send-Report ( $call_from ) {
             }
         }
         # Качаемые
-        if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL, downloading' ) } ) ) {
+        if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL, downloading' ) -and $tracker_torrents[$_.hash] } ) ) {
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
                 'status'                = 3
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
-                'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL, downloading' ) } ).hash.ToUpper()
+                'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL, downloading' ) -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from
         }
