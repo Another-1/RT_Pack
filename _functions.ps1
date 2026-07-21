@@ -1008,27 +1008,30 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $ca
 
 function Send-Report ( $call_from ) {
     Write-Log 'Шлём отчёт'
-
+    $adder_watermark = 0b1000000000000000000000000
     # Хранимые
     if ( $new_reporting -eq 'Y' ) {
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ) ) {
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
-                'status'                = 1
+                'status'                = 1 -bor $adder_watermark
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from
             if ( ( $res | convertfrom-json ).invalid_hashes ) {
-                Write-Log ( "Не удалось идентифицировать хэши`n" + ( ( $res | convertfrom-json ).invalid_hashes | Join-String -Separator "`n" ) ) -Red
+                Write-Log "API отклонил раздачи:`n"
+                foreach( $hash in ( $res | ConvertFrom-Json ).invalid_hashes ) {
+                    Write-Log "$_ - $( ( $clients_torrents | Where-Object { $_.hash -eq $_.ToUpper() } ).name)" -Red
+                }
             }
         }
         # Качаемые
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL, downloading' ) -and $tracker_torrents[$_.hash] } ) ) {
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
-                'status'                = 3
+                'status'                = 3 -bor 0b1000000000000000000000000
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading' ) -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
@@ -1493,6 +1496,13 @@ function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
         }
     }
 }
+
+# function Get-PrevVersions( $hashes, $call_from ) {
+#     $url = '/krs/api/v1/old_releases_versions/' + ( $hashes | Join-String -Separator ',' )
+#     $versions = Get-RepHTTP -url $url -call_from $call_from
+#     # return ( $versions )
+#     return ( $versions | ConvertFrom-Json -AsHashtable )
+# }
 
 function Get-APISeeding ( $sections, $seeding_days, $call_from ) {
     $seed_dates = @{}
