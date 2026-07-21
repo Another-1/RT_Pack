@@ -879,9 +879,12 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                         if ( !$ignored -or $requester -notin $ignored ) {
                             Write-Log "Проверим, что раздача $($rss_record[1] ) для $requester ещё существует"
                             # $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
+                            Remove-Variable -Name 'fresh_hash' -ErrorAction SilentlyContinue
                             try {
                                 Remove-Variable -Name 'fresh_hash' -ErrorAction SilentlyContinue
-                                $fresh_hash =  ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash") | ConvertFrom-Json -AsHashtable ).releases[0][1]
+                                $res = ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash") | ConvertFrom-Json -AsHashtable
+                                $hash_pos = $res.columns.indexof( 'info_hash' )
+                                $fresh_hash =  ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash") | ConvertFrom-Json -AsHashtable ).releases[0][ $hash_pos ]
                             }
                             catch {}
                             if ( !$fresh_hash ) {
