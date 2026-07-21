@@ -438,7 +438,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 # Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
                 if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
                     # $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
-                    $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=topic_title") | ConvertFrom-Json -AsHashtable ).releases[0][1]
+                    $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=topic_title" -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) | ConvertFrom-Json -AsHashtable ).releases[0][1]
                 }
                 $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
                 Write-Log $text -Green
@@ -561,7 +561,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
 
                 if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
                     # $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
-                    $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=topic_title") | ConvertFrom-Json -AsHashtable ).releases[0][1]
+                    $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=topic_title" -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) | ConvertFrom-Json -AsHashtable ).releases[0][1]
                     if ( !$new_tracker_data.topic_title ) {
                         $new_tracker_data.topic_title = $new_tracker_data.topic_id
                     }
@@ -878,25 +878,29 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                     if ( !$id_to_info[$rss_record[1]] -and $rss_record[3] -notin $clients_torrents.hash ) {
                         if ( !$ignored -or $requester -notin $ignored ) {
                             Write-Log "Проверим, что раздача $($rss_record[1] ) для $requester ещё существует"
-                            Remove-Variable -Name 'unregistered_hash' -ErrorAction SilentlyContinue
                             # $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
-                            $fresh_hash =  ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash") | ConvertFrom-Json -AsHashtable ).releases[0][1]
+                            try {
+                                Remove-Variable -Name 'fresh_hash' -ErrorAction SilentlyContinue
+                                $fresh_hash =  ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash") | ConvertFrom-Json -AsHashtable ).releases[0][1]
+                            }
+                            catch {}
                             if ( !$fresh_hash ) {
-                                Write-Log 'Не удалось получить хэш раздачи из API, возможно она на премодерации'
-                                Write-Log 'Зайдём с другого API и попробуем получить хэш'
-                                $unregistered_data = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
-                                $unregistered_hash = $unregistered_data.info_hash
-                                if ( !$unregistered_hash ) {
+                                # Write-Log 'Не удалось получить хэш раздачи из API, возможно она на премодерации'
+                                # Write-Log 'Зайдём с другого API и попробуем получить хэш'
+                                # Remove-Variable -Name 'unregistered_hash' -ErrorAction SilentlyContinue
+                                # $unregistered_data = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
+                                # $unregistered_hash = $unregistered_data.info_hash
+                                # if ( !$unregistered_hash ) {
                                     Write-Log 'Раздача уже не существует'
                                     continue
-                                }
-                                else {
-                                    Write-Log "Другой API считает, что у этой раздачи хэш $unregistered_hash"
-                                    if ( $unregistered_hash -in ( $clients_torrents | Where-Object { $_.client_key -eq 'RSS' } | ForEach-Object { $_.hash } ) ) {
-                                        Write-Log 'Раздача уже есть в клиенте RSS'
-                                        continue
-                                    }
-                                }
+                                # }
+                                # else {
+                                #     Write-Log "Другой API считает, что у этой раздачи хэш $unregistered_hash"
+                                #     if ( $unregistered_hash -in ( $clients_torrents | Where-Object { $_.client_key -eq 'RSS' } | ForEach-Object { $_.hash } ) ) {
+                                #         Write-Log 'Раздача уже есть в клиенте RSS'
+                                #         continue
+                                #     }
+                                # }
                             }
                             else {
                                 Write-Log "API считает, что у этой раздачи хэш $fresh_hash"
@@ -1085,10 +1089,10 @@ if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' ) {
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
         # что-то добавилось, стоит подождать.
         # Update-Stats -wait -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # с паузой.
-        Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # с паузой.
+        Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) -call_from 'Adder' # с паузой.
     }
     else {
-        Update-Stats -send_report:( ( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $prev_down -gt $down ) ) -or $force_reports -eq 'Y' ) # без паузы, так как это сработал флаг от предыдущего прогона.
+        Update-Stats -send_report:( ( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $prev_down -gt $down ) ) -or $force_reports -eq 'Y' ) -call_from 'Adder' # без паузы, так как это сработал флаг от предыдущего прогона.
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
 }

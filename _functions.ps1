@@ -973,7 +973,7 @@ function Get-ForumTorrentInfo ( $id, $call_from ) {
     return [PSCustomObject]@{ 'topic_title' = $name; 'size' = $size }
 }
 
-function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
+function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $call_from ) {
     # $lock_file = "$PSScriptRoot\in_progress.lck"
     # $in_progress = Test-Path -Path $lock_file
     # if ( !$in_progress ) {
@@ -994,7 +994,7 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
             . $php_path ( Join-Path $tlo_path 'cron' 'keepers.php' )
         }
         if ( $send_report ) {
-            Send-Report
+            Send-Report -call_from $call_from
         }
     }
     finally {
@@ -1006,14 +1006,44 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report ) {
     # }
 }
 
-function Send-Report () {
+function Send-Report ( $call_from ) {
     Write-Log 'Шлём отчёт'
 
-    if ( [version]( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version -gt [version]'3.9.9.9' ) {
-        . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:reports
+    # Хранимые
+    if ( $new_reporting ) {
+        if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' } ) ) {
+            $body = @{
+                'keeper_id'             = $settings.connection.user_id.ToInt32($null)
+                'status'                = 1
+                'unreport_older_than'   = 'PT1S'
+                'return_invalid_hashes' = $true
+                'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' } ).hash.ToUpper()
+            } | ConvertTo-Json -Compress
+            $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from
+            if ( ( $res | convertfrom-json ).invalid_hashes ) {
+                Write-Log ( "Не удалось идентифицировать хэши`n" + ( ( $res | convertfrom-json ).invalid_hashes | Join-String -Separator "`n" ) ) -Red
+            }
+        }
+        # Качаемые
+        if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL, downloading' ) } ) ) {
+            $body = @{
+                'keeper_id'             = $settings.connection.user_id.ToInt32($null)
+                'status'                = 3
+                'unreport_older_than'   = 'PT1S'
+                'return_invalid_hashes' = $true
+                'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL, downloading' ) } ).hash.ToUpper()
+            } | ConvertTo-Json -Compress
+            $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from
+        }
+        
     }
     else {
-        . $php_path ( Join-Path $tlo_path 'cron' 'reports.php' )
+        if ( [version]( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version -gt [version]'3.9.9.9' ) {
+            . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:reports
+        }
+        else {
+            . $php_path ( Join-Path $tlo_path 'cron' 'reports.php' )
+        }
     }
 }
 
@@ -1503,20 +1533,20 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
 
     if (!$titles) {
         Write-Log 'API не вернул таблицу статусов, будем угадывать' -Red
-       $titles = @{
-        0 = 'не проверено'
-        1 = 'закрыто'
-        2 = 'проверено'
-        3 = 'недооформлено'
-        4 = 'не оформлено'
-        5 = 'повтор'
-        6 = 'зарезервировано'
-        7 = 'поглощено'
-        8 = 'сомнительно'
-        9 = 'проверяется'
-        10 = 'временная'
-        11 = 'премодерация'
-       }
+        $titles = @{
+            0  = 'не проверено'
+            1  = 'закрыто'
+            2  = 'проверено'
+            3  = 'недооформлено'
+            4  = 'не оформлено'
+            5  = 'повтор'
+            6  = 'зарезервировано'
+            7  = 'поглощено'
+            8  = 'сомнительно'
+            9  = 'проверяется'
+            10 = 'временная'
+            11 = 'премодерация'
+        }
     }
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
     $tracker_torrents = @{}
@@ -1690,7 +1720,7 @@ function Send-Handshake ( $sections, $use_avg_seeds ) {
     $url = '/krs/api/v1/mark_subforum_fetch'
     $headers = @{}
     $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
-    Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body ( $body | ConvertTo-Json -Compress ) -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
+    $res = Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" -body ( $body | ConvertTo-Json -Compress ) -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep
 }
 
 function Get-RepTopics( $call_from ) {
@@ -1713,6 +1743,15 @@ function Get-RepHTTP ( $url, $body, $call_from, [switch]$nonstop ) {
     $headers.'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
     return Get-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" `
         -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep -nonstop:$nonstop.IsPresent
+}
+
+function Send-RepHTTP ( $url, $body, $call_from, [switch]$nonstop ) {
+    $headers = @{
+        'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
+    }
+    $res = Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" `
+        -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep -nonstop:$nonstop.IsPresent
+    return $res
 }
 
 function Set-Proxy( $settings ) {
@@ -1799,22 +1838,22 @@ function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
                     # Write-Log 'Указан прокси с аутентификацией'
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials -Body $body `
                             -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' -ConnectionTimeoutSeconds 30 )
-                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
+                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
                     return
                 }
                 else {
                     # Write-Log 'Указан прокси без аутентификации'
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -Body $body `
                             -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' -ConnectionTimeoutSeconds 30 )
-                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
+                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
                     return
                 }
             }
             else {
                 # Write-Log 'Прокси не используем'
                 $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' -ConnectionTimeoutSeconds 30 )
-                Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription ) $( $hs.Content )"
-                return
+                Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
+                return $hs.Content
             }
         }
         catch {
