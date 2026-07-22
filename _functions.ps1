@@ -1477,12 +1477,12 @@ function Get-DB_ColumnNames ($conn) {
 
 function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
     switch ( $qty % 100 ) {
-        { $PSItem -in ( 5..20 ) } { return ( $entity -eq 'torrents' ? "$qty раздач" : "$qty дней" ) }
+        { $PSItem -in ( 5..20 ) } { return ( $entity -eq 'torrents' ? "$qty раздач" : $entity -eq 'hours' ? "$qty часов" : "$qty дней" ) }
         default {
             switch ( $qty % 10 ) {
-                { $PSItem -eq 1 } { if ( $spelling -eq 1 ) { return ( $entity -eq 'torrents' ? "$qty раздача" : "$qty день" ) } else { return ( $entity -eq 'torrents' ? "$qty раздачу" : "$qty день" ) } }
-                { $PSItem -in ( 2..4 ) } { return ( $entity -eq 'torrents' ? "$qty раздачи" : "$qty дня" ) }
-                default { return ( $entity -eq 'torrents' ? "$qty раздач" : "$qty дней" ) }
+                { $PSItem -eq 1 } { if ( $spelling -eq 1 ) { return ( $entity -eq 'torrents' ? "$qty раздача" : $entity -eq 'hours' ? "$qty час" : "$qty день" ) } else { return ( $entity -eq 'torrents' ? "$qty раздачу" : "$qty день" ) } }
+                { $PSItem -in ( 2..4 ) } { return ( $entity -eq 'torrents' ? "$qty раздачи" : $entity -eq 'hours' ? "$qty часа" : "$qty дня" ) }
+                default { return ( $entity -eq 'torrents' ? "$qty раздач" : $entity -eq 'hours' ? "$qty часов" : "$qty дней" ) }
             }
         }
     }
@@ -1495,7 +1495,7 @@ function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
 #     return ( $versions | ConvertFrom-Json -AsHashtable )
 # }
 
-function Get-APISeeding ( $sections, $seeding_days, $call_from ) {
+function Get-RepSeeding ( $sections, $seeding_days, $call_from ) {
     $seed_dates = @{}
     foreach ( $section in $sections ) {
         Write-Log "Запрашиваем историю сидирования по разделу $section"

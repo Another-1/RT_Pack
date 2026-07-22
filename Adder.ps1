@@ -658,9 +658,6 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
     if ( $nul -ne $settings.telegram.tg_token -and '' -ne $settings.telegram.tg_token -and $settings.telegram.report_obsolete -and $settings.telegram.report_obsolete -eq 'Y' ) {
         Write-Log 'Ищем неактуальные раздачи.'
         if ( $forced_sections -and $db_hash_to_id ) {
-            # $hash_to_id = $hash_to_id.keys{ key = $_; value = $hash_to_id[ ( $hash_to_id.keys | Where-Object { $db_hash_to_id[$_] } ) ] }
-            # $hash_to_id = $hash_to_id.keys | Where-Object { $tracker_torrents[$_] } | ForEach-Object { @{ $_ = $hash_to_id[$_] } }
-            # $hash_to_id = $hash_to_id.keys | Where-Object { $db_hash_to_id[$_] } | ForEach-Object { @{ $_ = $db_hash_to_id[$_] } }
             $hash_to_id.Keys | Where-Object { $null -eq $hash_to_id[$_] } | ForEach-Object { $hash_to_id[$_] = $db_hash_to_id[$_] }
         }
         $obsolete_keys = @($hash_to_id.Keys | Where-Object { !$tracker_torrents[$_] })
@@ -888,22 +885,8 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
                             catch {}
                             if ( !$fresh_hash ) {
-                                # Write-Log 'Не удалось получить хэш раздачи из API, возможно она на премодерации'
-                                # Write-Log 'Зайдём с другого API и попробуем получить хэш'
-                                # Remove-Variable -Name 'unregistered_hash' -ErrorAction SilentlyContinue
-                                # $unregistered_data = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
-                                # $unregistered_hash = $unregistered_data.info_hash
-                                # if ( !$unregistered_hash ) {
                                 Write-Log 'Раздача уже не существует'
                                 continue
-                                # }
-                                # else {
-                                #     Write-Log "Другой API считает, что у этой раздачи хэш $unregistered_hash"
-                                #     if ( $unregistered_hash -in ( $clients_torrents | Where-Object { $_.client_key -eq 'RSS' } | ForEach-Object { $_.hash } ) ) {
-                                #         Write-Log 'Раздача уже есть в клиенте RSS'
-                                #         continue
-                                #     }
-                                # }
                             }
                             else {
                                 Write-Log "API считает, что у этой раздачи хэш $fresh_hash"
@@ -986,7 +969,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
         } # по цспешно скачанной ленте
     } # по включенной работе с RSS
 }
-if ( $control_anyway -eq 'Y' ) {
+if ( $control -eq 'Y' ) {
     Write-Log 'Запускаем встроенную регулировку'
     . ( Join-Path $PSScriptRoot Controller.ps1 )
 }
@@ -1010,9 +993,6 @@ elseif ( $update_stats -eq 'Y' -and $php_path ) {
 elseif ( $update_stats -ne 'Y' -or !$php_path ) {
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
 }
-
-# if ( $report_added -eq 'N') { $added = @{} }
-# if ( $report_refreshed -eq 'N') { $refreshed = @{} }
 
 if (
     ( 

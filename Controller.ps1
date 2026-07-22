@@ -25,23 +25,45 @@ else {
 
 $json_section = ( $standalone -eq $true ? 'controller' : '' )
 $settings.controller.old_starts_per_run = Test-Setting 'old_starts_per_run' -json_section $json_section
-
 $settings.controller.min_stop_to_start = Test-Setting 'min_stop_to_start' -json_section $json_section
 
 if ( $standalone -eq $false ) {
-    $settings.controller.global_seeds = $ini_data['topics_control'].peers
+    $settings.controller.global_peers = $ini_data['topics_control'].peers
     $settings.controller.priority = $ini_data['topics_control'].priority
+    $settings.controller.intervals = $ini_data['topics_control'].intervals
+    $settings.controller.min_stop_to_start = $ini_data['topics_control'].days_until_unseeded ? $ini_data['topics_control'].days_until_unseeded : $min_stop_to_start
 }
 
-if ( $settings.controller.priority -eq '1' ) {
-    # регулировка на уровне раздела
-    $settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = ( $settings.sections[$_].control_peers -ne '' ? $settings.sections[$_].control_peers : -2 ).ToInt32($null) }
-    $settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds.ToInt32($null) }
+if ( $settings.controller.intervals ) {
+    Write-Log 'Включен "Динамический набор интервалов количества пиров", игнорируем прочие настройки регулировки'
+    $intervals_array = $settings.controller.intervals.split('/').split('|') | ForEach-Object { $_ -notlike '*:*' ?  "1:$_" : $_ }
+    $hourly = @{}
+    $hour = 0
+    foreach ( $interval in $intervals_array ) {
+        $seeds = ( $interval | Select-String -Pattern '\d+$' ).matches[0].value.ToInt32($null)
+        $length = ( $interval | Select-String -Pattern '^\d+' ).matches[0].value.ToInt32($nul)
+        0..($length - 1) | ForEach-Object {
+            $hour += 1
+            $hourly[$hour] = $seeds
+        }
+    }
+    $interval_seeds = $hourly[ ( Get-Date).Hour ]
+    Write-Log "В $( Get-Spell (Get-Date).Hour -entity 'hours' ) лимит сидов установлен в $interval_seeds"
 }
+
 else {
-    #регулировка на уровне клиента
-    $settings.sections.keys | ForEach-Object { $settings.sections[$_].control_peers = $settings.clients[$settings.sections[$_].client].control_peers }
-    $settings.sections.Keys | Where-Object { $settings.sections[$_].control_peers -eq -2 } | ForEach-Object { $settings.sections[$_].control_peers = $settings.controller.global_seeds.ToInt32($null) }
+    if ( $settings.controller.priority -eq '1' ) {
+        # регулировка на уровне раздела
+        Write-Log 'Выбрана регулировка по подразделам'
+        $settings.sections.keys | ForEach-Object {
+            $settings.sections[$_].control_peers = ( $settings.sections[$_].control_peers -ne '' ? $settings.sections[$_].control_peers : $settings.controller.global_peers ).ToInt32($null)
+        }
+    }
+    else {
+        #регулировка на уровне клиента
+        Write-Log 'Выбрана регулировка по клиентам'
+        $settings.clients.Keys | ForEach-Object { $settings.clients[$_].control_peers = ( $settings.clients[$_].control_peers -ne '' ? $settings.clients[$_].control_peers : $settings.controller.global_peers ).ToInt32($null) }
+    }
 }
 
 if ( !$debug ) {
@@ -57,23 +79,6 @@ if ( !$debug ) {
 Write-Log 'Строим таблицы'
 
 $ok_to_start = (Get-Date).ToUniversalTime().AddDays( 0 - $settings.controller.min_stop_to_start )
-if ( $settings.controller.control_override -and (Get-Date).hour -in $settings.controller.control_override.hours ) { 
-    foreach ( $section in @($settings.sections.Keys) ) {
-        if ( !$settings.sections[$section].client ) {
-            Write-Log "Не указан клиент для подраздела $section" -Red
-            continue
-        }
-        if ( $settings.controller.control_override.client -and $settings.controller.control_override.client[$settings.sections[$section].client] ) {
-            $settings.sections[$section].control_peers = $settings.controller.control_override.client[$settings.sections[$section].client]
-        }
-        elseif ( $settings.controller.control_override.global ) {
-            $settings.sections[$section].control_peers = $settings.controller.control_override.global
-        }
-    }
-}
-
-$long_ago = @{}
-
 $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
 
 Set-Proxy( $settings )
@@ -85,34 +90,39 @@ if ( !$tracker_torrents) {
 if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     Get-ClientApiVersions $settings.clients
     $clients_torrents = Get-ClientsTorrents 'Controller'
-    $hash_to_id = @{}
-    $id_to_info = @{}
+    # $hash_to_id = @{}
+    # $id_to_info = @{}
     
-    Write-Log 'Сортируем таблицы'
-    $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
-        if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
-        $hash_to_id[$_.infohash_v1] = $_.topic_id
-        $id_to_info[$_.topic_id] = 1
-    }
+    # Write-Log 'Сортируем таблицы'
+    # $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
+    #     if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
+    #     $hash_to_id[$_.infohash_v1] = $_.topic_id
+    #     $id_to_info[$_.topic_id] = 1
+    # }
 }
+Remove-Variable -Name 'hash_to_id' -ErrorAction SilentlyContinue
+Remove-Variable -Name 'id_to_info' -ErrorAction SilentlyContinue
 
 if ( !$api_seeding -or $debug -eq $false ) {
     $states = @{}
-    $api_seeding = Get-APISeeding -sections $settings.sections.keys -seeding_days $min_stop_to_start -call_from 'Controller'
+    $api_seeding = Get-RepSeeding -sections $settings.sections.keys -seeding_days $min_stop_to_start -call_from 'Controller'
     if ( $null -eq $api_seeding ) { exit }
     Write-Log 'Осмысливаем полученное'
     $clients_torrents | Where-Object { $null -ne $_.topic_id } | ForEach-Object {
         $states[$_.hash] = @{
             client    = $_.client_key
             state     = $_.state
-            # seeder_last_seen = $( $null -ne $api_seeding[$_.topic_id] -and $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) )
             save_path = $_.save_path
+            topic_id  = $_.topic_id
         }
-        if ( ( $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -le $ok_to_start ) {
-            $long_ago[$_.hash] = 1
-        }
+        # if ( ( $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -le $ok_to_start ) {
+        #     $long_ago[$_.hash] = 1
+        # }
     }
 }
+
+$hash_to_client = @{}
+$clients_torrents | ForEach-Object { $hash_to_client[$_.hash] = $_.client_key }
 
 $batch_size = 400
 
@@ -124,38 +134,34 @@ if (  $rss ) {
         $settings.clients.Remove( $rss2.client ? $rss2.client : 'RSS2' )
     }
 }
-
-
-$started_counts = @{}
-
+# $started_counts = @{}
 foreach ( $client_key in $settings.clients.keys ) {
-# foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -ne 'Aorus' } ) {
+    # foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -ne 'Aorus' } ) {
     # Write-Log ( 'Регулируем клиент ' + $client_key + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
-
     $start_keys = @()
     $stop_keys = @()
     $states.Keys | Where-Object { $states[$_].client -eq $client_key } | ForEach-Object {
         try { 
-            # if ( $states[$_].state -eq 'pausedUP' -and $tracker_torrents[$_].seeders -lt $section_seeds[$tracker_torrents[$_].section] ) {
-            if ( $states[$_].state -eq $settings.clients[$client_key].stopped_state -and ( $tracker_torrents[$_].seeders -lt $settings.sections[$tracker_torrents[$_].section].control_peers -or $long_ago[$_] ) ) {
-                if ( $start_keys.count -eq $batch_size ) {
-                    Start-Torrents $start_keys $settings.clients[$client_key] -mess_sender 'Controller'
-                    $started += $start_keys.count
-                    $start_keys = @()
+            $switching_peers = $interval_seeds ? $interval_seeds : $settings.controller.priority -eq '1' ? $settings.sections[$tracker_torrents[$_].section].control_peers : $settings.clients[$hash_to_client[$_]]
+            if ( $states[$_].state -eq $settings.clients[$client_key].stopped_state ) {
+                if ( $tracker_torrents[$_].seeders -lt $switching_peers -or ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -le $ok_to_start ) {
+                    if ( $start_keys.count -eq $batch_size ) {
+                        Start-Torrents $start_keys $settings.clients[$client_key] -mess_sender 'Controller'
+                        $started += $start_keys.count
+                        $start_keys = @()
+                    }
+                    if ( -not( $busy_disks -and $states[$_].save_path[0] -in $busy_disks[$client_key] )) {
+                        $start_keys += $_
+                        $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
+                        # if ( $null -eq $started_counts[$settings.sections[$tracker_torrents[$_].section].label] ) { $started_counts[$settings.sections[$tracker_torrents[$_].section].label] = 0 }
+                        # $started_counts[$settings.sections[$tracker_torrents[$_].section].label] += 1
+                    }
+                    else { write-Log "Раздача $_ на слишком занятом сейчас диске" }
                 }
-                if ( -not( $busy_disks -and $states[$_].save_path[0] -in $busy_disks[$client_key] )) {
-                    $start_keys += $_
-                    $states[$_].state = 'uploading' # чтобы потом правильно запустить старые
-                    if ( $null -eq $started_counts[$settings.sections[$tracker_torrents[$_].section].label] ) { $started_counts[$settings.sections[$tracker_torrents[$_].section].label] = 0 }
-                    $started_counts[$settings.sections[$tracker_torrents[$_].section].label] += 1
-                }
-                else { write-Log "Раздача $_ на слишком занятом сейчас диске" }
             }
             elseif ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) ) {
                 if ( ( $states[$_].state -ne 'forcedUP' -or $stop_forced -eq 'Y' ) `
-                        -and $tracker_torrents[$_].seeders -gt ( $settings.sections[$tracker_torrents[$_].section].control_peers + $( $null -eq $hysteresis ? 0 : $hysteresis ) ) `
-                        -and !$long_ago[$_]
-                ) {
+                        -and $tracker_torrents[$_].seeders -gt $switching_peers -and $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) -gt $ok_to_start ) {
 
                     if ( $stop_keys.count -eq $batch_size ) {
                         Stop-Torrents $stop_keys $settings.clients[$client_key] -mess_sender 'Controller'
@@ -164,10 +170,10 @@ foreach ( $client_key in $settings.clients.keys ) {
                     }
                     $stop_keys += $_
                 }
-                else {
-                    if ( $null -eq $started_counts[$settings.sections[$tracker_torrents[$_].section].label] ) { $started_counts[$settings.sections[$tracker_torrents[$_].section].label] = 0 }
-                    $started_counts[$settings.sections[$tracker_torrents[$_].section].label] += 1
-                }
+                # else {
+                #     if ( $null -eq $started_counts[$settings.sections[$tracker_torrents[$_].section].label] ) { $started_counts[$settings.sections[$tracker_torrents[$_].section].label] = 0 }
+                #     $started_counts[$settings.sections[$tracker_torrents[$_].section].label] += 1
+                # }
             }
         }
         catch { } # на случай поглощённых раздач.
