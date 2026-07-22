@@ -897,7 +897,7 @@ function Get-File ( $uri, $save_path, $user_agent, $headers = $null, $from ) {
                 break
             }
             else { Invoke-WebRequest -Uri $uri -WebSession $settings.connection.sid -OutFile $save_path -MaximumRedirection 999 -ConnectionTimeoutSeconds 30 -SkipHttpErrorCheck -UserAgent $user_agent -Headers $headers }
-            if ( ( ( Get-Content -Path $save_path -ErrorAction SilentlyContinue ) | Join-String ) -notlike '*error code*' ) { break } else { raise '5xx' }
+            if ( ( ( Get-Content -Path $save_path -ErrorAction SilentlyContinue ) | Join-String ) -notlike '*error code:*' ) { break } else { raise '5xx' }
         }
         catch { Start-Sleep -Seconds 10; $i++; Write-Log "Попытка номер $i" }
     }
@@ -999,7 +999,7 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $ca
 function Send-Report ( $call_from ) {
     Write-Log 'Шлём отчёт'
     Get-Date -UFormat %s | Out-File -FilePath ( Join-Path $PSScriptRoot 'last_report.txt' )
-    $adder_watermark = 0b1000000000000000000000000
+    $adder_watermark = 0b1000000000000000000000000 + $adder_entity * 256
     # Хранимые
     if ( $new_reporting -eq 'Y' ) {
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ) ) {
