@@ -1073,6 +1073,7 @@ try {
     $last_report_date = Get-Content -Path ( Join-Path $PSScriptRoot 'last_report.txt' ) -ErrorAction SilentlyContinue
 }
 catch { $last_report_date = '0' }
+if ( !$last_report_date ) { $last_report_date = 0 }
 $time_to_report = ( Get-Date -UFormat %s ).ToInt32($nul) - $last_report_date.ToInt32($nul) -gt 2 * 29 * 24 * 60 * 60
 if ( $time_to_report ) {
     Write-Log 'Давно не отправляли отчёты, заодно и отправим'
