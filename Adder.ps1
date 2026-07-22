@@ -824,7 +824,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                             }
                                             catch { 
                                                 Write-Log 'Не удалось вернуть раздачу в Кузю' -Red
-                                             }
+                                            }
                                         }
                                     }
                                     else {
@@ -884,7 +884,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                 Remove-Variable -Name 'fresh_hash' -ErrorAction SilentlyContinue
                                 $res = ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash") | ConvertFrom-Json -AsHashtable
                                 $hash_pos = $res.columns.indexof( 'info_hash' )
-                                $fresh_hash =  ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash") | ConvertFrom-Json -AsHashtable ).releases[0][ $hash_pos ]
+                                $fresh_hash = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash") | ConvertFrom-Json -AsHashtable ).releases[0][ $hash_pos ]
                             }
                             catch {}
                             if ( !$fresh_hash ) {
@@ -894,8 +894,8 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                 # $unregistered_data = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_topic_data?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
                                 # $unregistered_hash = $unregistered_data.info_hash
                                 # if ( !$unregistered_hash ) {
-                                    Write-Log 'Раздача уже не существует'
-                                    continue
+                                Write-Log 'Раздача уже не существует'
+                                continue
                                 # }
                                 # else {
                                 #     Write-Log "Другой API считает, что у этой раздачи хэш $unregistered_hash"
@@ -1088,14 +1088,25 @@ if ( $report_stalled -eq 'Y' ) {
     else { Write-Log 'Некачашек не обнаружено' }
 }
 
-if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' ) {
+$time_to_report = $false
+try {
+    $last_report_date = Get-Content -Path ( Join-Path $PSScriptRoot 'last_report.txt' ) -ErrorAction SilentlyContinue
+}
+catch { $last_report_date = '0' }
+$time_to_report = ( Get-Date -UFormat %s ).ToInt32($nul) - $last_report_date.ToInt32($nul) -gt 2 * 29 * 24 * 60 * 60
+if ( $time_to_report ) {
+    Write-Log 'Давно не отправляли отчёты, заодно и отправим'
+}
+
+if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' -or $time_to_report ) {
+
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
         # что-то добавилось, стоит подождать.
         # Update-Stats -wait -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # с паузой.
-        Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) -call_from 'Adder' # с паузой.
+        Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) )  -call_from 'Adder' -wait # с паузой.
     }
     else {
-        Update-Stats -send_report:( ( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -or $prev_down -gt $down ) ) -or $force_reports -eq 'Y' ) -call_from 'Adder' # без паузы, так как это сработал флаг от предыдущего прогона.
+        Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $prev_down -gt $down -or $force_reports -eq 'Y' -or $time_to_report ) ) -call_from 'Adder' # без паузы, так как это сработал флаг от предыдущего прогона.
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
 }

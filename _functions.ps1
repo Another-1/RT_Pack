@@ -974,14 +974,10 @@ function Get-ForumTorrentInfo ( $id, $call_from ) {
 }
 
 function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $call_from ) {
-    # $lock_file = "$PSScriptRoot\in_progress.lck"
-    # $in_progress = Test-Path -Path $lock_file
-    # if ( !$in_progress ) {
     if ( $wait ) {
         Write-Log 'Подождём 5 минут, вдруг быстро скачаются добавленные/обновлённые.'
         Start-Sleep -Seconds 300
     }
-    # New-Item -Path "$PSScriptRoot\in_progress.lck" | Out-Null
     try {
         Write-Log 'Обновляем БД TLO'
         if ( [version]( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version -gt [version]'3.9.9.9' ) {
@@ -997,17 +993,12 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $ca
             Send-Report -call_from $call_from
         }
     }
-    finally {
-        # Remove-Item $lock_file -ErrorAction SilentlyContinue
-    }
-    # }
-    # else {
-    #     Write-Log "Обнаружен файл блокировки $lock_file. Вероятно, запущен параллельный процесс. Если это не так, удалите файл" -Red
-    # }
+    catch {}
 }
 
 function Send-Report ( $call_from ) {
     Write-Log 'Шлём отчёт'
+    Get-Date -UFormat %s | Out-File -FilePath ( Join-Path $PSScriptRoot 'last_report.txt' )
     $adder_watermark = 0b1000000000000000000000000
     # Хранимые
     if ( $new_reporting -eq 'Y' ) {
