@@ -148,7 +148,7 @@ foreach ( $client_key in $settings.clients.keys ) {
             $switching_peers = $interval_seeds ? $interval_seeds : $settings.controller.priority -eq '1' ? $settings.sections[$tracker_torrents[$_].section].control_peers : $settings.clients[$hash_to_client[$_]]
             if ( $states[$_].state -eq $settings.clients[$client_key].stopped_state ) {
                 if ( $tracker_torrents[$_].seeders -lt $switching_peers -or ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -le $ok_to_start ) {
-                    if ( $tracker_torrents[$_].seeders -ge $switching_peers -and $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) -le $ok_to_start ) {
+                    if ( $tracker_torrents[$_].seeders -ge $switching_peers -and ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) -le $ok_to_start ) ) {
                         $started_olds += 1
                         if ( $started_olds -ge $settings.controller.old_starts_per_run ) {
                             continue
@@ -170,7 +170,7 @@ foreach ( $client_key in $settings.clients.keys ) {
             }
             elseif ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) ) {
                 if ( ( $states[$_].state -ne 'forcedUP' -or $stop_forced -eq 'Y' ) `
-                        -and $tracker_torrents[$_].seeders -gt $switching_peers -and $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) -gt $ok_to_start ) {
+                        -and $tracker_torrents[$_].seeders -gt $switching_peers -and ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) -gt $ok_to_start ) ) {
 
                     if ( $stop_keys.count -eq $batch_size ) {
                         Stop-Torrents $stop_keys $settings.clients[$client_key] -mess_sender 'Controller'
