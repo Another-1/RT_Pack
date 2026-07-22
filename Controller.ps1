@@ -36,7 +36,7 @@ if ( $standalone -eq $false ) {
 }
 
 if ( $settings.controller.intervals ) {
-    Write-Log 'Включен "Динамический набор интервалов количества пиров", игнорируем прочие настройки регулировки'
+    Write-Log 'Включен "Динамический набор интервалов", игнорируем настройки по клиентам и подразделам'
     $intervals_array = $settings.controller.intervals.split('/').split('|') | ForEach-Object { $_ -notlike '*:*' ?  "1:$_" : $_ }
     $hourly = @{}
     $hour = 0
