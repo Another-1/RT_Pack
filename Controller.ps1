@@ -48,6 +48,7 @@ if ( $settings.controller.intervals ) {
             $hourly[$hour] = $seeds
         }
     }
+    $hourly[0] = $hourly[24]
     $interval_seeds = $hourly[ ( Get-Date).Hour ]
     Write-Log "В $( Get-Spell (Get-Date).Hour -entity 'hours' ) лимит сидов установлен в $interval_seeds"
 }

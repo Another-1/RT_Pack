@@ -1014,7 +1014,7 @@ function Send-Report ( $call_from ) {
             if ( ( $res | ConvertFrom-Json ).invalid_hashes ) {
                 Write-Log "API отклонил раздачи:`n"
                 foreach ( $hash in ( $res | ConvertFrom-Json ).invalid_hashes ) {
-                    Write-Log "$_ - $( ( $clients_torrents | Where-Object { $_.hash -eq $_.ToUpper() } ).name)" -Red
+                    Write-Log "$hash - $( ( $clients_torrents | Where-Object { $_.hash -eq $hash.ToUpper() } ).name)" -Red
                 }
             }
         }
@@ -1051,7 +1051,7 @@ function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles, $torrent =
         }
         else {
             $text = 'Удаляем из клиента ' + $client.Name + ' раздачу ' + $text + ' без удаления файлов'
-            Write-Log $text
+            Write-Log $textremove-
         }
         $request_delete = @{
             hashes      = $hash
