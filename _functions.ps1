@@ -1020,9 +1020,9 @@ function Send-Report ( $call_from ) {
                 'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from
-            if ( ( $res | convertfrom-json ).invalid_hashes ) {
+            if ( ( $res | ConvertFrom-Json ).invalid_hashes ) {
                 Write-Log "API отклонил раздачи:`n"
-                foreach( $hash in ( $res | ConvertFrom-Json ).invalid_hashes ) {
+                foreach ( $hash in ( $res | ConvertFrom-Json ).invalid_hashes ) {
                     Write-Log "$_ - $( ( $clients_torrents | Where-Object { $_.hash -eq $_.ToUpper() } ).name)" -Red
                 }
             }
@@ -1537,27 +1537,26 @@ function Get-RepRegTime( $topic_id, $call_from ) {
 
 function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
     if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
-    Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
-    $content = Get-ApiHTTP '/v1/get_tor_status_titles' -call_from $call_from
-    $titles = ($content | ConvertFrom-Json -AsHashtable ).result
-
-    if (!$titles) {
-        Write-Log 'API не вернул таблицу статусов, будем угадывать' -Red
-        $titles = @{
-            0  = 'не проверено'
-            1  = 'закрыто'
-            2  = 'проверено'
-            3  = 'недооформлено'
-            4  = 'не оформлено'
-            5  = 'повтор'
-            6  = 'зарезервировано'
-            7  = 'поглощено'
-            8  = 'сомнительно'
-            9  = 'проверяется'
-            10 = 'временная'
-            11 = 'премодерация'
-        }
+    # Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
+    # $content = Get-ApiHTTP '/v1/get_tor_status_titles' -call_from $call_from
+    # $titles = ($content | ConvertFrom-Json -AsHashtable ).result
+    # if (!$titles) {
+    Write-Log 'API не вернул таблицу статусов, будем угадывать' -Red
+    $titles = @{
+        0  = 'не проверено'
+        1  = 'закрыто'
+        2  = 'проверено'
+        3  = 'недооформлено'
+        4  = 'не оформлено'
+        5  = 'повтор'
+        6  = 'зарезервировано'
+        7  = 'поглощено'
+        8  = 'сомнительно'
+        9  = 'проверяется'
+        10 = 'временная'
+        11 = 'премодерация'
     }
+    # }
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
     $tracker_torrents = @{}
     $counter = 0
