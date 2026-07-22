@@ -24,7 +24,7 @@ else {
 }
 
 $json_section = ( $standalone -eq $true ? 'controller' : '' )
-$settings.controller.old_starts_per_run = Test-Setting 'old_starts_per_run' -json_section $json_section
+# $settings.controller.old_starts_per_run = Test-Setting 'old_starts_per_run' -json_section $json_section
 $settings.controller.min_stop_to_start = Test-Setting 'min_stop_to_start' -json_section $json_section
 
 if ( $standalone -eq $false ) {
@@ -32,6 +32,7 @@ if ( $standalone -eq $false ) {
     $settings.controller.priority = $ini_data['topics_control'].priority
     $settings.controller.intervals = $ini_data['topics_control'].intervals
     $settings.controller.min_stop_to_start = $ini_data['topics_control'].days_until_unseeded ? $ini_data['topics_control'].days_until_unseeded : $min_stop_to_start
+    $settings.controller.old_starts_per_run = $ini_data['topics_control'].max_unseeded_count
 }
 
 if ( $settings.controller.intervals ) {
@@ -135,6 +136,7 @@ if (  $rss ) {
     }
 }
 # $started_counts = @{}
+$started_olds = 0
 foreach ( $client_key in $settings.clients.keys ) {
     # foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -ne 'Aorus' } ) {
     # Write-Log ( 'Регулируем клиент ' + $client_key + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
@@ -145,6 +147,12 @@ foreach ( $client_key in $settings.clients.keys ) {
             $switching_peers = $interval_seeds ? $interval_seeds : $settings.controller.priority -eq '1' ? $settings.sections[$tracker_torrents[$_].section].control_peers : $settings.clients[$hash_to_client[$_]]
             if ( $states[$_].state -eq $settings.clients[$client_key].stopped_state ) {
                 if ( $tracker_torrents[$_].seeders -lt $switching_peers -or ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -le $ok_to_start ) {
+                    if ( $tracker_torrents[$_].seeders -ge $switching_peers -and $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) -le $ok_to_start ) {
+                        $started_olds += 1
+                        if ( $started_olds -ge $settings.controller.old_starts_per_run ) {
+                            continue
+                        }
+                    }
                     if ( $start_keys.count -eq $batch_size ) {
                         Start-Torrents $start_keys $settings.clients[$client_key] -mess_sender 'Controller'
                         $started += $start_keys.count
