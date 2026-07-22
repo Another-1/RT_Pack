@@ -1541,7 +1541,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     # $content = Get-ApiHTTP '/v1/get_tor_status_titles' -call_from $call_from
     # $titles = ($content | ConvertFrom-Json -AsHashtable ).result
     # if (!$titles) {
-    Write-Log 'API не вернул таблицу статусов, будем угадывать' -Red
+    # Write-Log 'API не вернул таблицу статусов, будем угадывать' -Red
     $titles = @{
         0  = 'не проверено'
         1  = 'закрыто'
