@@ -1008,7 +1008,7 @@ function Send-Report ( $call_from ) {
                 'status'                = $adder_watermark -bor 1
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
-                'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
+                'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper() )
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from
             if ( ( $res | ConvertFrom-Json ).invalid_hashes ) {
@@ -1025,7 +1025,7 @@ function Send-Report ( $call_from ) {
                 'status'                = $adder_watermark -bor 3
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
-                'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading' ) -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
+                'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading' ) -and $tracker_torrents[$_.hash] } ).hash.ToUpper() )
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from
         }
@@ -1526,14 +1526,13 @@ function Get-RepRegTime( $topic_id, $call_from ) {
     }
 }
 
-function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
-    if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
+    function Get-StatusTitles() {
     # Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
     # $content = Get-ApiHTTP '/v1/get_tor_status_titles' -call_from $call_from
     # $titles = ($content | ConvertFrom-Json -AsHashtable ).result
     # if (!$titles) {
     # Write-Log 'API не вернул таблицу статусов, будем угадывать' -Red
-    $titles = @{
+    $titles = [ordered]@{
         0  = 'не проверено'
         1  = 'закрыто'
         2  = 'проверено'
@@ -1548,6 +1547,11 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
         11 = 'премодерация'
     }
     # }
+    return $titles
+    }
+function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
+    if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
+    titles = Get-StatusTitles
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
     $tracker_torrents = @{}
     $counter = 0

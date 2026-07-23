@@ -875,13 +875,18 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                     if ( !$id_to_info[$rss_record[1]] -and $rss_record[3] -notin $clients_torrents.hash ) {
                         if ( !$ignored -or $requester -notin $ignored ) {
                             Write-Log "Проверим, что раздача $($rss_record[1] ) для $requester ещё существует"
-                            # $fresh_hash = ( ( Get-HTTP -url "https://api.rutracker.cc/v1/get_tor_hash?by=topic_id&val=$($rss_record[1])" -use_proxy $settings.connection.proxy.use_for_api ) | ConvertFrom-Json -AsHashtable ).result.values[0]
                             Remove-Variable -Name 'fresh_hash' -ErrorAction SilentlyContinue
                             try {
                                 Remove-Variable -Name 'fresh_hash' -ErrorAction SilentlyContinue
-                                $res = ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash") | ConvertFrom-Json -AsHashtable
-                                $hash_pos = $res.columns.indexof( 'info_hash' )
-                                $fresh_hash = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash") | ConvertFrom-Json -AsHashtable ).releases[0][ $hash_pos ]
+                                $res = ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash,tor_status") | ConvertFrom-Json -AsHashtable
+                                try {
+                                    $fresh_hash = $res.releases[0][ $res.columns.indexof( 'info_hash' ) ]
+                                    $fresh_status = ( Get-StatusTitles )[ $res.releases[0][ $res.columns.indexof( 'tor_status' ) ].ToInt32($nul) ]
+                                }
+                                catch {
+                                    Write-Log 'Раздача уже не существует'
+                                    continue
+                                }
                             }
                             catch {}
                             if ( !$fresh_hash ) {
@@ -889,7 +894,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                 continue
                             }
                             else {
-                                Write-Log "API считает, что у этой раздачи хэш $fresh_hash"
+                                Write-Log "API считает, что у этой раздачи хэш $fresh_hash и статус $fresh_status"
                                 $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
                                 if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
                             }
