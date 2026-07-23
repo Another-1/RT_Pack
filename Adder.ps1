@@ -896,8 +896,10 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
                             else {
                                 Write-Log "API считает, что у этой раздачи хэш $fresh_hash и статус $fresh_status"
-                                $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
-                                if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
+                                if ( $fresh_status -notin @( 'премодерация', 'повтор' ) ) {
+                                    $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
+                                    if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
+                                }
                             }
                             if ( $first_rss ) {
                                 Write-Log 'Добавляем новые раздачи из RSS'
@@ -919,13 +921,13 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
 
                             if ( $rss2 ) {
                                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                    -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul ) -keepfile
+                                  -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq'премодерация' ? $fresh_hash : $nul ) -keepfile
                                 Add-ClientTorrent -client $settings.clients[$rss2.client] -path $chosen_save_path2 -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                    -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul ) -Silent
+                                  -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq'премодерация' ? $fresh_hash : $nul ) -Silent
                             }
                             else {
                                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                    -file $( $nul -eq $unregistered_hash ? $new_torrent_file : $nul ) -hash $( $nul -ne $unregistered_hash ? $unregistered_hash : $nul )
+                                -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq'премодерация' ? $fresh_hash : $nul )
                             }
                             Write-Log 'Подождём секунду, чтобы раздача добавилась'
                             Start-Sleep -Seconds 1
@@ -938,7 +940,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                     $i++
                                 }
                             }
-                            if ( $null -eq $fresh_hash ) { $fresh_hash = $unregistered_hash }
+                            # if ( $null -eq $fresh_hash ) { $fresh_hash = $unregistered_hash }
                             if ( $i -lt 10 ) {
                                 if ( $success -eq $true ) {
                                     if ( $rss.tag_user.ToUpper() -eq 'Y' ) {
