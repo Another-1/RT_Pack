@@ -924,11 +924,13 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             Write-Log 'Подождём секунду, чтобы раздача добавилась'
                             Start-Sleep -Seconds 1
                             Write-Log 'Проверяем, что раздача добавилась'
-                            $i = 0
-                            while ( $i -lt 10 -and $null -eq ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash $fresh_hash -mess_sender 'Adder' ) ) {
-                                Write-Log 'Пока не добавилась, подождём ещё секунду'
-                                Start-Sleep -Seconds 1
-                                $i++
+                            if ( $success) {
+                                $i = 0
+                                while ( $i -lt 10 -and $null -eq ( Get-ClientTorrents -client $settings.clients[$rss.client] -hash $fresh_hash -mess_sender 'Adder' ) ) {
+                                    Write-Log 'Пока не добавилась, подождём ещё секунду'
+                                    Start-Sleep -Seconds 1
+                                    $i++
+                                }
                             }
                             if ( $null -eq $fresh_hash ) { $fresh_hash = $unregistered_hash }
                             if ( $i -lt 10 ) {
@@ -985,7 +987,7 @@ elseif ( $update_stats -eq 'Y' -and $php_path ) {
     try { $prev_down = ( Get-Content -Path $down_file -ErrorAction SilentlyContinue ).ToInt16( $null ) }
     catch { $prev_down = (0).ToInt16($null) }
     if ( $prev_down -gt $down ) {
-        Write-Log 'Обнаружено изменение количества качаемого, имеет смысл отправить отчёт'
+        Write-Log 'Обнаружено изменение количества качаемого, имеет смысл отправить отчёт' -Green
         New-Item -Path $report_flag_file -ErrorAction SilentlyContinue | Out-Null
     }
     $down | Out-File -FilePath $down_file
@@ -1084,7 +1086,7 @@ if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' -or $time_t
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
         # что-то добавилось, стоит подождать.
         # Update-Stats -wait -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # с паузой.
-        Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) )  -call_from 'Adder' -wait # с паузой.
+        Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) -call_from 'Adder' -wait # с паузой.
     }
     else {
         Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $prev_down -gt $down -or $force_reports -eq 'Y' -or $time_to_report ) ) -call_from 'Adder' # без паузы, так как это сработал флаг от предыдущего прогона.

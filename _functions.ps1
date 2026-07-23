@@ -999,13 +999,13 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $ca
 function Send-Report ( $call_from ) {
     Write-Log 'Шлём отчёт'
     Get-Date -UFormat %s | Out-File -FilePath ( Join-Path $PSScriptRoot 'last_report.txt' )
-    $adder_watermark = 0b1000000000000000000000000 + ( $adder_entity ? $adder_entity : 0 ) * 256
+    $adder_watermark = ( 1 -shl 24 ) -bor ( $adder_entity ? $adder_entity -shl 8 : 0 )
     # Хранимые
     if ( $new_reporting -eq 'Y' ) {
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ) ) {
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
-                'status'                = 1 -bor $adder_watermark
+                'status'                = $adder_watermark -bor 1
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
@@ -1022,7 +1022,7 @@ function Send-Report ( $call_from ) {
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL, downloading' ) -and $tracker_torrents[$_.hash] } ) ) {
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
-                'status'                = 3 -bor $adder_watermark
+                'status'                = $adder_watermark -bor 3
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading' ) -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
