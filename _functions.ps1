@@ -997,6 +997,10 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $ca
 }
 
 function Send-Report ( $call_from ) {
+    if ( $adder_entity -and $adder_entity -notin ( 0..255 ) ) {
+        Write-Log 'Недопустимое значение $adder_entity, отправка отчёта отменяется' -Red
+        return
+    }
     Write-Log 'Шлём отчёт'
     Get-Date -UFormat %s | Out-File -FilePath ( Join-Path $PSScriptRoot 'last_report.txt' )
     $adder_watermark = ( 1 -shl 24 ) -bor ( $adder_entity ? $adder_entity -shl 8 : 0 )
