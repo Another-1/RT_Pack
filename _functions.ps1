@@ -1551,7 +1551,7 @@ function Get-RepRegTime( $topic_id, $call_from ) {
     }
 function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
     if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
-    titles = Get-StatusTitles
+    $titles = Get-StatusTitles
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
     $tracker_torrents = @{}
     $counter = 0
