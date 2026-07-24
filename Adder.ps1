@@ -762,7 +762,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                     $client2 = $settings.clients[$rss2.client]
                 }
 
-                foreach ( $rss_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
+                foreach ( $client_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
                     $client = $settings.clients[$rss_torrent.client_key]
                     if ( $client.name -eq $rss.client ) {
                         $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
@@ -811,9 +811,9 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                 }
                                 if ( -not $downloading ) {
                                     Write-Log 'Нет качающих хранителей, удаляем'
-                                    Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                                    Remove-ClientTorrent -client $client -torrent $client_torrent -deleteFiles
                                     if ( $rss2 ) {
-                                        Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
+                                        Remove-ClientTorrent -client $client2 -torrent $client_torrent -deleteFiles
                                     }
                                     $rss_del_cnt++
                                 }
@@ -848,20 +848,20 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
                             else {
                                 Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
-                                Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                                Remove-ClientTorrent -client $client -torrent $client_torrent -deleteFiles
                                 if ( $rss2 ) {
-                                    Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
+                                    Remove-ClientTorrent -client $client2 -torrent $client_torrent -deleteFiles
                                 }
                                 $rss_del_cnt++
                             }
                         }
                         else {
-                            Get-ClientTrackerStatus -client $client -torrent_list @( $rss_torrent )
+                            Get-ClientTrackerStatus -client $client -torrent_list @( $client_torrent )
                             if ( $rss_torrent.tracker_status -eq 4 ) {
                                 Write-Log "Найдена снесённая с трекера раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
-                                Remove-ClientTorrent -client $client -torrent $rss_torrent -deleteFiles
+                                Remove-ClientTorrent -client $client -torrent $client_torrent -deleteFiles
                                 if ( $rss2 ) {
-                                    Remove-ClientTorrent -client $client2 -torrent $rss_torrent -deleteFiles
+                                    Remove-ClientTorrent -client $client2 -torrent $client_torrent -deleteFiles
                                 }
                                 $rss_del_cnt++
                             }
