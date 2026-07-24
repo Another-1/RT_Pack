@@ -1006,7 +1006,7 @@ function Send-Report ( $call_from ) {
     $adder_watermark = ( 1 -shl 24 ) -bor ( $adder_entity ? $adder_entity -shl 8 : 0 )
     # Хранимые
     if ( $new_reporting -eq 'Y' ) {
-        Write-Log 'Освеожаем список хранимого и качаемого для актуализации отчётности'
+        Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности'
         $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ) ) {

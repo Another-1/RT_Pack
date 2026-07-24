@@ -562,7 +562,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
                     # $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
                     $res = Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($new_tracker_data.topic_id)&columns=topic_title" | ConvertFrom-Json
-                    $new_tracker_data.topic_title = $res.releases[0][ $res.columns.indexof('topic_title') ]
+                    $new_tracker_data.topic_title = $res.releases[ $res.releases.count - 1][ $res.columns.indexof('topic_title') ]
                     if ( !$new_tracker_data.topic_title ) {
                         $new_tracker_data.topic_title = $new_tracker_data.topic_id
                     }
