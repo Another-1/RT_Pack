@@ -1525,7 +1525,8 @@ function Get-RepRegTime( $topic_id, $call_from ) {
     Write-Log "Запрашиваем дату добавления раздачи $topic_id"
     $url = "/krs/api/v1/releases/pvc?topic_ids=$topic_id&columns=reg_time"
     try {
-        return ( ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).releases[0][1]
+        $res = ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json
+        return $res.releases[$res.releases.count - 1][ $res.columns.indexof('reg_time') ]
     }
     catch {
         Write-Log 'Не получилось' -Red
