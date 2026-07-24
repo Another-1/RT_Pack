@@ -788,6 +788,17 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                 $usernames = ( $Content | ConvertFrom-Json -AsHashtable ).result
                             }
                             # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
+                            if ( $rss_torrent.topic_id -eq 'XXXXXX') {
+                                $res = ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_torrent.hash)&mode=hash") | ConvertFrom-Json -AsHashtable
+                                try {
+                                    $premod_id = $res.releases[0][ $res.columns.indexof( 'topic_id' ) ]
+                                    if ( $premod_id -in $rss_ids ) {
+                                        continue
+                                    }
+                                }
+                                catch {}
+                            }
+
                             if ( $rss.wait_keepers -eq 'Y') {
                                 $requesters = ( Get-ClientTorrents -client $client -hash $rss_torrent.hash ).tags.split(', ')
                                 if ( $requesters.count -gt 1 ) { $requesters = $requesters | Where-Object { $_ -ne 'Another-one' } }
@@ -878,7 +889,6 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             Write-Log "Проверим, что раздача $($rss_record[1] ) для $requester ещё существует"
                             Remove-Variable -Name 'fresh_hash' -ErrorAction SilentlyContinue
                             try {
-                                Remove-Variable -Name 'fresh_hash' -ErrorAction SilentlyContinue
                                 $res = ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=info_hash,tor_status") | ConvertFrom-Json -AsHashtable
                                 try {
                                     $fresh_hash = $res.releases[0][ $res.columns.indexof( 'info_hash' ) ]
@@ -921,13 +931,13 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
 
                             if ( $rss2 ) {
                                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                  -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq'премодерация' ? $fresh_hash : $nul ) -keepfile
+                                    -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul ) -keepfile
                                 Add-ClientTorrent -client $settings.clients[$rss2.client] -path $chosen_save_path2 -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                  -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq'премодерация' ? $fresh_hash : $nul ) -Silent
+                                    -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul ) -Silent
                             }
                             else {
                                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq'премодерация' ? $fresh_hash : $nul )
+                                    -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul )
                             }
                             Write-Log 'Подождём секунду, чтобы раздача добавилась'
                             Start-Sleep -Seconds 1
