@@ -299,7 +299,7 @@ $hash_to_id = @{}
 $id_to_info = @{}
 
 Write-Log 'Сортируем таблицы'
-$clients_torrents | Where-Object { $null -ne $_.topic_id -and $client_key -ne 'RSS2' } | ForEach-Object {
+$clients_torrents | Where-Object { $null -ne $_.topic_id -and $client_key -ne 'RSS2' -and $_.topic_id -ne 'XXXXXX'} | ForEach-Object {
     if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
     $hash_to_id[$_.infohash_v1] = $_.topic_id.ToInt64($null)
 
@@ -908,6 +908,9 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                     $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
                                     if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
                                 }
+                            }
+                            if ( $fresh_hash -and $fresh_hash -in $clients_torrents.hash ) {
+                                continue
                             }
                             if ( $first_rss ) {
                                 Write-Log 'Добавляем новые раздачи из RSS'
