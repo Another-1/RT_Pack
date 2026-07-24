@@ -763,31 +763,31 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 }
 
                 foreach ( $client_torrent in ( $clients_torrents | Where-Object { $_.category -eq $rss.category } ) ) {
-                    $client = $settings.clients[$rss_torrent.client_key]
+                    $client = $settings.clients[$client_torrent.client_key]
                     if ( $client.name -eq $rss.client ) {
                         $purge_delay = $( $null -ne $rss.purge_delay ? $rss.purge_delay : 1 )
-                        if ( $null -eq $rss_torrent.topic_id ) { 
+                        if ( $null -eq $client_torrent.topic_id ) { 
                             try {
-                                $rss_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.infohash_v1 } )[1]
+                                $client_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $client_torrent.infohash_v1 } )[1]
                             }
                             catch {
-                                $rss_torrent.topic_id = 'XXXXXX' # Вероятно, раздача в премоде
+                                $client_torrent.topic_id = 'XXXXXX' # Вероятно, раздача в премоде
                             }
         
-                            if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
-                                $rss_ids += ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.hash })[1]
+                            if ( $null -ne $client_torrent.topic_id -and $client_torrent.topic_id -ne 'XXXXXX' ) {
+                                $rss_ids += ( $rss_data | Where-Object { $_[3] -eq $client_torrent.hash })[1]
                             }
                         }
-                        # if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
-                        if ( $rss_torrent.topic_id -notin $rss_ids -and $rss_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
+                        # if ( $client_torrent.topic_id -notin $rss_ids -and $client_torrent.state -in @( 'uploading', 'stalledUP', 'queuedUP', 'forcedUP', $settings.clients[$rss.client].stopped_state ) -and $client_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
+                        if ( $client_torrent.topic_id -notin $rss_ids -and $client_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
                             if ( !$usernames ) {
                             
                                 $content = Get-ApiHTTP '/v1/static/keepers_user_data' -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
                                 $usernames = ( $Content | ConvertFrom-Json -AsHashtable ).result
                             }
-                            # $existing_torrent = $id_to_info[ $rss_torrent.topic_id ]
-                            if ( $rss_torrent.topic_id -eq 'XXXXXX') {
-                                $res = ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_torrent.hash)&mode=hash") | ConvertFrom-Json -AsHashtable
+                            # $existing_torrent = $id_to_info[ $client_torrent.topic_id ]
+                            if ( $client_torrent.topic_id -eq 'XXXXXX') {
+                                $res = ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($client_torrent.hash)&mode=hash") | ConvertFrom-Json -AsHashtable
                                 try {
                                     $premod_id = $res.releases[0][ $res.columns.indexof( 'topic_id' ) ]
                                     if ( $premod_id -in $rss_ids ) {
@@ -798,13 +798,13 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
 
                             if ( $rss.wait_keepers -eq 'Y') {
-                                $requesters = ( Get-ClientTorrents -client $client -hash $rss_torrent.hash ).tags.split(', ')
+                                $requesters = ( Get-ClientTorrents -client $client -hash $client_torrent.hash ).tags.split(', ')
                                 if ( $requesters.count -gt 1 ) { $requesters = $requesters | Where-Object { $_ -ne 'Another-one' } }
                                 $requesters = ( $requesters | Where-Object { $_ -notlike '_*' } ) | Join-String -Separator ', '
-                                Write-Log "Из RSS ушла $( $rss_torrent.state -in ( 'stalledDL', 'Downloading' ) ? 'нескачанная' : 'скачанная' ) раздача для $requesters, $($rss_torrent.topic_id) - $($rss_torrent.name)"
-                                if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
+                                Write-Log "Из RSS ушла $( $client_torrent.state -in ( 'stalledDL', 'Downloading' ) ? 'нескачанная' : 'скачанная' ) раздача для $requesters, $($client_torrent.topic_id) - $($client_torrent.name)"
+                                if ( $null -ne $client_torrent.topic_id -and $client_torrent.topic_id -ne 'XXXXXX' ) {
                                     Write-Log 'Проверим наличие качающего хранителя'
-                                    $downloading = ( Get-TopicDownloadingStatus -topic_id $rss_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
+                                    $downloading = ( Get-TopicDownloadingStatus -topic_id $client_torrent.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
                                 }
                                 else {
                                     $downloading = $false
@@ -818,11 +818,11 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                     $rss_del_cnt++
                                 }
                                 else {
-                                    if ( $rss_torrent.state -in ( 'stalledDL', 'Downloading' ) ) {
+                                    if ( $client_torrent.state -in ( 'stalledDL', 'Downloading' ) ) {
                                         Write-Log "Раздачу ещё кача$( $downloading.Count -gt 1 ? 'ю' : 'е' )т $( $downloading | ForEach-Object { $usernames[$_.ToString()] ? $usernames[$_.ToString()][0] : $_ } | Join-String -Separator ', ' ). Пусть полежит"
                                         if ( $debug -eq 1 ) {
                                             $params = @{
-                                                'help_load' = $rss_torrent.topic_id
+                                                'help_load' = $client_torrent.topic_id
                                                 # 'help_pwd'  = $stalled_pwd
                                             }
                                 
@@ -840,14 +840,14 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                             if ( !$bad_guys[$usernames[$_.ToString()][0]] ) {
                                                 $bad_guys[$usernames[$_.ToString()][0]] = @()
                                             }
-                                            $bad_guys[$usernames[$_.ToString()][0]] += "https://rutracker.org/forum/viewtopic.php?t=$($rss_torrent.topic_id)"
+                                            $bad_guys[$usernames[$_.ToString()][0]] += "https://rutracker.org/forum/viewtopic.php?t=$($client_torrent.topic_id)"
                                         }
                                     }
                                 }
-                                $rss_left += $rss_torrent.topic_id
+                                $rss_left += $client_torrent.topic_id
                             }
                             else {
-                                Write-Log "Найдена раздача $($rss_torrent.topic_id) - $($rss_torrent.name), которую уже не просят"
+                                Write-Log "Найдена раздача $($client_torrent.topic_id) - $($client_torrent.name), которую уже не просят"
                                 Remove-ClientTorrent -client $client -torrent $client_torrent -deleteFiles
                                 if ( $rss2 ) {
                                     Remove-ClientTorrent -client $client2 -torrent $client_torrent -deleteFiles
@@ -857,8 +857,8 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                         }
                         else {
                             Get-ClientTrackerStatus -client $client -torrent_list @( $client_torrent )
-                            if ( $rss_torrent.tracker_status -eq 4 ) {
-                                Write-Log "Найдена снесённая с трекера раздача $($rss_torrent.topic_id) - $($rss_torrent.name)"
+                            if ( $client_torrent.tracker_status -eq 4 ) {
+                                Write-Log "Найдена снесённая с трекера раздача $($client_torrent.topic_id) - $($client_torrent.name)"
                                 Remove-ClientTorrent -client $client -torrent $client_torrent -deleteFiles
                                 if ( $rss2 ) {
                                     Remove-ClientTorrent -client $client2 -torrent $client_torrent -deleteFiles
