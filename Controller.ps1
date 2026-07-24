@@ -103,7 +103,7 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
     # }
 }
 Remove-Variable -Name 'hash_to_id' -ErrorAction SilentlyContinue
-Remove-Variable -Name 'id_to_info' -ErrorAction SilentlyContinue
+# Remove-Variable -Name 'id_to_info' -ErrorAction SilentlyContinue
 
 if ( !$api_seeding -or $debug -eq $false ) {
     $states = @{}
