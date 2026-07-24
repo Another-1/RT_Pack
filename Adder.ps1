@@ -934,7 +934,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
                                     -file $( $fresh_status -notin @( 'премодерация', 'повтор', 'закрыто' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul ) -keepfile
                                 Add-ClientTorrent -client $settings.clients[$rss2.client] -path $chosen_save_path2 -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                    -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul ) -Silent
+                                    -file $( $fresh_status -notin @( 'премодерация', 'повтор', 'закрыто' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul ) -Silent
                             }
                             else {
                                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
