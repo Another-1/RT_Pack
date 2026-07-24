@@ -771,8 +771,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                 $rss_torrent.topic_id = ( $rss_data | Where-Object { $_[3] -eq $rss_torrent.infohash_v1 } )[1]
                             }
                             catch {
-                                Write-Log "Не удалось получить topic_id для раздачи $($rss_torrent.name), просто удаляем"
-                                $rss_torrent.topic_id = 'XXXXXX'
+                                $rss_torrent.topic_id = 'XXXXXX' # Вероятно, раздача в премоде
                             }
         
                             if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
