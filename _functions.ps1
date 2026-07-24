@@ -980,7 +980,7 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $ca
     }
     try {
         Write-Log 'Обновляем БД TLO'
-        if ( [version]( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version -gt [version]'3.9.9.9' ) {
+        if ( [version]( ( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version | Select-String -Pattern '[\.\d]+' ).Matches[0].Value -gt [version]'3.9.9.9' ) {
             . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:update
             Write-Log 'Обновляем списки других хранителей'
             . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:keepers
