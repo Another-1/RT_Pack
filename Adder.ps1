@@ -773,7 +773,6 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             catch {
                                 Write-Log "Не удалось получить topic_id для раздачи $($rss_torrent.name), просто удаляем"
                                 $rss_torrent.topic_id = 'XXXXXX'
-                            
                             }
         
                             if ( $null -ne $rss_torrent.topic_id -and $rss_torrent.topic_id -ne 'XXXXXX' ) {
