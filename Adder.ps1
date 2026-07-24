@@ -904,7 +904,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
                             else {
                                 Write-Log "API вернул хэш $fresh_hash и статус '$fresh_status'"
-                                if ( $fresh_status -notin @( 'премодерация', 'повтор' ) ) {
+                                if ( $fresh_status -notin @( 'премодерация', 'повтор', 'закрыто' ) ) {
                                     $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
                                     if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
                                 }
@@ -932,13 +932,13 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
 
                             if ( $rss2 ) {
                                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                    -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul ) -keepfile
+                                    -file $( $fresh_status -notin @( 'премодерация', 'повтор', 'закрыто' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul ) -keepfile
                                 Add-ClientTorrent -client $settings.clients[$rss2.client] -path $chosen_save_path2 -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
                                     -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul ) -Silent
                             }
                             else {
                                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                    -file $( $fresh_status -notin @( 'премодерация', 'повтор' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul )
+                                    -file $( $fresh_status -notin @( 'премодерация', 'повтор', 'закрыто' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -eq 'премодерация' ? $fresh_hash : $nul )
                             }
                             Write-Log 'Подождём секунду, чтобы раздача добавилась'
                             Start-Sleep -Seconds 1
