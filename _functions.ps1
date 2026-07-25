@@ -1034,7 +1034,7 @@ function Send-Report ( $call_from ) {
                 'status'                = $adder_watermark -bor 3
                 # 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
-                'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading' ) -and $tracker_torrents[$_.hash] } ).hash.ToUpper() )
+                'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading', 'queuedDL' ) -and $tracker_torrents[$_.hash] } ).hash.ToUpper() )
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
         }
