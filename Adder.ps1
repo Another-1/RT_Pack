@@ -299,7 +299,7 @@ $hash_to_id = @{}
 $id_to_info = @{}
 
 Write-Log 'Сортируем таблицы'
-$clients_torrents | Where-Object { $null -ne $_.topic_id -and $client_key -ne 'RSS2' -and $_.topic_id -ne 'XXXXXX'} | ForEach-Object {
+$clients_torrents | Where-Object { $null -ne $_.topic_id -and $client_key -ne 'RSS2' -and $_.topic_id -ne 'XXXXXX' } | ForEach-Object {
     if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
     $hash_to_id[$_.infohash_v1] = $_.topic_id.ToInt64($null)
 
@@ -570,7 +570,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 if ( $skip_inprogress -eq 'Y' -and ( $new_tracker_data.topic_title -match 'из \d*\?' -or `
                         ( $new_tracker_data.topic_title -match 'сери[яи]:{0,1} (\d+)(-(\d+)|)(\s\(\d+-\d+\)|) из' -and `
                                 # $new_tracker_data.topic_title -notmatch 'сери[яи]:{0,1} (\d+)(-(\d+)|)(\s\(\d+-\d+\)|) из (\2)\D' )
-                                $new_tracker_data.topic_title -notmatch 'ерии:{0,1} (?:\d+)-(\d+)( \(\d+-\d+\)|) из (\1)\D' )
+                                $new_tracker_data.topic_title -notmatch 'ери[яи]:{0,1} (?:\d+)-(\d+)( \(\d+-\d+\)|) из (\1)\D' )
                     )
                 ) {
                     Write-Log "Раздача $($new_tracker_data.topic_id) $($new_tracker_data.topic_title) ещё в показе"
@@ -594,7 +594,12 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                     $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$settings.sections[$new_tracker_data.section].client] )
                     if ( ( $ssd -and $ssd[$settings.sections[$new_tracker_data.section].client] ) -and $client.name -ne 'RSS') {
                         if ( $on_ssd -eq $false ) {
-                            Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
+                            if ( $debug -eq 1 -and $client.name -eq 'NAS-NEW' -and $new_tracker_data.tor_size_bytes -le 85000000000 ) {
+                                Set-ClientSetting $client 'temp_path' 'C:\mnt\ramdisk\Incomplete'
+                            }
+                            else {
+                                Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
+                            }
                             Set-ClientSetting $client 'temp_path_enabled' $true
                             Set-ClientSetting $client 'preallocate_all' $false
                         }

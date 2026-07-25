@@ -1006,10 +1006,11 @@ function Send-Report ( $call_from ) {
     $adder_watermark = ( 1 -shl 24 ) -bor ( $adder_entity ? $adder_entity -shl 8 : 0 )
     # Хранимые
     if ( $new_reporting -eq 'Y' ) {
-        Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности'
+        Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности в моменте'
         $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ) ) {
+            Write-Log '- отправляем хранимое'
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
                 'status'                = $adder_watermark -bor 1
@@ -1026,7 +1027,8 @@ function Send-Report ( $call_from ) {
             }
         }
         # Качаемые
-        if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL, downloading' ) -and $tracker_torrents[$_.hash] } ) ) {
+        if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading' ) -and $tracker_torrents[$_.hash] } ) ) {
+            Write-Log '- отправляем качаемое'
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
                 'status'                = $adder_watermark -bor 3
