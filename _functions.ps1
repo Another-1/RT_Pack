@@ -1010,7 +1010,7 @@ function Send-Report ( $call_from ) {
         $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ) ) {
-            Write-Log '- отправляем хранимое'
+            Write-Log 'Отправляем хранимое'
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
                 'status'                = $adder_watermark -bor 1
@@ -1018,7 +1018,7 @@ function Send-Report ( $call_from ) {
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper() )
             } | ConvertTo-Json -Compress
-            $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from
+            $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
             if ( ( $res | ConvertFrom-Json ).invalid_hashes ) {
                 Write-Log "API отклонил раздачи:`n"
                 foreach ( $hash in ( $res | ConvertFrom-Json ).invalid_hashes ) {
@@ -1028,7 +1028,7 @@ function Send-Report ( $call_from ) {
         }
         # Качаемые
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading' ) -and $tracker_torrents[$_.hash] } ) ) {
-            Write-Log '- отправляем качаемое'
+            Write-Log 'Отправляем качаемое'
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
                 'status'                = $adder_watermark -bor 3
@@ -1036,7 +1036,7 @@ function Send-Report ( $call_from ) {
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading' ) -and $tracker_torrents[$_.hash] } ).hash.ToUpper() )
             } | ConvertTo-Json -Compress
-            $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from
+            $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
         }
         
     }
@@ -1536,7 +1536,7 @@ function Get-RepRegTime( $topic_id, $call_from ) {
     }
 }
 
-    function Get-StatusTitles() {
+function Get-StatusTitles() {
     # Write-Log 'Запрашиваем у трекера раздачи из хранимых разделов'
     # $content = Get-ApiHTTP '/v1/get_tor_status_titles' -call_from $call_from
     # $titles = ($content | ConvertFrom-Json -AsHashtable ).result
@@ -1558,7 +1558,7 @@ function Get-RepRegTime( $topic_id, $call_from ) {
     }
     # }
     return $titles
-    }
+}
 function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
     if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
     $titles = Get-StatusTitles
@@ -1759,12 +1759,12 @@ function Get-RepHTTP ( $url, $body, $call_from, [switch]$nonstop ) {
         -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep -nonstop:$nonstop.IsPresent
 }
 
-function Send-RepHTTP ( $url, $body, $call_from, [switch]$nonstop ) {
+function Send-RepHTTP ( $url, $body, $call_from, [switch]$nonstop, [switch]$silent ) {
     $headers = @{
         'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key ))
     }
     $res = Send-HTTP -url "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)$url" `
-        -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep -nonstop:$nonstop.IsPresent
+        -body $body -headers $headers -call_from $call_from -use_proxy $settings.connection.proxy.use_for_rep -nonstop:$nonstop.IsPresent -silent:$silent.IsPresent
     return $res
 }
 
@@ -1841,7 +1841,7 @@ function  Get-SpokenInterval ( $start_date, $end_date ) {
     return $Day
 }
 
-function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
+function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break, [switch]$silent ) {
     $retry_cnt = 1
     $retry_max = 1
     while ( $true ) {
@@ -1852,21 +1852,27 @@ function Send-HTTP ( $url, $body, $headers, $call_from, [switch]$break ) {
                     # Write-Log 'Указан прокси с аутентификацией'
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -ProxyCredential $settings.connection.proxy.credentials -Body $body `
                             -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' -ConnectionTimeoutSeconds 30 )
-                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
+                    if ( -not $silent.IsPresent ) {
+                        Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
+                    }
                     return
                 }
                 else {
                     # Write-Log 'Указан прокси без аутентификации'
                     $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Proxy $settings.connection.proxy.url -Body $body `
                             -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' -ConnectionTimeoutSeconds 30 )
-                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
+                    if ( -not $silent.IsPresent ) {
+                        Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
+                    }
                     return
                 }
             }
             else {
                 # Write-Log 'Прокси не используем'
                 $hs = ( Invoke-WebRequest -Method Post -Uri $url -Headers $headers -Body $body -UserAgent "PowerShell/$($PSVersionTable.PSVersion)-$call_from-on-$($PSVersionTable.Platform)" -ContentType 'application/json' -ConnectionTimeoutSeconds 30 )
-                Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
+                if ( -not $silent.IsPresent ) {
+                    Write-Log "API ответило $( $hs.StatusCode ) $( $hs.StatusDescription )"
+                }
                 return $hs.Content
             }
         }
