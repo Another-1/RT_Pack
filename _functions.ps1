@@ -1032,7 +1032,7 @@ function Send-Report ( $call_from ) {
             $body = @{
                 'keeper_id'             = $settings.connection.user_id.ToInt32($null)
                 'status'                = $adder_watermark -bor 3
-                'unreport_older_than'   = 'PT1S'
+                # 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading' ) -and $tracker_torrents[$_.hash] } ).hash.ToUpper() )
             } | ConvertTo-Json -Compress
