@@ -146,7 +146,8 @@ if ( $settings.adder.never_obsolete ) {
     $all_sections += $never_obsolete_array
     $all_sections = $all_sections | Select-Object -Unique
     Write-Log 'Запрашиваем список всех разделов чтобы исключить празничные, если на дворе не праздник'
-    $existing_sections = (( Get-ApiHTTP -url '/v1/static/cat_forum_tree' ) | ConvertFrom-Json -AsHashtable ).result.f.keys
+    # $existing_sections = (( Get-ApiHTTP -url '/v1/static/cat_forum_tree' ) | ConvertFrom-Json -AsHashtable ).result.f.keys
+    $existing_sections = (( Get-RepHTTP -url '/krs/api/v1/proxy_api/v1/static/cat_forum_tree' -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) | ConvertFrom-Json -AsHashtable ).result.f.keys
     Write-Log "Обнаружено разделов на форуме: $($existing_sections.count)"
     Write-Log "Исключаем праздничные разделы по праздникам, которые не на дворе"
     $all_sections = $all_sections | Where-Object { $_ -in $existing_sections }
@@ -784,7 +785,8 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                         if ( $client_torrent.topic_id -notin $rss_ids -and $client_torrent.completion_on -le ( ( Get-Date -UFormat %s ).ToInt32($null) - $purge_delay * 24 * 60 * 60 ) ) {
                             if ( !$usernames ) {
                             
-                                $content = Get-ApiHTTP '/v1/static/keepers_user_data' -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                                # $content = Get-ApiHTTP '/v1/static/keepers_user_data' -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                                $content = Get-RepHTTP '/krs/api/v1/proxy_api/v1/static/keepers_user_data' -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
                                 $usernames = ( $Content | ConvertFrom-Json -AsHashtable ).result
                             }
                             # $existing_torrent = $id_to_info[ $client_torrent.topic_id ]

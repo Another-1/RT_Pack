@@ -79,7 +79,7 @@ if ( !$tracker_torrents ) {
         -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
 Write-Log 'Получаем названия всех подразделов'
-$existing_sections = (( Get-ApiHTTP -url '/v1/static/cat_forum_tree' ) | ConvertFrom-Json -AsHashtable ).result.f
+$existing_sections = (( Get-RepHTTP -url '/krs/api/v1/proxy_api/v1/static/cat_forum_tree' ) | ConvertFrom-Json -AsHashtable ).result.f
 $i = 0
 foreach ( $torrent in $torrents_list ) {
     $i++

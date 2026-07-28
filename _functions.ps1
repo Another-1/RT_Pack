@@ -954,24 +954,24 @@ function to_kmg ($bytes, [int]$precision = 0) {
     }
 }
 
-function Get-ForumTorrentInfo ( $id, $call_from ) {
-    $params = @{ 
-        by  = 'topic_id'
-        val = $id 
-    }
+# function Get-ForumTorrentInfo ( $id, $call_from ) {
+#     $params = @{ 
+#         by  = 'topic_id'
+#         val = $id 
+#     }
 
-    $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_topic_data' -Body $params -call_from $call_from -use_proxy $settings.connection.proxy.use_for_api
-    $torinfo = ( $content | ConvertFrom-Json ).result.$id 
-    $name = $torinfo.topic_title
-    $size = $torinfo.size
+#     $content = Get-HTTP 'https://api.rutracker.cc/v1/get_tor_topic_data' -Body $params -call_from $call_from -use_proxy $settings.connection.proxy.use_for_api
+#     $torinfo = ( $content | ConvertFrom-Json ).result.$id 
+#     $name = $torinfo.topic_title
+#     $size = $torinfo.size
 
-    if (!$name) {
-        Write-Log 'API не вернул информацию от торренте, штош...' -Red
-        # exit
-    }
+#     if (!$name) {
+#         Write-Log 'API не вернул информацию от торренте, штош...' -Red
+#         # exit
+#     }
     
-    return [PSCustomObject]@{ 'topic_title' = $name; 'size' = $size }
-}
+#     return [PSCustomObject]@{ 'topic_title' = $name; 'size' = $size }
+# }
 
 function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $call_from ) {
     if ( $wait ) {
