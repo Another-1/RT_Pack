@@ -1243,7 +1243,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             Add-TGMessage $tg_data
             # Add-TGMessage "Лишние в клиенте $($client.name) :`n"
             $obsolete[$client] | ForEach-Object {
-                $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$_.topic_id`n"
+                $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$($_.topic_id)`n"
                 Add-TGMessage $tg_data
                 # Add-TGMessage "https://rutracker.org/forum/viewtopic.php?t=$_`n"
                 if ( $id_to_info[$_].name ) {

@@ -701,8 +701,9 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
 
         if ( $obsolete_torrents.count -gt 0 ) {
             $obsolete_torrents | ForEach-Object {
-                $obsolete_status = ( Get-RepHTTP -url '/krs/api/v1/release/6561625/status' | ConvertFrom-Json ).release_status
-                $obsolete_status = $obsolete_status ? ( Get-StatusTitles[ $_.status]).ToUpper() : 'РАЗРЕГ'
+                # $obsolete_status = ( Get-RepHTTP -url '/krs/api/v1/release/6561625/status' | ConvertFrom-Json ).release_status
+                $res = ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($_.topic_id)&mode=id&columns=tor_status" -call_from 'Adder' ) | ConvertFrom-Json
+                $obsolete_status = (Get-StatusTitles)[$res.releases[ $res.releases.count - 1 ][$a].ToInt32($nul)]
                 if ( !$obsolete ) { $obsolete = @{} }
                 Write-Log "Левая раздача $($_.topic_id) в клиенте $($_.client_key) со статусом '$($obsolete_status.ToUpper())'"
                 if ( !$obsolete[$_.client_key] ) { $obsolete[ $_.client_key] = [System.Collections.ArrayList]::new() }
