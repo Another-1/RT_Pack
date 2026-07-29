@@ -1251,7 +1251,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
                     Add-TGMessage $tg_data
                     # Add-TGMessage ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
                 }
-                $tg_data.line = "в статусе $($_.tor_status)."
+                $tg_data.line = "в статусе '$($_.tor_status)'`n"
                 Add-TGMessage $tg_data
 
             }
