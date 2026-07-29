@@ -980,10 +980,21 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $ca
     }
     try {
         Write-Log 'Обновляем БД TLO'
-        if ( [version]( ( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version | Select-String -Pattern '[\.\d]+' ).Matches[0].Value -gt [version]'3.9.9.9' ) {
-            . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:update
+        $tlo_version = [version]( ( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version | Select-String -Pattern '[\.\d]+' ).Matches[0].Value
+        if ( $tlo_version -gt [version]'3.9.9.9' ) {
+            if ( $tlo_version -gt [version]'4.2.0' ) {
+                . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) adder:update
+            }
+            else {
+                . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:update
+            }
             Write-Log 'Обновляем списки других хранителей'
-            . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:keepers
+            if ( $tlo_version -gt [version]'4.2.0' ) {
+                . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) adder:keepers
+            }
+            else {
+                . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:keepers
+            }
         }
         else {
             . $php_path ( Join-Path $tlo_path 'cron' 'update.php' )
@@ -1041,8 +1052,14 @@ function Send-Report ( $call_from ) {
         
     }
     else {
-        if ( [version]( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version -gt [version]'3.9.9.9' ) {
-            . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:reports
+        $tlo_version = ( [version]( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version | Select-String -Pattern '[\.\d]+' ).Matches[0].Value
+        if ( $tlo_version -gt [version]'3.9.9.9' ) {
+            if ( $tlo_version -gt [version]'4.2.0' ) {
+                . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) adder:reports
+            }
+            else {
+                . $php_path $( Join-Path $tlo_path 'bin' 'webtlo' ) cron:reports
+            }
         }
         else {
             . $php_path ( Join-Path $tlo_path 'cron' 'reports.php' )
@@ -1226,7 +1243,7 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             Add-TGMessage $tg_data
             # Add-TGMessage "Лишние в клиенте $($client.name) :`n"
             $obsolete[$client] | ForEach-Object {
-                $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$_`n"
+                $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$_.topic_id`n"
                 Add-TGMessage $tg_data
                 # Add-TGMessage "https://rutracker.org/forum/viewtopic.php?t=$_`n"
                 if ( $id_to_info[$_].name ) {
@@ -1234,6 +1251,9 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
                     Add-TGMessage $tg_data
                     # Add-TGMessage ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
                 }
+                $tg_data.line = "в статусе $($_.tor_status)."
+                Add-TGMessage $tg_data
+
             }
         }
 

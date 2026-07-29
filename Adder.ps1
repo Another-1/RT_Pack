@@ -701,10 +701,12 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
 
         if ( $obsolete_torrents.count -gt 0 ) {
             $obsolete_torrents | ForEach-Object {
+                $obsolete_status = ( Get-RepHTTP -url '/krs/api/v1/release/6561625/status' | ConvertFrom-Json ).release_status
+                $obsolete_status = $obsolete_status ? ( Get-StatusTitles[ $_.status]).ToUpper() : 'РАЗРЕГ'
                 if ( !$obsolete ) { $obsolete = @{} }
-                Write-Log ( "Левая раздача " + $_.topic_id + ' в клиенте ' + $_.client_key )
+                Write-Log "Левая раздача $($_.topic_id) в клиенте $($_.client_key) со статусом '$($obsolete_status.ToUpper())'"
                 if ( !$obsolete[$_.client_key] ) { $obsolete[ $_.client_key] = [System.Collections.ArrayList]::new() }
-                $obsolete[ $_.client_key ] += ( $_.topic_id )
+                $obsolete[ $_.client_key ] += @{ 'topic_id' = $_.topic_id; 'tor_status' = $obsolete_status }
             }
         }
         else { Write-Log 'Неактуальных раздач не найдено' }
