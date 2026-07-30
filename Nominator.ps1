@@ -75,7 +75,7 @@ if ( !$torrents_list ) {
 }
 
 if ( !$tracker_torrents ) {
-    $tracker_torrents = Get-RepTorrents -sections $section_numbers $section_numbers -id $settings.connection.user_id -api_key $settings.connection.api_key `
+    $tracker_torrents = Get-RepTorrents -sections $section_numbers -id $settings.connection.user_id -api_key $settings.connection.api_key `
         -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
 }
 Write-Log 'Получаем названия всех подразделов'
