@@ -1635,15 +1635,20 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
                 $headers.keys | Sort-Object | ForEach-Object {
                     if ( $headers[$_] -like 'average*') {
                         $k = $record.indexof( '}",' )
-                        $data[$headers[$_]] = $record.Substring( 2, $k - 2 ).split(',') | ForEach-Object { $_.ToInt32($nul) }
+                        $data[$headers[$_]] = $record.Substring( 2, $k - 2 ).split(',') | ForEach-Object { $_.ToInt32($null) }
                         $record = $record.Substring( $k + 3 )
                     }
                     else {
                         $k = $record.indexof( ',' )
-                        if ( $headers[$_] -eq 'seeder_last_seen') {
+                        if ( $headers[$_] -in @( 'seeder_last_seen', 'reg_time' )) {
                             $data[$headers[$_]] = [datetime]$record.Substring( 0, $k )    
                             $record = $record.Substring( $k + 1 )
                         }
+                        elseif ( $headers[$_] -eq 'tor_size_bytes' ) {
+                            $data[$headers[$_]] = $record.Substring( 0, $k ).ToInt32($null)
+                            $record = $record.Substring( $k + 1 )
+                        }
+
                         elseif ( $headers[$_] -eq 'topic_title' ) {
                             $data[$headers[$_]] = $record -replace ( '^"', '' ) -replace ( '"$', '' )
                         }
@@ -2106,10 +2111,11 @@ function Get-ClientApiVersions ( $clients, $mess_sender ) {
 }
 
 function Expand-TarGz( $url, $tmp_dir, $destination, $headers = $null ) {
-    # Write-Log "Качаем $url"
+    Write-Log "Качаем архив"
     # Invoke-WebRequest -Uri $url -Headers $headers -OutFile ( Join-Path $tmp_dir 'arch.tar' )
     $from = ( $url -like '*rep.rutracker.cc*' ? 'rep' : $url -like '*api.rutracker.cc*' ? 'api' : 'forum' ) 
     Get-File -uri $url -headers $headers -save_path ( Join-Path $tmp_dir 'arch.tar' ) -from $from
+    Write-Log "Закончили качать"
     New-Item -Path $destination -ErrorAction SilentlyContinue -ItemType Directory | Out-Null
     Remove-Item -Path ( Join-Path $destination '*.*')
     Write-Log 'Распаковываем tar'
