@@ -1527,7 +1527,7 @@ function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
 function Get-RepSeeding ( $sections, $seeding_days, $call_from ) {
     $seed_dates = @{}
     foreach ( $section in $sections ) {
-        Write-Log "Запрашиваем историю сидирования по разделу $section"
+        Write-Log "Запрашиваем историю сидирования по разделу $section, чтобы не почернело"
         $url = "/krs/api/v1/keeper/$($settings.connection.user_id)/reports?only_subforums_marked_as_kept=true&last_seeded_limit_days=$seeding_days&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
 
         ( ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
@@ -1589,26 +1589,99 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
         Send-Handshake -sections $sections -use_avg_seeds $avg_seeds
     }
 
-    while ( $counter -lt 10 ) {
-        try {
-            foreach ( $section in $sections ) {
-                $section_torrents = Get-RepSectionTorrents -section $section -ok_states $ok_states -call_from $call_from -avg_seeds:$avg_seeds.IsPresent -min_avg $min_avg `
-                    -min_seeders $min_seeders -min_release_date $min_release_date -get_low $get_lows -get_mids $get_mids -get_highs $get_highs -nonstop
-                $section_torrents.keys | Where-Object { $null -eq $tracker_torrents[$_] } | ForEach-Object { $tracker_torrents[$_] = $section_torrents[$_] }
+    if ( !$gzipped_pvc -or $sections.count -lt $gzipped_pvc ) {
+        while ( $counter -lt 10 ) {
+            try {
+                foreach ( $section in $sections ) {
+                    $section_torrents = Get-RepSectionTorrents -section $section -ok_states $ok_states -call_from $call_from -avg_seeds:$avg_seeds.IsPresent -min_avg $min_avg `
+                        -min_seeders $min_seeders -min_release_date $min_release_date -get_low $get_lows -get_mids $get_mids -get_highs $get_highs -nonstop
+                    $section_torrents.keys | Where-Object { $null -eq $tracker_torrents[$_] } | ForEach-Object { $tracker_torrents[$_] = $section_torrents[$_] }
+                }
+                break
             }
-            break
+            catch {
+                # Write-Log 'Похоже, наткнулись на обновление API, подождём минуту и начнём заново' -Red
+                Write-Log "Ошибка: $_" -Red
+                $counter++
+                Start-Sleep -Seconds 60
+                Write-Log "Попытка $counter"
+                Remove-Variable -Name tracker_torrents -ErrorAction SilentlyContinue
+            }
         }
-        catch {
-            # Write-Log 'Похоже, наткнулись на обновление API, подождём минуту и начнём заново' -Red
-            Write-Log "Ошибка: $_" -Red
-            $counter++
-            Start-Sleep -Seconds 60
-            Write-Log "Попытка $counter"
-            Remove-Variable -Name $tracker_torrents -ErrorAction SilentlyContinue
-        }
+        return $tracker_torrents
     }
+    else {
+        $all_sections_torrents = @{} 
+        # Write-Log "Столько ($gzipped_pvc) подразделов выглядит целесообразным скачивать архивом. Так и поступим."
+        $rep_path = $rep_path ? $rep_path : ( Join-Path $PSScriptRoot 'pvc' )
+        $tmp_path = Join-Path $rep_path 'tmp'
+        if (-not ( Test-Path $tmp_path ) ) { New-Item -Path $tmp_path -ItemType Directory }
+        $headers = @{ 'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key )) }
+        Expand-TarGz -url "https://rep.rutracker.cc/krs/api/v1/get_stats_file?file_name=public_additional-f-all.tar&subforum_id=$($sections | Join-String -Separator ',')" -tmp_dir $tmp_path -destination $rep_path -headers $headers
 
-    return $tracker_torrents
+        $files = Get-ChildItem -Path $rep_path -File | Sort-Object -Property { $_.BaseName.ToInt32($null) }
+        $headers = @{}
+        $i = 0; $j = 0
+        $files | ForEach-Object {
+            if ( $i -eq 0 ) {
+                ( [string]( Get-Content $_ | Select-Object -First 1 ) ).Split(',') | ForEach-Object { $headers[ $i ] = $_; $i++ }
+            }
+            $section = $_.BaseName
+            Write-Progress -Activity 'Processing' -Status $section -PercentComplete ( $j * 100 / $files.Count )
+            $i++
+            $body = Get-Content $_ | Select-Object -Skip 1
+            foreach ( $record in $body ) {
+                $data = @{}
+                $headers.keys | Sort-Object | ForEach-Object {
+                    if ( $headers[$_] -like 'average*') {
+                        $k = $record.indexof( '}",' )
+                        $data[$headers[$_]] = $record.Substring( 2, $k - 2 ).split(',') | ForEach-Object { $_.ToInt32($nul) }
+                        $record = $record.Substring( $k + 3 )
+                    }
+                    else {
+                        $k = $record.indexof( ',' )
+                        if ( $headers[$_] -eq 'seeder_last_seen') {
+                            $data[$headers[$_]] = [datetime]$record.Substring( 0, $k )    
+                            $record = $record.Substring( $k + 1 )
+                        }
+                        elseif ( $headers[$_] -eq 'topic_title' ) {
+                            $data[$headers[$_]] = $record -replace ( '^"', '' ) -replace ( '"$', '' )
+                        }
+                        elseif ( $headers[$_] -eq 'info_hash') {
+                            $info_hash = $record.Substring( 0, $k )
+                            $record = $record.Substring( $k + 1 )
+                        }
+                        else {
+                            $data[$headers[$_]] = $record.Substring( 0, $k )
+                            $record = $record.Substring( $k + 1 )
+                        }
+                    }
+                }
+                if ( $use_avg_seeds -and $min_avg ) {
+                    try {
+                        $data[$_].avg_seeders = ( $data.average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $data.average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
+                    }
+                    catch { $lines[$_].avg_seeders = 0 }
+                }
+
+                if ( 
+                    ( $min_avg -and $min_avg -ge $data.avg_seeders ) `
+                        -or ( $min_release_date -and $data.reg_time -gt $min_release_date ) `
+                        -or ( $null -ne $min_seeders -and $data.seeders -gt $min_seeders )
+                ) { continue }
+                else {
+                    $data.section = $section
+                    $all_sections_torrents[$info_hash] = $data
+                }
+            }
+
+            $j++
+            Write-Log ( "По подразделу $section выявлено: $( Get-Spell $($body.count) )" ) # -skip_timestamp -nologfile
+        }
+        Write-Progress -Activity 'Processing' -Completed
+        Remove-Item -Path ( Join-Path $rep_path '*.csv')
+        return $all_sections_torrents
+    }
 }
 
 function GetRepSectionKeepers( $section, $excluded = @(), $call_from ) {
@@ -2033,7 +2106,7 @@ function Get-ClientApiVersions ( $clients, $mess_sender ) {
 }
 
 function Expand-TarGz( $url, $tmp_dir, $destination, $headers = $null ) {
-    Write-Log "Качаем $url"
+    # Write-Log "Качаем $url"
     # Invoke-WebRequest -Uri $url -Headers $headers -OutFile ( Join-Path $tmp_dir 'arch.tar' )
     $from = ( $url -like '*rep.rutracker.cc*' ? 'rep' : $url -like '*api.rutracker.cc*' ? 'api' : 'forum' ) 
     Get-File -uri $url -headers $headers -save_path ( Join-Path $tmp_dir 'arch.tar' ) -from $from
@@ -2042,9 +2115,11 @@ function Expand-TarGz( $url, $tmp_dir, $destination, $headers = $null ) {
     Write-Log 'Распаковываем tar'
     tar xf ( Join-Path $tmp_dir 'arch.tar' ) -C $destination
     Remove-Item -Path ( Join-Path $tmp_dir 'arch.tar' )
-    Set-Location $destination
+    # Set-Location $destination
     Write-Log 'Распаковываем gz'
-    Get-Item -Path '*.gz' | ForEach-Object { . 'C:\Program Files\7-Zip\7z.exe' x $_ | Out-Null }
-    Remove-Item -Path '*.gz'
-    Set-Location $PSScriptRoot
+    Get-Item -Path ( Join-Path $destination '*.gz' ) | ForEach-Object {
+        . 'C:\Program Files\7-Zip\7z.exe' x $_ $("-o$destination") $('-aoa') | Out-Null
+    }
+    Remove-Item -Path ( Join-Path $destination '*.gz' )
+    # Set-Location $PSScriptRoot
 }

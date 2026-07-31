@@ -247,6 +247,7 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torr
         $conn = Open-TLODatabase
         # $tracker_torrents = Get-RepTorrents -sections $( $forced_sections -and ( $control -ne 'Y') ? $section_numbers : $all_sections ) -id $settings.connection.user_id -api_key $settings.connection.api_key `
         #     -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$settings.adder.avg_seeds -conn $conn
+        
         $tracker_torrents = Get-RepTorrents -sections $all_sections -id $settings.connection.user_id -api_key $settings.connection.api_key `
             -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$settings.adder.avg_seeds -conn $conn
         $conn.Close()
@@ -513,7 +514,6 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
                         }
                     }
-
                 }
             }
             elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) -and $null -ne $new_torrents_less_seeds[$new_torrent_key] ) {
