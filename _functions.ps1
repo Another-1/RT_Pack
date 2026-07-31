@@ -1589,7 +1589,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
         Send-Handshake -sections $sections -use_avg_seeds $avg_seeds
     }
 
-    if ( !$gzipped_pvc -or $sections.count -lt $gzipped_pvc -or $PSVersionTable.OS.ToLower().notcontains('windows') ) {
+    if ( !$gzipped_pvc -or $sections.count -lt $gzipped_pvc -or $PSVersionTable.OS.ToLower() -notcontains('windows') ) {
         while ( $counter -lt 10 ) {
             try {
                 foreach ( $section in $sections ) {
