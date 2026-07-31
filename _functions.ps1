@@ -1672,7 +1672,8 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
                 if ( 
                     ( $min_avg -and $min_avg -ge $data.avg_seeders ) `
                         -or ( $min_release_date -and $data.reg_time -gt $min_release_date ) `
-                        -or ( $null -ne $min_seeders -and $data.seeders -gt $min_seeders )
+                        -or ( $null -ne $min_seeders -and $data.seeders -gt $min_seeders ) `
+                        -or ( $data.tor_status -notin $ok_states )
                 ) { continue }
                 else {
                     $data.section = $section
