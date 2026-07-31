@@ -1645,7 +1645,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
                             $record = $record.Substring( $k + 1 )
                         }
                         elseif ( $headers[$_] -eq 'tor_size_bytes' ) {
-                            $data[$headers[$_]] = $record.Substring( 0, $k ).ToInt32($null)
+                            $data[$headers[$_]] = $record.Substring( 0, $k ).ToInt64($null)
                             $record = $record.Substring( $k + 1 )
                         }
 
