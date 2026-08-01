@@ -80,7 +80,7 @@ if ( !$debug ) {
 
 Write-Log 'Строим таблицы'
 
-$ok_to_start = (Get-Date).ToUniversalTime().AddDays( 0 - $settings.controller.min_stop_to_start )
+$time_to_start = (Get-Date).ToUniversalTime().AddDays( 0 - $settings.controller.min_stop_to_start )
 $ProgressPreference = 'SilentlyContinue' # чтобы не мелькать прогресс-барами от скачивания торрентов
 
 Set-Proxy( $settings )
@@ -105,7 +105,7 @@ if ( !$clients_torrents -or $clients_torrents.count -eq 0 ) {
 Remove-Variable -Name 'hash_to_id' -ErrorAction SilentlyContinue
 # Remove-Variable -Name 'id_to_info' -ErrorAction SilentlyContinue
 
-if ( !$api_seeding -or $debug -eq $false ) {
+if ( !$api_seeding -or $debug -ne 1 ) {
     $states = @{}
     $api_seeding = Get-RepSeeding -sections $settings.sections.keys -seeding_days $min_stop_to_start -call_from 'Controller'
     if ( $null -eq $api_seeding ) { exit }
@@ -117,7 +117,7 @@ if ( !$api_seeding -or $debug -eq $false ) {
             save_path = $_.save_path
             topic_id  = $_.topic_id
         }
-        # if ( ( $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -le $ok_to_start ) {
+        # if ( ( $api_seeding[$_.topic_id] -gt 0 ? $api_seeding[$_.topic_id] : ( $time_to_start ).AddDays( -1 ) ) -le $time_to_start ) {
         #     $long_ago[$_.hash] = 1
         # }
     }
@@ -139,16 +139,15 @@ if (  $rss ) {
 # $started_counts = @{}
 $started_olds = 0
 foreach ( $client_key in $settings.clients.keys ) {
-    # foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -ne 'Aorus' } ) {
-    # Write-Log ( 'Регулируем клиент ' + $client_key + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
+    Write-Log ( 'Регулируем клиент ' + $client_key + ( $stop_forced -eq $true ? ' с остановкой принудительно запущенных' : '' ) )
     $start_keys = @()
     $stop_keys = @()
     $states.Keys | Where-Object { $states[$_].client -eq $client_key } | ForEach-Object {
         try { 
             $switching_peers = $interval_seeds ? $interval_seeds : $settings.controller.priority -eq '1' ? $settings.sections[$tracker_torrents[$_].section].control_peers : $settings.clients[$hash_to_client[$_]]
             if ( $states[$_].state -eq $settings.clients[$client_key].stopped_state ) {
-                if ( $tracker_torrents[$_].seeders -lt $switching_peers -or ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -le $ok_to_start ) {
-                    if ( $tracker_torrents[$_].seeders -ge $switching_peers -and ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -le $ok_to_start ) {
+                if ( $tracker_torrents[$_].seeders -lt $switching_peers -or ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $time_to_start ).AddDays( -1 ) ) -le $time_to_start ) {
+                    if ( $tracker_torrents[$_].seeders -ge $switching_peers -and ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $time_to_start ).AddDays( -1 ) ) -le $time_to_start ) {
                         $started_olds += 1
                         if ( $started_olds -ge $settings.controller.old_starts_per_run ) {
                             continue
@@ -171,7 +170,7 @@ foreach ( $client_key in $settings.clients.keys ) {
             elseif ( $states[$_].state -in @('uploading', 'stalledUP', 'queuedUP', 'forcedUP' ) ) {
                 if ( ( $states[$_].state -ne 'forcedUP' -or $stop_forced -eq 'Y' ) `
                         -and $tracker_torrents[$_].seeders -gt $switching_peers `
-                        -and ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $ok_to_start ).AddDays( -1 ) ) -gt $ok_to_start ) {
+                        -and ( $api_seeding[$states[$_].topic_id] -gt 0 ? $api_seeding[$states[$_].topic_id] : ( $time_to_start ).AddDays( -1 ) ) -gt $time_to_start ) {
 
                     if ( $stop_keys.count -eq $batch_size ) {
                         Stop-Torrents $stop_keys $settings.clients[$client_key] -mess_sender 'Controller'
