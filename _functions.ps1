@@ -1648,6 +1648,10 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
                             $data[$headers[$_]] = $record.Substring( 0, $k ).ToInt64($null)
                             $record = $record.Substring( $k + 1 )
                         }
+                        elseif ( $headers[$_] -eq 'seeders' ) {
+                            $data[$headers[$_]] = $record.Substring( 0, $k ).ToInt16($null)
+                            $record = $record.Substring( $k + 1 )
+                        }
 
                         elseif ( $headers[$_] -eq 'topic_title' ) {
                             $data[$headers[$_]] = $record -replace ( '^"', '' ) -replace ( '"$', '' )
