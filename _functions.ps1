@@ -1529,19 +1529,6 @@ function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
 #     return ( $versions | ConvertFrom-Json -AsHashtable )
 # }
 
-function Get-RepSeeding ( $sections, $seeding_days, $call_from ) {
-    $seed_dates = @{}
-    foreach ( $section in $sections ) {
-        Write-Log "Запрашиваем историю сидирования по разделу $section, чтобы не почернело"
-        $url = "/krs/api/v1/keeper/$($settings.connection.user_id)/reports?only_subforums_marked_as_kept=true&last_seeded_limit_days=$seeding_days&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
-
-        ( ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
-            if ( $null -ne $_ ) { $seed_dates[$_[0]] = $_[1] }
-        } 
-    }
-    return $seed_dates
-}
-
 function Get-RepSeeds( $topic_id, $call_from ) {
     Write-Log "Запрашиваем количество сидов по раздаче $topic_id"
     $url = "/krs/api/v1/releases/pvc?topic_ids=$topic_id&columns=seeders"
@@ -1584,6 +1571,43 @@ function Get-StatusTitles() {
     # }
     return $titles
 }
+
+function Get-RepSeeding ( $sections, $seeding_days, $call_from ) {
+    $seed_dates = @{}
+    if ( !$gzipped_pvc -or $sections.count -lt $gzipped_pvc -or $PSVersionTable.OS.ToLower() -notlike ('*windows*') ) {
+        foreach ( $section in $sections ) {
+            Write-Log "Запрашиваем историю сидирования по разделу $section, чтобы не почернело"
+            $url = "/krs/api/v1/keeper/$($settings.connection.user_id)/reports?only_subforums_marked_as_kept=true&last_seeded_limit_days=$seeding_days&last_update_limit_days=60&columns=last_seeded_time&subforum_id=$section"
+
+            ( ( Get-RepHTTP -url $url -headers $headers -call_from $call_from ) | ConvertFrom-Json ).kept_releases | ForEach-Object {
+                if ( $null -ne $_ ) { $seed_dates[$_[0]] = $_[1] }
+            } 
+        }
+    }
+    else {
+        Write-Log 'Запрашиваем историю сидирования по хранимым подразделам, чтобы запустить давно не раздаваемые'
+        $rep_path = $rep_path ? $rep_path : ( Join-Path $PSScriptRoot 'reports' )
+        $tmp_path = Join-Path $rep_path 'tmp'
+        if (-not ( Test-Path $tmp_path ) ) { New-Item -Path $tmp_path -ItemType Directory }
+        $headers = @{ 'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key )) }
+        Expand-TarGz -url "https://rep.rutracker.cc/krs/api/v1/get_stats_file?file_name=public_reports-all.tar&subforum_id=$( $sections | Join-String -Separator ',')" -tmp_dir $tmp_path -destination $rep_path -headers $headers
+        $files = Get-ChildItem -Path $rep_path -File | Sort-Object -Property { $_.BaseName.ToInt32($null) }
+        $headers = @{}
+        $i = 0
+        foreach ( $file in $files ) {
+            if ( $i -eq 0 ) {
+                ( [string]( Get-Content $file | Select-Object -First 1 ) ).Split(',') | ForEach-Object { $headers[ $_ ] = $i ; $i++ }
+            }
+            $content = Get-Content $file | Select-Object -Skip 1 | Where-Object { $_ -like "$($settings.connection.user_id),*" }
+            $content | ForEach-Object {
+                $seed_dates[$_.split(',')[$headers['topic_id']].ToInt32($null)] = [datetime]$_.split(',')[$headers['last_seeded_time']]
+            }
+        }
+        Remove-Item -Path ( Join-Path $rep_path '*.csv')
+    }
+    return $seed_dates
+}
+
 function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
     if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
     $titles = Get-StatusTitles
@@ -1594,7 +1618,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
         Send-Handshake -sections $sections -use_avg_seeds $avg_seeds
     }
 
-    if ( !$gzipped_pvc -or $sections.count -lt $gzipped_pvc -or $PSVersionTable.OS.ToLower() -notlike('*windows*') ) {
+    if ( !$gzipped_pvc -or $sections.count -lt $gzipped_pvc -or $PSVersionTable.OS.ToLower() -notlike ('*windows*') ) {
         while ( $counter -lt 10 ) {
             try {
                 foreach ( $section in $sections ) {
@@ -1633,7 +1657,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
             }
             $section = $_.BaseName
             Write-Progress -Activity 'Processing' -Status $section -PercentComplete ( $j * 100 / $files.Count )
-            $i++
+            # $i++
             $body = Get-Content $_ | Select-Object -Skip 1
             foreach ( $record in $body ) {
                 $data = @{}

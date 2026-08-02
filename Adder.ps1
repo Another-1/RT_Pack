@@ -8,6 +8,7 @@ if ( $delay ) {
     Start-Sleep -Seconds 5
 }
 
+( $PSCommandPath | Split-Path -Leaf )
 if ( ( ( Get-Process | Where-Object { $_.ProcessName -eq 'pwsh' } ).CommandLine -like ('*' + ( $PSCommandPath | Split-Path -Leaf ) ) ).count -gt 1 ) {
     Write-Host 'Я и так уже выполняюсь, выходим' -ForegroundColor Red
     exit
