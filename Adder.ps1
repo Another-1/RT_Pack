@@ -596,7 +596,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             #     Set-ClientSetting $client 'temp_path' 'C:\mnt\ramdisk\Incomplete'
                             # }
                             # else {
-                                Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
+                            Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
                             # }
                             Set-ClientSetting $client 'temp_path_enabled' $true
                             Set-ClientSetting $client 'preallocate_all' $false
@@ -630,7 +630,9 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                         if ( !$added[ $client.name ] ) { $added[ $client.name ] = @{} }
                         if ( !$added[ $client.name ][ $new_tracker_data.section ] ) { $added[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
                         $added[ $client.name ][ $new_tracker_data.section ] += [PSCustomObject]@{ id = $new_tracker_data.topic_id; name = $new_tracker_data.topic_title; size = $new_tracker_data.tor_size_bytes }
-                        # }
+                        if ( $download_helper -eq 'Y' -and $client.name -notlike 'RSS*' ) {
+                            Switch-Uploading $client -enable $false -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                        }
                     }
                 }
             }
@@ -653,6 +655,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
             }
         }
     } # по наличию новых раздач.
+
     Write-Progress -Activity 'Обработка найденных раздач' -Status 'Scanning' -Completed
 
     Write-Log "Добавлено: $(Get-Spell -qty ( ( $added.keys | ForEach-Object { $added[$_] } ).values.id.count ) -spelling 1 -entity 'torrents' )"
@@ -721,6 +724,16 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
             Write-Log ( "Проблемная раздача " + $_.topic_id + ' в клиенте ' + $_.client_key + ' по пути ' + $_.save_path )
             if ( !$broken[$settings.clients[$_.client_key]] ) { $broken[ $settings.clients[$_.client_key]] = @{} }
             $broken[$settings.clients[$_.client_key]][$_.topic_id] = $_.save_path
+        }
+    }
+
+    if ( $download_helper -eq 'Y' ) {
+        foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -notlike 'RSS*' } ) { 
+            if ( !$added[$client_key] ) {
+                if ( -not ( $clients_torrents | Where-Object { $_.client_key -eq $client_key -and $_.state -in ( 'downloading' ) } ) ) {
+                    Switch-Uploading $settings.clients[$client_key] -enable $true -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                }
+            }
         }
     }
 
