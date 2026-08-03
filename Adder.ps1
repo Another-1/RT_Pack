@@ -901,9 +901,9 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
             $first_rss = $true
             foreach ( $rss_record in ( $rss_data | Sort-Object -Property { $_[2] } ) ) {
                 $requester = $rss_record[7] -le 3 ? $( $rss_record[8] ) : 'Avenger'
-                $rss_ids += $rss_record[1].ToInt64($null)
-                if ( !$rss.skip -or $rss_record[1] -notin $rss.skip ) {
-                    if ( !$id_to_info[$rss_record[1]] -and $rss_record[3] -notin $clients_torrents.hash ) {
+                $rss_ids += $rss_record[1].ToInt32($null)
+                if ( !$rss.skip -or $rss_record[1].ToInt32($null) -notin $rss.skip ) {
+                    if ( !$id_to_info[$rss_record[1].ToInt32($null)] -and $rss_record[3] -notin $clients_torrents.hash ) {
                         if ( !$ignored -or $requester -notin $ignored ) {
                             Write-Log "Проверим, что раздача $($rss_record[1] ) для $requester ещё существует"
                             Remove-Variable -Name 'fresh_hash' -ErrorAction SilentlyContinue
