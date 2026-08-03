@@ -1601,7 +1601,7 @@ function Get-RepSeeding ( $sections, $seeding_days, $call_from ) {
             $content = Get-Content $file | Select-Object -Skip 1 | Where-Object { $_ -like "$($settings.connection.user_id),*" }
             $content | ForEach-Object {
                 try {
-                $seed_dates[$_.split(',')[$headers['topic_id']].ToInt32($null)] = [datetime]$_.split(',')[$headers['last_seeded_time']]
+                    $seed_dates[$_.split(',')[$headers['topic_id']].ToInt32($null)] = [datetime]$_.split(',')[$headers['last_seeded_time']]
                 }
                 catch {
                 }
@@ -2149,22 +2149,82 @@ function Get-ClientApiVersions ( $clients, $mess_sender ) {
     }
 }
 
-function Expand-TarGz( $url, $tmp_dir, $destination, $headers = $null ) {
-    Write-Log "Качаем архив"
-    # Invoke-WebRequest -Uri $url -Headers $headers -OutFile ( Join-Path $tmp_dir 'arch.tar' )
-    $from = ( $url -like '*rep.rutracker.cc*' ? 'rep' : $url -like '*api.rutracker.cc*' ? 'api' : 'forum' ) 
-    Get-File -uri $url -headers $headers -save_path ( Join-Path $tmp_dir 'arch.tar' ) -from $from
-    Write-Log "Закончили качать"
-    New-Item -Path $destination -ErrorAction SilentlyContinue -ItemType Directory | Out-Null
-    Remove-Item -Path ( Join-Path $destination '*.*')
-    Write-Log 'Распаковываем tar'
-    tar xf ( Join-Path $tmp_dir 'arch.tar' ) -C $destination
-    Remove-Item -Path ( Join-Path $tmp_dir 'arch.tar' )
-    # Set-Location $destination
-    Write-Log 'Распаковываем gz'
-    Get-Item -Path ( Join-Path $destination '*.gz' ) | ForEach-Object {
-        . 'C:\Program Files\7-Zip\7z.exe' x $_ $("-o$destination") $('-aoa') | Out-Null
+function Expand-GZipFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $Path,
+
+        [Parameter()]
+        [string] $DestinationDirectory
+    )
+
+    $sourceFile = Get-Item -LiteralPath $Path -ErrorAction Stop
+
+    if (-not $DestinationDirectory) {
+        $DestinationDirectory = $sourceFile.DirectoryName
     }
-    Remove-Item -Path ( Join-Path $destination '*.gz' )
-    # Set-Location $PSScriptRoot
+
+    New-Item -Path $DestinationDirectory -ItemType Directory -Force | Out-Null
+
+    $outputName = [System.IO.Path]::GetFileNameWithoutExtension($sourceFile.Name)
+    $outputPath = Join-Path $DestinationDirectory $outputName
+
+    $inputStream = $null
+    $gzipStream = $null
+    $outputStream = $null
+
+    try {
+        $inputStream = [System.IO.File]::OpenRead($sourceFile.FullName)
+
+        $gzipStream = [System.IO.Compression.GZipStream]::new(
+            $inputStream,
+            [System.IO.Compression.CompressionMode]::Decompress
+        )
+
+        $outputStream = [System.IO.File]::Create($outputPath)
+        $gzipStream.CopyTo($outputStream)
+    }
+    finally {
+        if ($outputStream) {
+            $outputStream.Dispose()
+        }
+
+        if ($gzipStream) {
+            $gzipStream.Dispose()
+        }
+
+        if ($inputStream) {
+            $inputStream.Dispose()
+        }
+    }
+
+    return Get-Item -LiteralPath $outputPath
+}
+
+function Expand-TarGz( $url, $tmp_dir, $destination, $headers = $null ) {
+    try {
+        Write-Log "Качаем архив"
+        $archivePath = Join-Path $tmp_dir 'arch.tar'
+        $from = ( $url -like '*rep.rutracker.cc*' ? 'rep' : $url -like '*api.rutracker.cc*' ? 'api' : 'forum' ) 
+        Get-File -uri $url -headers $headers -save_path $archivePath -from $from
+        Write-Log "Закончили качать"
+        New-Item -Path $destination -ErrorAction SilentlyContinue -ItemType Directory | Out-Null
+        # Get-ChildItem -LiteralPath $Destination -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force    
+        Write-Log 'Распаковываем tar'
+        & tar -xf $archivePath -C $destination
+        Remove-Item -Path $archivePath
+        Write-Log 'Распаковываем gz'
+        # Get-Item -Path ( Join-Path $destination '*.gz' ) | ForEach-Object {
+        #     . 'C:\Program Files\7-Zip\7z.exe' x $_ $("-o$destination") $('-aoa') | Out-Null
+        # }
+        Get-ChildItem -Path $Destination -Filter '*.gz' -File -Recurse |
+        ForEach-Object {
+            Expand-GZipFile -Path $_.FullName -DestinationDirectory $_.DirectoryName | Out-Null
+            Remove-Item -LiteralPath $_.FullName -Force
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $archivePath -Force -ErrorAction SilentlyContinue
+    }
 }
