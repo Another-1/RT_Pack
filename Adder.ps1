@@ -306,7 +306,7 @@ $clients_torrents | Where-Object { $null -ne $_.topic_id -and $client_key -ne 'R
     if ( !$_.infohash_v1 -or $nul -eq $_.infohash_v1 -or $_.infohash_v1 -eq '' ) { $_.infohash_v1 = $_.hash }
     $hash_to_id[$_.infohash_v1] = $_.topic_id.ToInt64($null)
 
-    $id_to_info[$_.topic_id.ToInt64($null)] = @{
+    $id_to_info[$_.topic_id] = @{
         client_key = $_.client_key # string
         save_path  = $_.save_path
         category   = $_.category
@@ -728,15 +728,15 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
         }
     }
 
-    if ( $download_helper -eq 'Y' ) {
-        foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -notlike 'RSS*' } ) { 
-            if ( !$added[$client_key] ) {
-                if ( -not ( $clients_torrents | Where-Object { $_.client_key -eq $client_key -and $_.state -in ( 'downloading' ) } ) ) {
-                    Switch-Uploading $settings.clients[$client_key] -enable $true -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                }
-            }
-        }
-    }
+    # if ( $download_helper -eq 'Y' ) {
+    #     foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -notlike 'RSS*' } ) { 
+    #         if ( !$added[$client_key] ) {
+    #             if ( -not ( $clients_torrents | Where-Object { $_.client_key -eq $client_key -and $_.state -in ( 'downloading' ) } ) ) {
+    #                 Switch-Uploading $settings.clients[$client_key] -enable $true -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+    #             }
+    #         }
+    #     }
+    # }
 
     if ( $rss ) {
         $bad_guys = @{}
@@ -1123,6 +1123,18 @@ if ( $time_to_report ) {
 
 if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' -or $time_to_report ) {
 
+    Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности в моменте'
+    $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
+    if ( $download_helper -eq 'Y' ) {
+        foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -notlike 'RSS*' } ) { 
+            if ( !$added[$client_key] ) {
+                if ( -not ( $clients_torrents | Where-Object { $_.client_key -eq $client_key -and $_.state -in ( 'downloading' ) } ) ) {
+                    Switch-Uploading $settings.clients[$client_key] -enable $true -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+                }
+            }
+        }
+    }
+
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
         # что-то добавилось, стоит подождать.
         # Update-Stats -wait -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # с паузой.
@@ -1133,3 +1145,5 @@ if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' -or $time_t
     }
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
 }
+
+

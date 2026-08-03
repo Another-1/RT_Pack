@@ -580,7 +580,7 @@ function Get-TopicIDs {
             Write-Log "Ищем ID раздач по $( $torrent_list.count -gt 1 ? 'хэшам' : 'хэшу ' + $torrent_list[0].hash ) от клиента $( $client.name ) в данных от трекера"
         }
         $torrent_list | ForEach-Object {
-            if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int64]$tracker_torrents[$_.hash.toUpper()].topic_id }
+            if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int32]$tracker_torrents[$_.hash.toUpper()].topic_id }
             if ( ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) -and $null -ne $db_hash_to_id ) {
                 $_.topic_id = $db_hash_to_id[$_.hash]  
             }
@@ -593,7 +593,7 @@ function Get-TopicIDs {
                     Write-Log "[Get-TopicIDs] Ошибка при получении комментария для $_.hash: $($_.Exception.Message)" -Red
                 }
                 $ending = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
-                $_.topic_id = $( $ending -ne '' ? $ending.ToInt64($null) : $null )
+                $_.topic_id = $( $ending -ne '' ? $ending.ToInt32($null) : $null )
             }
         }
         $success = ( $torrent_list | Where-Object { $_.topic_id } ).count
@@ -1017,8 +1017,8 @@ function Send-Report ( $call_from ) {
     $adder_watermark = ( 1 -shl 24 ) -bor ( $adder_entity ? $adder_entity -shl 8 : 0 )
     # Хранимые
     if ( $new_reporting -eq 'Y' ) {
-        Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности в моменте'
-        $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
+        # Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности в моменте'
+        # $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ) ) {
             Write-Log 'Отправляем хранимое'
@@ -1681,7 +1681,10 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
                             $data[$headers[$_]] = $record.Substring( 0, $k ).ToInt16($null)
                             $record = $record.Substring( $k + 1 )
                         }
-
+                        elseif ( $headers[$_] -eq 'topic_id' ) {
+                            $data[$headers[$_]] = $record.Substring( 0, $k ).ToInt32($null)
+                            $record = $record.Substring( $k + 1 )
+                        }
                         elseif ( $headers[$_] -eq 'topic_title' ) {
                             $data[$headers[$_]] = $record -replace ( '^"', '' ) -replace ( '"$', '' )
                         }
