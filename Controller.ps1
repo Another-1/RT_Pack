@@ -44,11 +44,11 @@ if ( $settings.controller.intervals ) {
         $seeds = ( $interval | Select-String -Pattern '\d+$' ).matches[0].value.ToInt32($null)
         $length = ( $interval | Select-String -Pattern '^\d+' ).matches[0].value.ToInt32($nul)
         0..($length - 1) | ForEach-Object {
-            $hour += 1
             $hourly[$hour] = $seeds
+            $hour += 1
         }
     }
-    $hourly[0] = $hourly[24]
+    # $hourly[0] = $hourly[24]
     $interval_seeds = $hourly[ ( Get-Date).Hour ]
     Write-Log "В $( Get-Spell (Get-Date).Hour -entity 'hours' ) лимит сидов установлен в $interval_seeds"
 }
