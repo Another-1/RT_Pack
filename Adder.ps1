@@ -923,7 +923,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
                             else {
                                 Write-Log "API вернул хэш $fresh_hash и статус '$fresh_status'"
-                                if ( $fresh_status -notin @( 'не оформлено', 'премодерация', 'повтор', 'закрыто' ) ) {
+                                if ( $fresh_status -notin @( 'не оформлено', 'премодерация', 'повтор', 'закрыто' ) -and $fresh_hash -and $fresh_hash -notin $clients_torrents.hash ) {
                                     $new_torrent_file = Get-ForumTorrentFile $( $rss_record[1] )
                                     if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
                                 }
