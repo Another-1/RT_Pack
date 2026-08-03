@@ -1604,7 +1604,6 @@ function Get-RepSeeding ( $sections, $seeding_days, $call_from ) {
                 $seed_dates[$_.split(',')[$headers['topic_id']].ToInt32($null)] = [datetime]$_.split(',')[$headers['last_seeded_time']]
                 }
                 catch {
-                    $seed_dates[$_.split(',')[$headers['topic_id']].ToInt32($null)] = ( Get-date ).AddDays(-100)
                 }
             }
         }
