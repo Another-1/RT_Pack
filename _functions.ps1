@@ -1609,6 +1609,7 @@ function Get-RepSeeding ( $sections, $seeding_days, $call_from ) {
 }
 
 function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
+    $avg_days = $settings.adder.avg_days
     if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
     $titles = Get-StatusTitles
     $ok_states = $titles.keys | Where-Object { $titles[$_] -in ( 'не проверено', 'проверено', 'недооформлено', 'сомнительно', 'временная') }
@@ -1698,23 +1699,20 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
                         }
                     }
                 }
-                if ( $use_avg_seeds -and $min_avg ) {
+                if ( $avg_seeds.IsPresent ) {
                     try {
-                        $data[$_].avg_seeders = ( $data.average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $data.average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
+                        $data.avg_seeders = ( $data.average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $data.average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
                     }
                     catch { $lines[$_].avg_seeders = 0 }
                 }
 
-                if ( 
-                    ( $min_avg -and $min_avg -ge $data.avg_seeders ) `
-                        -or ( $min_release_date -and $data.reg_time -gt $min_release_date ) `
-                        -or ( $null -ne $min_seeders -and $data.seeders -gt $min_seeders ) `
-                        -or ( $data.tor_status -notin $ok_states )
-                ) { continue }
-                else {
-                    $data.section = $section
-                    $all_sections_torrents[$info_hash] = $data
-                }
+                # if ( 
+                #     ( $min_avg -and $min_avg -ge $data.avg_seeders ) `
+                #         -or ( $min_release_date -and $data.reg_time -gt $min_release_date ) `
+                #         -or ( $null -ne $min_seeders -and $data.seeders -gt $min_seeders ) `
+                if ( $data.tor_status -notin $ok_states ) { continue }
+                $data.section = $section
+                $all_sections_torrents[$info_hash] = $data
             }
 
             $j++

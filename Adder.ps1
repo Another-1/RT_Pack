@@ -109,6 +109,8 @@ $settings.adder.report_stalled = Test-Setting 'report_stalled' -json_section $js
 if ( $settings.adder.report_stalled -eq 'Y' ) { $settings.adder.stalled_pwd = Test-Setting 'stalled_pwd' -json_section $json_section -required }
 $settings.adder.update_stats = Test-Setting 'update_stats' -json_section $json_section
 if ( $update_stats -eq 'Y' ) { $settings.adder.update_obsolete = Test-Setting 'update_obsolete' -json_section $json_section }
+$settings.adder.avg_seeds = $ini_data.sections.avg_seeders -eq '1'
+$settings.adder.avg_days = $ini_data.sections.avg_seeders_period.ToInt16($null)
 
 $json_section = ( $standalone -eq $true ? 'others' : '' )
 if ( !$settings.others ) { $settings.others = [ordered]@{} }
@@ -244,15 +246,11 @@ Get-ClientApiVersions $settings.clients -mess_sender 'Adder'
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $tracker_torrents -or $tracker_torrents.count -eq 0 ) {
     if ( !$settings.adder.avg_seeds -and $standalone -ne $true ) {
         $settings.adder.avg_seeds = ( $ini_data.sections.avg_seeders -eq '1' ) 
-        # $tracker_torrents = Get-RepTorrents -sections $all_sections -id $settings.connection.user_id -api_key $settings.connection.api_key -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$settings.adder.avg_seeds
-        $conn = Open-TLODatabase
-        # $tracker_torrents = Get-RepTorrents -sections $( $forced_sections -and ( $control -ne 'Y') ? $section_numbers : $all_sections ) -id $settings.connection.user_id -api_key $settings.connection.api_key `
-        #     -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$settings.adder.avg_seeds -conn $conn
-        
-        $tracker_torrents = Get-RepTorrents -sections $all_sections -id $settings.connection.user_id -api_key $settings.connection.api_key `
-            -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$settings.adder.avg_seeds -conn $conn
-        $conn.Close()
     }
+    $conn = Open-TLODatabase
+    $tracker_torrents = Get-RepTorrents -sections $all_sections -id $settings.connection.user_id -api_key $settings.connection.api_key `
+        -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -avg_seeds:$settings.adder.avg_seeds -conn $conn
+    $conn.Close()
 }
 
 if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torrents -or $clients_torrents.count -eq 0 ) {
@@ -323,7 +321,7 @@ $spell = Get-Spell $new_torrents_keys.count 1 'torrents'
 Write-Log ( "Найдено: $spell" )
 
 $new_torrents_less_seeds = @{}
-if ( $max_seeds -ne -1 ) {
+if ( $max_seeds -and $max_seeds -ne -1 ) {
     Write-Log "Отсеиваем (только от добавления) раздачи с количеством сидов больше $max_seeds"
     $new_torrents_keys | Where-Object { ( $settings.adder.avg_seeds -eq $true ? $tracker_torrents[$_].avg_seeders : $tracker_torrents[$_].seeders ) -le $max_seeds } | ForEach-Object { $new_torrents_less_seeds[$_] = 1 }
     Write-Log ( 'Отсеялось раздач: ' + ( $new_torrents_keys.count - $new_torrents_less_seeds.count ) )
@@ -1125,15 +1123,6 @@ if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' -or $time_t
 
     Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности в моменте'
     $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
-    if ( $download_helper -eq 'Y' ) {
-        foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -notlike 'RSS*' } ) { 
-            if ( !$added[$client_key] ) {
-                if ( -not ( $clients_torrents | Where-Object { $_.client_key -eq $client_key -and $_.state -in ( 'downloading' ) } ) ) {
-                    Switch-Uploading $settings.clients[$client_key] -enable $true -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
-                }
-            }
-        }
-    }
 
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
         # что-то добавилось, стоит подождать.
@@ -1146,4 +1135,12 @@ if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' -or $time_t
     Remove-Item -Path $report_flag_file -ErrorAction SilentlyContinue
 }
 
-
+if ( $download_helper -eq 'Y' ) {
+    foreach ( $client_key in $settings.clients.keys | Where-Object { $_ -notlike 'RSS*' } ) { 
+        if ( !$added[$client_key] ) {
+            if ( -not ( $clients_torrents | Where-Object { $_.client_key -eq $client_key -and $_.state -in ( 'downloading' ) } ) ) {
+                Switch-Uploading $settings.clients[$client_key] -enable $true -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '')
+            }
+        }
+    }
+}
