@@ -1600,7 +1600,12 @@ function Get-RepSeeding ( $sections, $seeding_days, $call_from ) {
             }
             $content = Get-Content $file | Select-Object -Skip 1 | Where-Object { $_ -like "$($settings.connection.user_id),*" }
             $content | ForEach-Object {
+                try {
                 $seed_dates[$_.split(',')[$headers['topic_id']].ToInt32($null)] = [datetime]$_.split(',')[$headers['last_seeded_time']]
+                }
+                catch {
+                    pause
+                }
             }
         }
         Remove-Item -Path ( Join-Path $rep_path '*.csv')

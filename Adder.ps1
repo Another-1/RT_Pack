@@ -1108,15 +1108,17 @@ if ( $report_stalled -eq 'Y' ) {
     else { Write-Log 'Некачашек не обнаружено' }
 }
 
-$time_to_report = $false
-try {
-    $last_report_date = Get-Content -Path ( Join-Path $PSScriptRoot 'last_report.txt' ) -ErrorAction SilentlyContinue
-}
-catch { $last_report_date = '0' }
-if ( !$last_report_date ) { $last_report_date = 0 }
-$time_to_report = ( Get-Date -UFormat %s ).ToInt32($nul) - $last_report_date.ToInt32($nul) -gt 2 * 29 * 24 * 60 * 60
-if ( $time_to_report ) {
-    Write-Log 'Давно не отправляли отчёты, заодно и отправим'
+if ( $send_reports -eq 'Y' ) {
+    $time_to_report = $false
+    try {
+        $last_report_date = Get-Content -Path ( Join-Path $PSScriptRoot 'last_report.txt' ) -ErrorAction SilentlyContinue
+    }
+    catch { $last_report_date = '0' }
+    if ( !$last_report_date ) { $last_report_date = 0 }
+    $time_to_report = ( Get-Date -UFormat %s ).ToInt32($nul) - $last_report_date.ToInt32($nul) -gt 2 * 29 * 24 * 60 * 60
+    if ( $time_to_report ) {
+        Write-Log 'Давно не отправляли отчёты, заодно и отправим'
+    }
 }
 
 if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' -or $time_to_report ) {
@@ -1124,7 +1126,7 @@ if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' -or $time_t
     Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности в моменте'
     $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 
-    if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) {
+    if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -and $send_reports -eq 'Y' ) {
         # что-то добавилось, стоит подождать.
         # Update-Stats -wait -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) # с паузой.
         Update-Stats -send_report:( $send_reports -eq 'Y' -and ( $refreshed.Count -gt 0 -or $added.Count -gt 0 ) ) -call_from 'Adder' -wait # с паузой.
