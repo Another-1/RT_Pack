@@ -678,13 +678,13 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
         if ( $skip_obsolete ) {
             $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -notin $skip_obsolete }
         }
-        $obsolete_torrents = $clients_torrents | Where-Object { $_.hash -in $obsolete_keys } | Where-Object { $_.topic_id -ne '' }
+        $obsolete_torrents = $clients_torrents | Where-Object { $_.hash -in $obsolete_keys -and $_.hash -ne '3de0efe3733115439d474a7413e919230a91369d'} | Where-Object { $_.topic_id -ne '' }
         if ( $rss ) {
             $obsolete_torrents = $obsolete_torrents | Where-Object { $_.category -ne $rss.category }
         }
         Write-Log "Найдено $( $obsolete_torrents.count ) неактуальных раздач"
 
-        if ( $delayed_obsolete ) {
+        if ( $delayed_obsolete -and ( $obsolete_torrents.count -gt 0 ) ) {
             Write-Log 'Удаляем раздачи, которые были обновлены совсем недавно'
             $tmp_torrents = @()
             $obsolete_torrents | ForEach-Object {

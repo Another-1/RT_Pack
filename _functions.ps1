@@ -1679,7 +1679,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
         $all_sections_torrents = @{} 
         $rep_path = $rep_path ? $rep_path : ( Join-Path $PSScriptRoot 'pvc' )
         $tmp_path = Join-Path $rep_path 'tmp'
-        if (-not ( Test-Path $tmp_path ) ) { New-Item -Path $tmp_path -ItemType Directory }
+        if (-not ( Test-Path $tmp_path ) ) { New-Item -Path $tmp_path -ItemType Directory | out-null }
         $headers = @{ 'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key )) }
         if ( $nul -eq ( Get-ChildItem -Path $rep_path -File ) -or $debug -ne 1 ) {
             Expand-TarGz -url "https://rep.rutracker.cc/krs/api/v1/get_stats_file?file_name=public_additional-f-all.tar&subforum_id=$($sections | Join-String -Separator ',')" -tmp_dir $tmp_path -destination $rep_path -headers $headers
