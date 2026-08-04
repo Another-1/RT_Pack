@@ -535,6 +535,34 @@ function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$n
     if ( $db_conn ) { $db_conn.Close() }
     return $clients_torrents
 }
+function Get-ClientsTorrentsParallel ( $mess_sender = '', [switch]$completed, [switch]$noIDs, [switch]$break, $clients, $settings ) {
+    $funcDef1Str = (Get-Item "function:Get-ClientTorrents").ScriptBlock.ToString()
+    $funcDef2Str = (Get-Item "function:Initialize-Client").ScriptBlock.ToString()
+    $funcDef3Str = (Get-Item "function:Write-Log").ScriptBlock.ToString()
+    $clients_torrents = @()
+    if ( !$clients ) { $clients = $settings.clients }
+    # foreach ($clientkey in $settings.clients.Keys ) {
+    $settings.clients.Keys | ForEach-Object -Parallel {
+        $settings = $using:settings
+        $clientkey = $_
+        ${function:Get-ClientTorrents} = [scriptblock]::Create($using:funcDef1Str)
+        ${function:Initialize-Client} = [scriptblock]::Create($using:funcDef2Str)
+        ${function:Write-Log} = [scriptblock]::Create($using:funcDef3Str)
+        $clients = $Using:clients
+        $mess_sender = $Using:mess_sender
+        $completed = $Using:completed
+        $client = $settings.clients[ $clientkey ]
+        Initialize-Client $client $mess_sender -verbos
+        $client_torrents = Get-ClientTorrents -client $client -verbos -completed:$completed -mess_sender $mess_sender -break:$break.IsPresent
+        $client_torrents
+    }
+    if ( $noIDs.IsPresent -eq $false -and $client_torrents.count -gt 0 ) {
+        Get-TopicIDs -client $client -torrent_list $client_torrents # -conn $db_conn
+    }
+    $clients_torrents += $client_torrents
+    if ( $db_conn ) { $db_conn.Close() }
+    return $clients_torrents
+}
 
 function Get-ClientTorrentInfo( $client, $hash ) {
     $Params = @{ hash = $hash }
@@ -1245,6 +1273,8 @@ function Send-TGReport ( $refreshed, $added, $obsolete, $broken, $rss_add_cnt, $
             $obsolete[$client] | ForEach-Object {
                 $tg_data.line = "https://rutracker.org/forum/viewtopic.php?t=$($_.topic_id)`n"
                 Add-TGMessage $tg_data
+                $tg_data.line = "$($_.name)`n"
+                Add-TGMessage $tg_data
                 # Add-TGMessage "https://rutracker.org/forum/viewtopic.php?t=$_`n"
                 if ( $id_to_info[$_].name ) {
                     $tg_data.line = ( $id_to_info[$_].name + ', ' + ( to_kmg $id_to_info[$_].size 2 ) + "`n" )
@@ -1511,12 +1541,12 @@ function Get-DB_ColumnNames ($conn) {
 
 function Get-Spell( $qty, $spelling = 1, $entity = 'torrents' ) {
     switch ( $qty % 100 ) {
-        { $PSItem -in ( 5..20 ) } { return ( $entity -eq 'torrents' ? "$qty раздач" : $entity -eq 'hours' ? "$qty часов" : "$qty дней" ) }
+        { $PSItem -in ( 5..20 ) } { return ( $entity -eq 'torrents' ? "$qty раздач" : $entity -eq 'hours' ? "$qty часов" : $entity -eq 'streams' ? "$qty потоков" : "$qty дней" ) }
         default {
             switch ( $qty % 10 ) {
-                { $PSItem -eq 1 } { if ( $spelling -eq 1 ) { return ( $entity -eq 'torrents' ? "$qty раздача" : $entity -eq 'hours' ? "$qty час" : "$qty день" ) } else { return ( $entity -eq 'torrents' ? "$qty раздачу" : "$qty день" ) } }
-                { $PSItem -in ( 2..4 ) } { return ( $entity -eq 'torrents' ? "$qty раздачи" : $entity -eq 'hours' ? "$qty часа" : "$qty дня" ) }
-                default { return ( $entity -eq 'torrents' ? "$qty раздач" : $entity -eq 'hours' ? "$qty часов" : "$qty дней" ) }
+                { $PSItem -eq 1 } { if ( $spelling -eq 1 ) { return ( $entity -eq 'torrents' ? "$qty раздача" : $entity -eq 'hours' ? "$qty час" : $entity -eq 'streams' ? "$qty поток" : "$qty день" ) } else { return ( $entity -eq 'torrents' ? "$qty раздачу" : $entity -eq 'streams' ? "$qty поток" : "$qty день" ) } }
+                { $PSItem -in ( 2..4 ) } { return ( $entity -eq 'torrents' ? "$qty раздачи" : $entity -eq 'hours' ? "$qty часа" : $entity -eq 'streams' ? "$qty потока" : "$qty дня" ) }
+                default { return ( $entity -eq 'torrents' ? "$qty раздач" : $entity -eq 'hours' ? "$qty часов" : $entity -eq 'streams' ? "$qty потоков" : "$qty дней" ) }
             }
         }
     }
@@ -1613,6 +1643,7 @@ function Get-RepSeeding ( $sections, $seeding_days, $call_from ) {
 }
 
 function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, $min_release_days, $min_seeders ) {
+    Write-Log 'Получаем списки по хранимым подразделам'
     $avg_days = $settings.adder.avg_days
     if ( $min_release_days ) { $min_release_date = (Get-Date).AddDays( 0 - $min_release_days ) }
     $titles = Get-StatusTitles
@@ -1646,24 +1677,31 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     }
     else {
         $all_sections_torrents = @{} 
-        # Write-Log "Столько ($gzipped_pvc) подразделов выглядит целесообразным скачивать архивом. Так и поступим."
         $rep_path = $rep_path ? $rep_path : ( Join-Path $PSScriptRoot 'pvc' )
         $tmp_path = Join-Path $rep_path 'tmp'
         if (-not ( Test-Path $tmp_path ) ) { New-Item -Path $tmp_path -ItemType Directory }
         $headers = @{ 'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key )) }
-        Expand-TarGz -url "https://rep.rutracker.cc/krs/api/v1/get_stats_file?file_name=public_additional-f-all.tar&subforum_id=$($sections | Join-String -Separator ',')" -tmp_dir $tmp_path -destination $rep_path -headers $headers
-
+        if ( $nul -eq ( Get-ChildItem -Path $rep_path -File ) -or $debug -ne 1 ) {
+            Expand-TarGz -url "https://rep.rutracker.cc/krs/api/v1/get_stats_file?file_name=public_additional-f-all.tar&subforum_id=$($sections | Join-String -Separator ',')" -tmp_dir $tmp_path -destination $rep_path -headers $headers
+        }
+        $trot_limit = [Math]::Min( [Environment]::ProcessorCount, 16 )
+        Write-Log "Парсим распакованное в $( Get-Spell -qty $trot_limit -spelling 2 -entity 'streams' )"
         $files = Get-ChildItem -Path $rep_path -File | Sort-Object -Property { $_.BaseName.ToInt32($null) }
-        $headers = @{}
-        $i = 0; $j = 0
-        $files | ForEach-Object {
-            if ( $i -eq 0 ) {
-                ( [string]( Get-Content $_ | Select-Object -First 1 ) ).Split(',') | ForEach-Object { $headers[ $i ] = $_; $i++ }
+        $headers = @{}; $i = 0
+        ( $files[0] | Get-Content | Select-Object -First 1 ).Split(',') | ForEach-Object { $headers[ $i ] = $_; $i++ }
+
+        $all_sections_torrents = $files | ForEach-Object -Parallel {
+            # $all_sections_torrents = $files | ForEach-Object {
+            try {
+                $headers = $using:headers
+                $ok_states = $using:ok_states
+                $avg_seeds = $using:avg_seeds
+                $avg_days = $using:avg_days
             }
+            catch {}
             $section = $_.BaseName
-            Write-Progress -Activity 'Processing' -Status $section -PercentComplete ( $j * 100 / $files.Count )
-            # $i++
             $body = Get-Content $_ | Select-Object -Skip 1
+            $section_data = @{}
             foreach ( $record in $body ) {
                 $data = @{}
                 $headers.keys | Sort-Object | ForEach-Object {
@@ -1710,22 +1748,17 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
                     catch { $lines[$_].avg_seeders = 0 }
                 }
 
-                # if ( 
-                #     ( $min_avg -and $min_avg -ge $data.avg_seeders ) `
-                #         -or ( $min_release_date -and $data.reg_time -gt $min_release_date ) `
-                #         -or ( $null -ne $min_seeders -and $data.seeders -gt $min_seeders ) `
                 if ( $data.tor_status -notin $ok_states ) { continue }
                 $data.section = $section
-                $all_sections_torrents[$info_hash] = $data
+                $section_data[$info_hash] = $data
             }
-
-            $j++
-            Write-Log ( "По подразделу $section выявлено: $( Get-Spell $($body.count) )" ) # -skip_timestamp -nologfile
-        }
-        Write-Progress -Activity 'Processing' -Completed
-        Remove-Item -Path ( Join-Path $rep_path '*.csv')
-        return $all_sections_torrents
+            $section_data
+        } -ThrottleLimit $trot_limit
     }
+    $result = @{}
+    foreach ( $section_torrents in $all_sections_torrents ) { $section_torrents.keys | ForEach-Object { $result[$_] = $section_torrents[$_] } }
+    Write-Log 'Распарсили'
+    return $result
 }
 
 function GetRepSectionKeepers( $section, $excluded = @(), $call_from ) {
@@ -1835,10 +1868,10 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
         }
     }
     Write-Log ( "По подразделу $section выявлено: $( Get-Spell $($lines.count) )" ) # -skip_timestamp -nologfile
-    # if ( !$lines.count ) {
-    #     Write-Log 'Не получилось' -Red
-    #     exit 
-    # }
+    if ( !$lines.count ) {
+        Write-Log 'Не получилось' -Red
+        exit 
+    }
     return $lines
 }
 
@@ -2202,6 +2235,72 @@ function Expand-GZipFile {
     return Get-Item -LiteralPath $outputPath
 }
 
+function Expand-GZipFilesParallel {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $Directory,
+
+        [ValidateRange(1, 128)]
+        [int] $ThrottleLimit = [Math]::Min( [Environment]::ProcessorCount, 16 )
+    )
+
+    $gzipFiles = @(
+        Get-ChildItem -LiteralPath $Directory -Filter '*.gz' -File -Recurse )
+
+    $gzipFiles | ForEach-Object -Parallel {
+        $gzipPath = $_.FullName
+        $outputPath = [System.IO.Path]::Combine( $_.DirectoryName, [System.IO.Path]::GetFileNameWithoutExtension($_.Name) )
+
+        $inputStream = $null
+        $gzipStream = $null
+        $outputStream = $null
+
+        try {
+            $inputStream = [System.IO.FileStream]::new(
+                $gzipPath,
+                [System.IO.FileMode]::Open,
+                [System.IO.FileAccess]::Read,
+                [System.IO.FileShare]::Read,
+                1MB,
+                [System.IO.FileOptions]::SequentialScan
+            )
+
+            $gzipStream = [System.IO.Compression.GZipStream]::new(
+                $inputStream,
+                [System.IO.Compression.CompressionMode]::Decompress,
+                $false
+            )
+
+            $outputStream = [System.IO.FileStream]::new(
+                $outputPath,
+                [System.IO.FileMode]::Create,
+                [System.IO.FileAccess]::Write,
+                [System.IO.FileShare]::None,
+                1MB,
+                [System.IO.FileOptions]::SequentialScan
+            )
+
+            $gzipStream.CopyTo($outputStream, 1MB)
+        }
+        finally {
+            if ($null -ne $outputStream) {
+                $outputStream.Dispose()
+            }
+
+            if ($null -ne $gzipStream) {
+                $gzipStream.Dispose()
+            }
+
+            if ($null -ne $inputStream) {
+                $inputStream.Dispose()
+            }
+        }
+
+        [System.IO.File]::Delete($gzipPath)
+    } -ThrottleLimit $ThrottleLimit
+}
+
 function Expand-TarGz( $url, $tmp_dir, $destination, $headers = $null ) {
     try {
         Write-Log "Качаем архив"
@@ -2213,16 +2312,15 @@ function Expand-TarGz( $url, $tmp_dir, $destination, $headers = $null ) {
         # Get-ChildItem -LiteralPath $Destination -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force    
         Write-Log 'Распаковываем tar'
         & tar -xf $archivePath -C $destination
-        Remove-Item -Path $archivePath
-        Write-Log 'Распаковываем gz'
-        # Get-Item -Path ( Join-Path $destination '*.gz' ) | ForEach-Object {
-        #     . 'C:\Program Files\7-Zip\7z.exe' x $_ $("-o$destination") $('-aoa') | Out-Null
+        $trot_limit = [Math]::Min( [Environment]::ProcessorCount, 16 )
+        Write-Log "Распаковываем gz в $( Get-Spell -qty $trot_limit -spelling 2 -entity 'streams' )"
+        # Get-ChildItem -Path $Destination -Filter '*.gz' -File -Recurse |
+        # ForEach-Object {
+        #     Expand-GZipFile -Path $_.FullName -DestinationDirectory $_.DirectoryName | Out-Null
+        #     Remove-Item -LiteralPath $_.FullName -Force
         # }
-        Get-ChildItem -Path $Destination -Filter '*.gz' -File -Recurse |
-        ForEach-Object {
-            Expand-GZipFile -Path $_.FullName -DestinationDirectory $_.DirectoryName | Out-Null
-            Remove-Item -LiteralPath $_.FullName -Force
-        }
+        Expand-GZipFilesParallel `
+            -Directory $Destination -ThrottleLimit $trot_limit
     }
     finally {
         Remove-Item -LiteralPath $archivePath -Force -ErrorAction SilentlyContinue

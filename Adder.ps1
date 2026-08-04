@@ -709,7 +709,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 if ( !$obsolete ) { $obsolete = @{} }
                 Write-Log "Левая раздача $($_.topic_id) в клиенте $($_.client_key) со статусом '$($obsolete_status.ToUpper())'"
                 if ( !$obsolete[$_.client_key] ) { $obsolete[ $_.client_key] = [System.Collections.ArrayList]::new() }
-                $obsolete[ $_.client_key ] += @{ 'topic_id' = $_.topic_id; 'tor_status' = $obsolete_status }
+                $obsolete[ $_.client_key ] += @{ 'topic_id' = $_.topic_id; 'tor_status' = $obsolete_status; 'name' = $_.name }
             }
         }
         else { Write-Log 'Неактуальных раздач не найдено' }
@@ -806,6 +806,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
                             # $existing_torrent = $id_to_info[ $client_torrent.topic_id ]
                             if ( $client_torrent.topic_id -eq 'XXXXXX') {
+                                Write-Log "Поищем в API номер топика к хэшу $($client_torrent.hash)"
                                 $res = ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($client_torrent.hash)&mode=hash") | ConvertFrom-Json -AsHashtable
                                 try {
                                     $premod_id = $res.releases[0][ $res.columns.indexof( 'topic_id' ) ]
@@ -928,7 +929,10 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                                     if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
                                 }
                             }
-                            if ( $fresh_hash -and $fresh_hash -in $clients_torrents.hash ) {
+                            if ( 
+                                ( $fresh_hash -and $fresh_hash -in $clients_torrents.hash ) `
+                                    -or $fresh_status -eq 'закрыто'
+                            ) {
                                 continue
                             }
                             if ( $first_rss ) {
