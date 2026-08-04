@@ -1679,7 +1679,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
         $all_sections_torrents = @{} 
         $rep_path = $rep_path ? $rep_path : ( Join-Path $PSScriptRoot 'pvc' )
         $tmp_path = Join-Path $rep_path 'tmp'
-        if (-not ( Test-Path $tmp_path ) ) { New-Item -Path $tmp_path -ItemType Directory | out-null }
+        if (-not ( Test-Path $tmp_path ) ) { New-Item -Path $tmp_path -ItemType Directory | Out-Null }
         $headers = @{ 'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes( $settings.connection.user_id + ':' + $settings.connection.api_key )) }
         if ( $nul -eq ( Get-ChildItem -Path $rep_path -File ) -or $debug -ne 1 ) {
             Expand-TarGz -url "https://rep.rutracker.cc/krs/api/v1/get_stats_file?file_name=public_additional-f-all.tar&subforum_id=$($sections | Join-String -Separator ',')" -tmp_dir $tmp_path -destination $rep_path -headers $headers
@@ -1704,43 +1704,42 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
             $section_data = @{}
             foreach ( $record in $body ) {
                 $data = @{}
-                $headers.keys | Sort-Object | ForEach-Object {
-                    if ( $headers[$_] -like 'average*') {
-                        $k = $record.indexof( '}",' )
-                        $data[$headers[$_]] = $record.Substring( 2, $k - 2 ).split(',') | ForEach-Object { $_.ToInt32($null) }
-                        $record = $record.Substring( $k + 3 )
-                    }
-                    else {
-                        $k = $record.indexof( ',' )
-                        if ( $headers[$_] -in @( 'seeder_last_seen', 'reg_time' )) {
-                            $data[$headers[$_]] = [datetime]$record.Substring( 0, $k )    
-                            $record = $record.Substring( $k + 1 )
-                        }
-                        elseif ( $headers[$_] -eq 'tor_size_bytes' ) {
-                            $data[$headers[$_]] = $record.Substring( 0, $k ).ToInt64($null)
-                            $record = $record.Substring( $k + 1 )
-                        }
-                        elseif ( $headers[$_] -eq 'seeders' ) {
-                            $data[$headers[$_]] = $record.Substring( 0, $k ).ToInt16($null)
-                            $record = $record.Substring( $k + 1 )
-                        }
-                        elseif ( $headers[$_] -eq 'topic_id' ) {
-                            $data[$headers[$_]] = $record.Substring( 0, $k ).ToInt32($null)
-                            $record = $record.Substring( $k + 1 )
-                        }
-                        elseif ( $headers[$_] -eq 'topic_title' ) {
-                            $data[$headers[$_]] = $record -replace ( '^"', '' ) -replace ( '"$', '' )
-                        }
-                        elseif ( $headers[$_] -eq 'info_hash') {
-                            $info_hash = $record.Substring( 0, $k )
-                            $record = $record.Substring( $k + 1 )
-                        }
-                        else {
-                            $data[$headers[$_]] = $record.Substring( 0, $k )
-                            $record = $record.Substring( $k + 1 )
-                        }
-                    }
-                }
+                $tmpstr, $record = $record -split ',', 2
+                $data.topic_id = $tmpstr.ToInt32($null)
+
+                $tmpstr, $record = $record -split ',', 2
+                $data.tor_status = $tmpstr.ToInt32($null)
+
+                if ( $data.tor_status -notin $ok_states ) { continue }
+
+                $tmpstr, $record = $record -split ',', 2
+                $data.reg_time = [datetime]$tmpstr
+
+                $data.topic_poster, $record = $record -split ',', 2
+
+                $info_hash, $record = $record -split ',', 2
+
+                $tmpstr, $record = $record -split ',', 2
+                $data.tor_size_bytes = $tmpstr.ToInt64($null)
+
+                $data.keeping_priority, $record = $record -split ',', 2
+
+                $tmpstr, $record = $record -split ',', 2
+                $data.seeder_last_seen = [datetime]$tmpstr
+
+                $tmpstr, $record = $record -split ',', 2
+                $data.seeders = $tmpstr.ToInt32($null)
+
+                $tmpstr, $record = $record -split ',"{', 2
+                $data.keeper_seeders = $tmpstr.ToInt32($null)
+
+                $tmpstr, $record = $record -split '}","{', 2
+                $data.average_seeds_count = $tmpstr.split(',') | ForEach-Object { $_.ToInt32($null) }
+
+                $tmpstr, $record = $record -split '}",', 2
+                $data.average_seeds_sum = $tmpstr.split(',') | ForEach-Object { $_.ToInt32($null) }
+
+                $data.title = $record
                 if ( $avg_seeds.IsPresent ) {
                     try {
                         $data.avg_seeders = ( $data.average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $data.average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum
@@ -1748,12 +1747,12 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
                     catch { $lines[$_].avg_seeders = 0 }
                 }
 
-                if ( $data.tor_status -notin $ok_states ) { continue }
                 $data.section = $section
                 $section_data[$info_hash] = $data
             }
             $section_data
         } -ThrottleLimit $trot_limit
+        # }
     }
     $result = @{}
     foreach ( $section_torrents in $all_sections_torrents ) { $section_torrents.keys | ForEach-Object { $result[$_] = $section_torrents[$_] } }
