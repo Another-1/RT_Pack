@@ -1739,7 +1739,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
                 $tmpstr, $record = $record -split '}",', 2
                 $data.average_seeds_sum = $tmpstr.split(',') | ForEach-Object { $_.ToInt32($null) }
 
-                $data.title = $record
+                $data.topic_title = $record
                 if ( $avg_seeds.IsPresent ) {
                     try {
                         $data.avg_seeders = ( $data.average_seeds_sum | Select-Object -First $avg_days | Measure-Object -Sum ).Sum / ( $data.average_seeds_count | Select-Object -First $avg_days | Measure-Object -Sum ).Sum

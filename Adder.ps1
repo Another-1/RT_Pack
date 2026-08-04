@@ -439,7 +439,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 # Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
                 if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
                     # $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
-                    $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=topic_title" -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) | ConvertFrom-Json -AsHashtable ).releases[0][1]
+                    $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($new_tracker_data.topic_id)&columns=topic_title" -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) | ConvertFrom-Json -AsHashtable ).releases[0][1]
                 }
                 $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
                 Write-Log $text -Green
