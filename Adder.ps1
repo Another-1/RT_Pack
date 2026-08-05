@@ -410,7 +410,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                     -and ( !$forced_sections -or $tracker_torrents[$_].section -in $section_numbers ) } ) {
             $cntr++
             # Remove-Variable -Name new_topic_title -ErrorAction SilentlyContinue
-            Write-Progress -Activity 'Обработка найденных раздач' -Status $new_torrent_key -PercentComplete ( $cntr * 100 / $new_torrents_keys.count )
+            # Write-Progress -Activity 'Обработка найденных раздач' -Status $new_torrent_key -PercentComplete ( $cntr * 100 / $new_torrents_keys.count )
             $new_tracker_data = $tracker_torrents[$new_torrent_key]
             $existing_torrent = $id_to_info[ $new_tracker_data.topic_id ]
             if ( $existing_torrent ) {
@@ -655,7 +655,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
         }
     } # по наличию новых раздач.
 
-    Write-Progress -Activity 'Обработка найденных раздач' -Status 'Scanning' -Completed
+    # Write-Progress -Activity 'Обработка найденных раздач' -Status 'Scanning' -Completed
 
     Write-Log "Добавлено: $(Get-Spell -qty ( ( $added.keys | ForEach-Object { $added[$_] } ).values.id.count ) -spelling 1 -entity 'torrents' )"
     Write-Log "Обновлено: $(Get-Spell -qty ( ( $refreshed.keys | ForEach-Object { $refreshed[$_] } ).values.id.count ) -spelling 1 -entity 'torrents' )"
