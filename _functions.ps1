@@ -1105,7 +1105,7 @@ function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles, $torrent =
         }
         else {
             $text = 'Удаляем из клиента ' + $client.Name + ' раздачу ' + $text + ' без удаления файлов'
-            Write-Log $textremove-
+            Write-Log $text
         }
         $request_delete = @{
             hashes      = $hash
