@@ -932,9 +932,14 @@ function Get-File ( $uri, $save_path, $user_agent, $headers = $null, $from ) {
     
 }
 
-function Get-ForumTorrentFile ( [int]$Id, $save_path = $null) {
+function Get-ForumTorrentFile ( [int]$Id = 0, $save_path = $null, $hash = $null ) {
     # if ( !$settings.connection.sid ) { Initialize-Forum }
-    $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl_keeper.php?t=' + $Id + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
+    if ( $hash ) {
+        $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl_keeper.php?h=' + $hash + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
+    }
+    else {
+        $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl_keeper.php?t=' + $Id + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
+    }
     if ( $null -eq $save_path ) { $Path = Join-Path $PSScriptRoot ( $Id.ToString() + '.torrent' ) } else { $path = Join-Path $save_path ( $Id.ToString() + '.torrent' ) }
     Write-Log 'Скачиваем torrent-файл с форума'
     $user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0'
