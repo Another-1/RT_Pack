@@ -8,7 +8,8 @@ function Write-Log {
         [switch]$Yellow,
         [switch]$NoNewLine,
         [switch]$skip_timestamp,
-        [switch]$nologfile
+        [switch]$nologfile,
+        [string]$caller
     )
 
     $color = $( $Red.IsPresent ? [System.ConsoleColor]::Red : $( $Green.IsPresent ? [System.ConsoleColor]::Green : $( $Yellow.IsPresent ? [System.ConsoleColor]::Yellow : $null ) ) )
@@ -20,10 +21,15 @@ function Write-Log {
     }
     
     if ( $mention_script_log -eq 'Y') {
-        $call_stack = Get-PSCallStack
-        $script_name = "#$($call_stack[$call_stack.length - 1].command.replace( '.ps1', '')) "
-        if ( $script_name -eq '#<ScriptBlock> ' ) {
-            $script_name = "#$($call_stack[$call_stack.length - 2].command.replace( '.ps1', '')) "
+        if ( $caller -and $caller -ne '' ) {
+            $script_name = $caller
+        }
+        else {
+            $call_stack = Get-PSCallStack
+            $script_name = "#$($call_stack[$call_stack.length - 1].command.replace( '.ps1', '')) "
+            if ( $script_name -eq '#<ScriptBlock> ' ) {
+                $script_name = "#$($call_stack[$call_stack.length - 2].command.replace( '.ps1', '')) "
+            }
         }
         $log_str += $script_name
         Write-Host $script_name -ForegroundColor Green -NoNewline
@@ -467,13 +473,6 @@ function Get-ClientTorrents {
         [switch]$verbos,
         [switch]$break
     )
-    # Validate required client properties
-    # foreach ($prop in @('IP','port','sid','name')) {
-    #     if (-not $client.PSObject.Properties[$prop]) {
-    #         Write-Log "[Get-ClientTorrents] Ошибка: client не содержит свойство '$prop'" -Red
-    #         return @()
-    #     }
-    # }
     $Params = @{}
     if ( $completed ) {
         $Params.filter = 'completed'
@@ -536,31 +535,53 @@ function Get-ClientsTorrents ( $mess_sender = '', [switch]$completed, [switch]$n
     return $clients_torrents
 }
 function Get-ClientsTorrentsParallel ( $mess_sender = '', [switch]$completed, [switch]$noIDs, [switch]$break, $clients, $settings ) {
-    $funcDef1Str = (Get-Item "function:Get-ClientTorrents").ScriptBlock.ToString()
-    $funcDef2Str = (Get-Item "function:Initialize-Client").ScriptBlock.ToString()
-    $funcDef3Str = (Get-Item "function:Write-Log").ScriptBlock.ToString()
-    $clients_torrents = @()
+    $funcDef1Str = (Get-Item "function:Get-ClientTorrentInfo").ScriptBlock.ToString()
+    $funcDef2Str = (Get-Item "function:Write-Log").ScriptBlock.ToString()
+    $funcDef3Str = (Get-Item "function:Get-Spell").ScriptBlock.ToString()
     if ( !$clients ) { $clients = $settings.clients }
-    # foreach ($clientkey in $settings.clients.Keys ) {
-    $settings.clients.Keys | ForEach-Object -Parallel {
+    $trot_limit = [Math]::Min( [Environment]::ProcessorCount, 16 )
+    Write-Log "Получаем список раздач из всех клиентов пачками по $trot_limit"
+    $clients_torrents = $clients.Keys | ForEach-Object -Parallel {
         $settings = $using:settings
-        $clientkey = $_
-        ${function:Get-ClientTorrents} = [scriptblock]::Create($using:funcDef1Str)
-        ${function:Initialize-Client} = [scriptblock]::Create($using:funcDef2Str)
-        ${function:Write-Log} = [scriptblock]::Create($using:funcDef3Str)
-        $clients = $Using:clients
-        $mess_sender = $Using:mess_sender
         $completed = $Using:completed
-        $client = $settings.clients[ $clientkey ]
-        Initialize-Client $client $mess_sender -verbos
-        $client_torrents = Get-ClientTorrents -client $client -verbos -completed:$completed -mess_sender $mess_sender -break:$break.IsPresent
-        $client_torrents
+        $clients = $Using:clients
+        ${function:Get-ClientTorrentInfo} = [scriptblock]::Create($using:funcDef1Str)
+        ${function:Get-Spell} = [scriptblock]::Create($using:funcDef3Str)
+        ${function:Write-Log} = [scriptblock]::Create($using:funcDef2Str)
+        $mess_sender = $Using:mess_sender
+        $client = $clients[ $_ ]
+        Write-Log ( 'Получаем список раздач от клиента ' + $client.name ) -caller 'Adder'
+        if ( $completed ) { $Params.filter = 'completed' }
+        $json_content = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
+        $torrents_list = $json_content | ConvertFrom-Json | `
+            Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags, download_path, last_activity, ratio
+        Write-Log ( 'Получено от клиента ' + $client.Name + ': ' + ( Get-Spell -qty $torrents_list.Count ) )
+        return $torrents_list
+    } -ThrottleLimit $trot_limit
+    # if ( $noIDs.IsPresent -eq $false -and $client_torrents.count -gt 0 ) {
+    #     Get-TopicIDs -client $client -torrent_list $client_torrents # -conn $db_conn
+    # }
+    # $clients_torrents += $client_torrents
+    # if ( $db_conn ) { $db_conn.Close() }
+
+    $clients_torrents | ForEach-Object {
+        if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int32]$tracker_torrents[$_.hash.toUpper()].topic_id }
+        if ( ( $null -eq $_.topic_id -or $_.topic_id -eq '' -or $_.topic_id -eq 0 ) -and $null -ne $db_hash_to_id ) {
+            $_.topic_id = $db_hash_to_id[$_.hash]  
+        }
+        if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
+            try {
+                $comment = ( Get-ClientTorrentInfo -client $clients[$_.client_key] -hash $_.hash ) | Select-Object comment -ExpandProperty comment
+                Start-Sleep -Milliseconds 10
+            }
+            catch {
+                Write-Log "[Get-TopicIDs] Ошибка при получении комментария для $_.hash: $($_.Exception.Message)" -Red
+            }
+            $ending = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
+            $_.topic_id = $( $ending -ne '' ? $ending.ToInt32($null) : $null )
+        }
+
     }
-    if ( $noIDs.IsPresent -eq $false -and $client_torrents.count -gt 0 ) {
-        Get-TopicIDs -client $client -torrent_list $client_torrents # -conn $db_conn
-    }
-    $clients_torrents += $client_torrents
-    if ( $db_conn ) { $db_conn.Close() }
     return $clients_torrents
 }
 
@@ -591,18 +612,6 @@ function Get-TopicIDs {
         [array]$torrent_list,
         [switch]$verbos
     )
-    # Validate required client property
-    # if (-not $client.PSObject.Properties['name']) {
-    #     Write-Log "[Get-TopicIDs] Ошибка: client не содержит свойство 'name'" -Red
-    #     return
-    # }
-    # # Validate torrent_list items
-    # foreach ($t in $torrent_list) {
-    #     if (-not $t.PSObject.Properties['hash']) {
-    #         Write-Log "[Get-TopicIDs] Ошибка: элемент списка не содержит свойство 'hash'" -Red
-    #         return
-    #     }
-    # }
     if ( $torrent_list.count -gt 0 ) {
         if ( $verbos.IsPresent ) {
             Write-Log "Ищем ID раздач по $( $torrent_list.count -gt 1 ? 'хэшам' : 'хэшу ' + $torrent_list[0].hash ) от клиента $( $client.name ) в данных от трекера"

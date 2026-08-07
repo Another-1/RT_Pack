@@ -259,7 +259,13 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
         $db_hash_to_id = Get-DBHashToId -conn $conn
         $conn.Close()
     }
-    $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
+    # $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
+    if ( $parallel_clients -eq 'Y') {
+        $clients_torrents = Get-ClientsTorrentsParallel -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break -settings $settings
+    }
+    else {
+        $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
+    }
 }
 
 $was_banned = $false
@@ -678,7 +684,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
         if ( $skip_obsolete ) {
             $obsolete_keys = $obsolete_keys | Where-Object { $id_to_info[$hash_to_id[$_]].client_key -notin $skip_obsolete }
         }
-        $obsolete_torrents = $clients_torrents | Where-Object { $_.hash -in $obsolete_keys -and $_.hash -ne '3de0efe3733115439d474a7413e919230a91369d'} | Where-Object { $_.topic_id -ne '' }
+        $obsolete_torrents = $clients_torrents | Where-Object { $_.hash -in $obsolete_keys -and $_.hash -ne '3de0efe3733115439d474a7413e919230a91369d' } | Where-Object { $_.topic_id -ne '' }
         if ( $rss ) {
             $obsolete_torrents = $obsolete_torrents | Where-Object { $_.category -ne $rss.category }
         }
