@@ -563,7 +563,7 @@ function Get-ClientsTorrentsParallel ( $mess_sender = '', [switch]$completed, [s
     # }
     # $clients_torrents += $client_torrents
     # if ( $db_conn ) { $db_conn.Close() }
-
+    Write-Log 'Ищем в найденных раздачах ID (из комментариев, БД TLO и API отчётов, как повезёт)'
     $clients_torrents | ForEach-Object {
         if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int32]$tracker_torrents[$_.hash.toUpper()].topic_id }
         if ( ( $null -eq $_.topic_id -or $_.topic_id -eq '' -or $_.topic_id -eq 0 ) -and $null -ne $db_hash_to_id ) {
