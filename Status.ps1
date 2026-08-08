@@ -56,7 +56,10 @@ if ( $rss_mark -and $rss_mark.ToUpper() -eq 'N' -and $rss ) {
 
 Get-ClientApiVersions -clients $settings.clients
 if ( !$clients_torrents ) {
-    $clients_torrents = Get-ClientsTorrents -mess_sender 'Status' -noIDs
+    if ( $parallel_clients -eq 'Y') {
+        $clients_torrents = Get-ClientsTorrentsParallel -clients $settings.clients -noIDs -settings $settings
+    }
+    $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender 'Status' -noIDs
 }
 
 $overall = [ordered]@{}

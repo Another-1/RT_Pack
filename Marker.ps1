@@ -58,7 +58,13 @@ if ( $rss_mark -and $rss_mark.ToUpper() -eq 'N' -and $rss ) {
 }
 
 Get-ClientApiVersions -clients $settings.clients
-$clients_torrents = Get-ClientsTorrents -mess_sender 'Marker' -noIDs
+if ( $parallel_clients -eq 'Y') {
+    $clients_torrents = Get-ClientsTorrentsParallel -clients $settings.clients -noIDs -settings $settings
+}
+else {
+    $clients_torrents = Get-ClientsTorrents -mess_sender 'Marker' -noIDs
+}
+
 $seed_cnt = 0
 $down_cnt = 0
 $err_cnt = 0
@@ -101,7 +107,7 @@ foreach ( $torrent in $clients_torrents ) {
             Start-Torrents -hashes @($torrent.hash) -client $settings.clients[$torrent.client_key]
         }
     }
-    elseif ( $torrent.state -in ( 'missingFiles', 'error' ) ){
+    elseif ( $torrent.state -in ( 'missingFiles', 'error' ) ) {
         Write-Log "Снимаем с раздачи $($torrent.topic_id) - '$($torrent.name)' метку '$down_tag' в клиенте $($torrent.client_key)"
         Get-topicIDs -client $settings.clients[$torrent.client_key] -torrent_list @( $torrent )
         Remove-Comment -client $settings.clients[$torrent.client_key] -torrent $torrent -label $down_tag -silent
