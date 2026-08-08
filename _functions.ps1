@@ -558,29 +558,30 @@ function Get-ClientsTorrentsParallel ( $mess_sender = '', [switch]$completed, [s
         Write-Log ( 'Получено от клиента ' + $client.Name + ': ' + ( Get-Spell -qty $torrents_list.Count ) )
         return $torrents_list
     } -ThrottleLimit $trot_limit
-    # if ( $noIDs.IsPresent -eq $false -and $client_torrents.count -gt 0 ) {
     #     Get-TopicIDs -client $client -torrent_list $client_torrents # -conn $db_conn
     # }
     # $clients_torrents += $client_torrents
     # if ( $db_conn ) { $db_conn.Close() }
-    Write-Log 'Ищем в найденных раздачах ID (из БД TLO и комментариев в клиенте, как повезёт)'
-    $clients_torrents | ForEach-Object {
-        if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int32]$tracker_torrents[$_.hash.toUpper()].topic_id }
-        if ( ( $null -eq $_.topic_id -or $_.topic_id -eq '' -or $_.topic_id -eq 0 ) -and $null -ne $db_hash_to_id ) {
-            $_.topic_id = $db_hash_to_id[$_.hash]  
-        }
-        if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
-            try {
-                $comment = ( Get-ClientTorrentInfo -client $clients[$_.client_key] -hash $_.hash ) | Select-Object comment -ExpandProperty comment
-                Start-Sleep -Milliseconds 10
+    if ( $noIDs.IsPresent -eq $false -and $client_torrents.count -gt 0 ) {
+        Write-Log 'Ищем в найденных раздачах ID (из БД TLO и комментариев в клиенте, как повезёт)'
+        $clients_torrents | ForEach-Object {
+            if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int32]$tracker_torrents[$_.hash.toUpper()].topic_id }
+            if ( ( $null -eq $_.topic_id -or $_.topic_id -eq '' -or $_.topic_id -eq 0 ) -and $null -ne $db_hash_to_id ) {
+                $_.topic_id = $db_hash_to_id[$_.hash]  
             }
-            catch {
-                Write-Log "[Get-TopicIDs] Ошибка при получении комментария для $_.hash: $($_.Exception.Message)" -Red
+            if ( $null -eq $_.topic_id -or $_.topic_id -eq '' ) {
+                try {
+                    $comment = ( Get-ClientTorrentInfo -client $clients[$_.client_key] -hash $_.hash ) | Select-Object comment -ExpandProperty comment
+                    Start-Sleep -Milliseconds 10
+                }
+                catch {
+                    Write-Log "[Get-TopicIDs] Ошибка при получении комментария для $_.hash: $($_.Exception.Message)" -Red
+                }
+                $ending = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
+                $_.topic_id = $( $ending -ne '' ? $ending.ToInt32($null) : $null )
             }
-            $ending = ( Select-String "\d*$" -InputObject $comment ).Matches.Value
-            $_.topic_id = $( $ending -ne '' ? $ending.ToInt32($null) : $null )
-        }
 
+        }
     }
     return $clients_torrents
 }
