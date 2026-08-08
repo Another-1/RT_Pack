@@ -1142,7 +1142,13 @@ if ( $send_reports -eq 'Y' ) {
 if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' -or $time_to_report ) {
 
     Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности в моменте'
-    $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
+    # $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
+    if ( $parallel_clients -eq 'Y') {
+        $clients_torrents = Get-ClientsTorrentsParallel -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break -settings $settings
+    }
+    else {
+        $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
+    }
 
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -and $send_reports -eq 'Y' ) {
         # что-то добавилось, стоит подождать.

@@ -1091,6 +1091,9 @@ function Send-Report ( $call_from ) {
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
         }
+        else {
+            Write-Log 'Качаемое не отправляем за неимением такового'
+        }
         
     }
     else {
