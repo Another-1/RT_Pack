@@ -953,7 +953,7 @@ function Get-File ( $uri, $save_path, $user_agent, $headers = $null, $from ) {
 
 function Get-ForumTorrentFile ( [int]$Id = 0, $save_path = $null, $hash = $null ) {
     # if ( !$settings.connection.sid ) { Initialize-Forum }
-    if ( 6$hash ) {
+    if ( $hash ) {
         if ( $debug -eq 2 ) {
             $get_url = $( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.report_ssl + '/forum/dl_keeper.php?h=' + $hash + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
         }
