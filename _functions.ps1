@@ -953,7 +953,7 @@ function Get-File ( $uri, $save_path, $user_agent, $headers = $null, $from ) {
 
 function Get-ForumTorrentFile ( [int]$Id = 0, $save_path = $null, $hash = $null ) {
     # if ( !$settings.connection.sid ) { Initialize-Forum }
-    if ( $hash ) {
+    if ( 6$hash ) {
         if ( $debug -eq 2 ) {
             $get_url = $( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.report_ssl + '/forum/dl_keeper.php?h=' + $hash + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
         }
@@ -1089,7 +1089,10 @@ function Send-Report ( $call_from ) {
                 'status'                = $adder_watermark -bor 1
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
-                'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper() )
+                'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) `
+                    -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
+                    -and ( $null -eq $_.tags -or @($_.tags.split(', ')) -notcontains 'своё'
+                 )
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
             if ( ( $res | ConvertFrom-Json ).invalid_hashes ) {
@@ -1107,7 +1110,10 @@ function Send-Report ( $call_from ) {
                 'status'                = $adder_watermark -bor 3
                 # 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
-                'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading', 'queuedDL' ) -and $tracker_torrents[$_.hash] } ).hash.ToUpper() )
+                'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading', 'queuedDL' ) `
+                    -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
+                    -and ( $null -eq $_.tags -or @($_.tags.split(', ')) -notcontains 'своё'
+                )
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
         }
