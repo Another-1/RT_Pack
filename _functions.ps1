@@ -9,15 +9,17 @@ function Write-Log {
         [switch]$NoNewLine,
         [switch]$skip_timestamp,
         [switch]$nologfile,
-        [string]$caller
+        [string]$caller,
+        [switch]$joined
     )
-
     $color = $( $Red.IsPresent ? [System.ConsoleColor]::Red : $( $Green.IsPresent ? [System.ConsoleColor]::Green : $( $Yellow.IsPresent ? [System.ConsoleColor]::Yellow : $null ) ) )
     $log_str = ''
     if ( $settings.interface.use_timestamp -eq 'Y' ) {
         $log_str = "$( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) "
-        if ( $color ) { Write-Host $log_str -NoNewline -ForegroundColor $color }
-        else { Write-Host "$( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) " -NoNewline }
+        if ( -not $joined.IsPresent) {
+            if ( $color ) { Write-Host $log_str -NoNewline -ForegroundColor $color }
+            else { Write-Host "$( Get-Date -Format 'dd-MM-yyyy HH:mm:ss' ) " -NoNewline }
+        }
     }
     
     if ( $mention_script_log -eq 'Y') {
@@ -32,12 +34,19 @@ function Write-Log {
             }
         }
         $log_str += $script_name
-        Write-Host $script_name -ForegroundColor Green -NoNewline
+        if ( -not $joined.IsPresent) {
+            Write-Host $script_name -ForegroundColor Green -NoNewline
+        }
     }
     $log_str += $str
-    if ( $color ) { Write-Host $str -NoNewline:$NoNewLine -ForegroundColor $color }
-    else { Write-Host $str -NoNewline:$NoNewLine }
-    if ( $log_path -and -not $nologfile.IsPresent ) { Write-Output ( $log_str.Replace('...', '') | Out-File $log_path -Append -Encoding utf8 ) | Out-Null }
+    if ( $joined.IsPresent) {
+        Write-Host $logstr -NoNewline:$NoNewLine
+    }
+    else {
+        if ( $color ) { Write-Host $str -NoNewline:$NoNewLine -ForegroundColor $color }
+        else { Write-Host $str -NoNewline:$NoNewLine }
+        if ( $log_path -and -not $nologfile.IsPresent ) { Write-Output ( $log_str.Replace('...', '') | Out-File $log_path -Append -Encoding utf8 ) | Out-Null }
+    }
 }
 
 
@@ -945,10 +954,20 @@ function Get-File ( $uri, $save_path, $user_agent, $headers = $null, $from ) {
 function Get-ForumTorrentFile ( [int]$Id = 0, $save_path = $null, $hash = $null ) {
     # if ( !$settings.connection.sid ) { Initialize-Forum }
     if ( $hash ) {
-        $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl_keeper.php?h=' + $hash + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
+        if ( $debug -eq 2 ) {
+            $get_url = $( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.report_ssl + '/forum/dl_keeper.php?h=' + $hash + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
+        }
+        else {
+            $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl_keeper.php?h=' + $hash + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
+        }
     }
     else {
-        $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl_keeper.php?t=' + $Id + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
+        if ( $debug -eq 2 ) {
+            $get_url = "$( $settings.connection.report_ssl -eq 'Y' ? 'https://' : 'http://' )$($settings.connection.report_url)/forum/dl_keeper.php?t=$Id&keeper_user_id=$($settings.connection.user_id)&keeper_api_key=$($settings.connection.api_key)"
+        }
+        else {
+            $get_url = $( $settings.connection.forum_ssl -eq 'Y' ? 'https://' : 'http://' ) + $settings.connection.forum_url + '/forum/dl_keeper.php?t=' + $Id + '&keeper_user_id=' + $settings.connection.user_id + '&keeper_api_key=' + $settings.connection.api_key
+        }
     }
     if ( $null -eq $save_path ) { $Path = Join-Path $PSScriptRoot ( $Id.ToString() + '.torrent' ) } else { $path = Join-Path $save_path ( $Id.ToString() + '.torrent' ) }
     Write-Log 'Скачиваем torrent-файл с форума'
@@ -1095,6 +1114,8 @@ function Send-Report ( $call_from ) {
         else {
             Write-Log 'Качаемое не отправляем за неимением такового'
         }
+        Write-Log 'Освежаем список хранимых подразделов'
+        $res = Send-RepHTTP -url "/krs/api/v1/subforum/set_status_auto?keeper_id=$($settings.connection.user_id)&ignore_non_reported=true&respect_recommended_minimum=true&dry_run=true&last_seeded_limit_days=30&last_update_limit_days=60"
         
     }
     else {
