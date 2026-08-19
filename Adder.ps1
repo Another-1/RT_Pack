@@ -945,7 +945,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
                             if ( 
                                 ( $fresh_hash -and $fresh_hash -in $clients_torrents.hash ) `
-                                    -or $fresh_status -eq 'закрыто'
+                                    -or $fresh_status -in ( 'закрыто', 'повтор' )
                             ) {
                                 continue
                             }
