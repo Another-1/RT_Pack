@@ -1089,10 +1089,11 @@ function Send-Report ( $call_from ) {
                 'status'                = $adder_watermark -bor 1
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
-                'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) `
-                    -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper() `
+                'topic_hashes'          = @( ( $clients_torrents | Where-Object { `
+                    $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) `
+                    -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] `
                     -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) ) -notcontains 'своё'
-                 )
+                } ).hash.ToUpper() )
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
             if ( ( $res | ConvertFrom-Json ).invalid_hashes ) {
@@ -1110,9 +1111,11 @@ function Send-Report ( $call_from ) {
                 'status'                = $adder_watermark -bor 3
                 # 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
-                'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading', 'queuedDL' ) `
-                    -and $tracker_torrents[$_.hash] } ).hash.ToUpper() `
+                'topic_hashes'          = @( ( $clients_torrents | Where-Object {
+                    $_.state -in @( 'stalledDL', 'downloading', 'queuedDL' ) `
+                    -and $tracker_torrents[$_.hash] `
                     -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) ) -notcontains 'своё'
+                 } ).hash.ToUpper()
                 )
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
