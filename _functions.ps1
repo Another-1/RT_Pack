@@ -1092,7 +1092,7 @@ function Send-Report ( $call_from ) {
                 'topic_hashes'          = @( ( $clients_torrents | Where-Object { `
                     $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) `
                     -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] `
-                    -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) ) -notcontains 'своё'
+                    -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) -notcontains 'своё' )
                 } ).hash.ToUpper() )
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
@@ -1113,7 +1113,7 @@ function Send-Report ( $call_from ) {
                 'topic_hashes'          = @( ( $clients_torrents | Where-Object {
                     $_.state -in @( 'stalledDL', 'downloading', 'queuedDL' ) `
                     -and $tracker_torrents[$_.hash] `
-                    -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) ) -notcontains 'своё'
+                    -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) -notcontains 'своё' )
                  } ).hash.ToUpper()
                 )
             } | ConvertTo-Json -Compress
