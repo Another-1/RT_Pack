@@ -1090,7 +1090,7 @@ function Send-Report ( $call_from ) {
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) `
-                    -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
+                    -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ).hash.ToUpper() `
                     -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) ) -notcontains 'своё'
                  )
             } | ConvertTo-Json -Compress
@@ -1111,7 +1111,7 @@ function Send-Report ( $call_from ) {
                 # 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = @( ( $clients_torrents | Where-Object { $_.state -in @( 'stalledDL', 'downloading', 'queuedDL' ) `
-                    -and $tracker_torrents[$_.hash] } ).hash.ToUpper()
+                    -and $tracker_torrents[$_.hash] } ).hash.ToUpper() `
                     -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) ) -notcontains 'своё'
                 )
             } | ConvertTo-Json -Compress
