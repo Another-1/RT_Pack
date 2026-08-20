@@ -1121,7 +1121,7 @@ function Send-Report ( $call_from ) {
             Write-Log 'Качаемое не отправляем за неимением такового'
         }
         Write-Log 'Освежаем список хранимых подразделов'
-        $res = Send-RepHTTP -url "/krs/api/v1/subforum/set_status_auto?keeper_id=$($settings.connection.user_id)&ignore_non_reported=true&respect_recommended_minimum=true&dry_run=true&last_seeded_limit_days=30&last_update_limit_days=60"
+        $res = Send-RepHTTP -url "/krs/api/v1/subforum/set_status_auto?keeper_id=$($settings.connection.user_id)&ignore_non_reported=true&respect_recommended_minimum=true&dry_run=false&last_seeded_limit_days=30&last_update_limit_days=60"
         
     }
     else {

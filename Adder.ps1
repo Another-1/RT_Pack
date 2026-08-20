@@ -596,12 +596,12 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                     $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$settings.sections[$new_tracker_data.section].client] )
                     if ( ( $ssd -and $ssd[$settings.sections[$new_tracker_data.section].client] ) -and $client.name -ne 'RSS') {
                         if ( $on_ssd -eq $false ) {
-                            # if ( $debug -eq 1 -and $client.name -eq 'NAS-NEW' -and $new_tracker_data.tor_size_bytes -le 85000000000 ) {
-                            #     Set-ClientSetting $client 'temp_path' 'C:\mnt\ramdisk\Incomplete'
-                            # }
-                            # else {
-                            Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
-                            # }
+                            if ( $debug -eq 1 -and $client.name -eq 'NAS-NEW' -and $new_tracker_data.tor_size_bytes -le 85000000000 ) {
+                                Set-ClientSetting $client 'temp_path' 'C:\mnt\ramdisk\Incomplete'
+                            }
+                            else {
+                                Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
+                            }
                             Set-ClientSetting $client 'temp_path_enabled' $true
                             Set-ClientSetting $client 'preallocate_all' $false
                         }
