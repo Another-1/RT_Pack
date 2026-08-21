@@ -1804,6 +1804,7 @@ function Get-RepTorrents ( $sections, $call_from, [switch]$avg_seeds, $min_avg, 
     $result = @{}
     foreach ( $section_torrents in $all_sections_torrents ) { $section_torrents.keys | ForEach-Object { $result[$_] = $section_torrents[$_] } }
     Write-Log 'Распарсили'
+    Remove-Item -Path ( Join-Path $rep_path '*.csv') -ErrorAction SilentlyContinue
     return $result
 }
 
