@@ -1864,6 +1864,7 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
     # $line = @{}
     # $line.section = $section
     $lines = @{}
+    $topic_column = $columns.keys | Where-Object { $columns[$_] -eq 'topic_id' }
     $hash_column = $columns.keys | Where-Object { $columns[$_] -eq 'info_hash' }
     $status_column = $columns.keys | Where-Object { $columns[$_] -eq 'tor_status' }
     foreach ( $release in $json.releases | Where-Object { $_[$status_column] -in $ok_states } ) {
@@ -1890,7 +1891,8 @@ function Get-RepSectionTorrents( $section, $ok_states, $call_from, [switch]$avg_
         # }
         $line = @{ section = $section }
         for ( $j = 0; $j -lt $columns.Count; $j++ ) {
-            if ( $j -ne $hash_column ) { $line[$columns[$j]] = $release[$j] }
+            if ( $j -eq $topic_column ) { $line[$columns[$j]] = $release[$j].ToInt32($null) }
+            elseif ( $j -ne $hash_column ) { $line[$columns[$j]] = $release[$j] }
         }
         $lines[$release[$hash_column]] = $line
     }
