@@ -437,21 +437,38 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 $min_delay = $min_days
             }
             if ( $existing_torrent -and $get_updated -ne 'N' ) {
-                # if ( !$settings.connection.sid ) { Initialize-Forum }
+                $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
+                Write-Log $text -Green
                 $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
                 if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
                 $on_ssd = ( $nul -ne $ssd -and $existing_torrent.save_path[0] -in $ssd[$existing_torrent.client_key] )
-                # Write-Log "Получаем с трекера название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section)"
                 if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
-                    # $new_tracker_data.topic_title = ( Get-ForumTorrentInfo $new_tracker_data.topic_id -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ).topic_title
                     $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($new_tracker_data.topic_id)&columns=topic_title" -call_from ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') ) | ConvertFrom-Json -AsHashtable ).releases[0][1]
                 }
-                $text = "Обновляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиенте ' + $client.name + ' (' + ( to_kmg $existing_torrent.size 1 ) + ' -> ' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
-                Write-Log $text -Green
-                # подмена временного каталога если раздача хранится на SSD.
-                if ( $ssd -or $client.name -eq 'RSS') {
+                $new_torrent_name = Get-TorrentName -torrent_file $new_torrent_file
+                $temp_path = Get-ClientSetting -client $client -param 'temp_path'
+                if ( $new_torrent_name -eq $existing_torrent.name -and $settings.sections[$new_tracker_data.section].data_subfolder -le '2' ) {
+                    Write-Log 'Названия старой и новой версий совпадают'
+                    Remove-ClientTorrent -client $client -torrent $existing_torrent
+                    Set-ClientSetting $client 'temp_path_enabled' $false
+                    Set-ClientSetting $client 'preallocate_all' $true
+                }
+                else {
+                    if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '2' ) {
+                        Write-Log 'Выбрано хранение в папках по хэшу раздачи'
+                    }
+                    else {
+                        Write-Log 'Названия старой и новой версий отличаются'
+                    }
+                    Remove-ClientTorrent -client $client -torrent $existing_torrent -deleteFiles
+                    if ( $temp_path -and $temp_path -ne '' ) {
+                        Set-ClientSetting $client 'temp_path_enabled' $true
+                        Set-ClientSetting $client 'preallocate_all' $false
+                    }
+                }
+                if ( $client.name -eq 'RSS' ) {
                     if ( $on_ssd -eq $true ) {
-                        Write-Log 'Отключаем преаллокацию'
+                        Set-ClientSetting $client 'temp_path_enabled' $false
                         Set-ClientSetting $client 'preallocate_all' $false
                         Start-Sleep -Milliseconds 100
                     }
@@ -463,22 +480,24 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 }
                 $success = Add-ClientTorrent -client $client -file $new_torrent_file -path $existing_torrent.save_path -category $existing_torrent.category -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -addToTop:$( $add_to_top -eq 'Y' )
                 if ( $success -eq $true ) {
-                    Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
-                    Start-Sleep -Seconds 5
-                    $new_topic_info = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
-                    $new_topic_title = $new_topic_info.name
-                    if ( $null -ne $new_topic_title -and $new_topic_title -eq $existing_torrent.name -and $settings.sections[$new_tracker_data.section].data_subfolder -le '2') {
-                        Remove-ClientTorrent -client $client -torrent $existing_torrent
-                    }
-                    elseif ($null -ne $new_topic_title ) {
-                        Remove-ClientTorrent -client $client -torrent $existing_torrent -deleteFiles
-                    }
+                    # Write-Log 'Ждём 5 секунд чтобы раздача точно "подхватилась"'
+                    # Start-Sleep -Seconds 5
+                    # $new_topic_info = ( Get-ClientTorrents -client $client -hash $new_torrent_key -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') )
+                    # $new_topic_title = $new_topic_info.name
+                    # if ( $null -ne $new_topic_title -and $new_topic_title -eq $existing_torrent.name -and $settings.sections[$new_tracker_data.section].data_subfolder -le '2') {
+                    #     Remove-ClientTorrent -client $client -torrent $existing_torrent
+                    # }
+                    # elseif ($null -ne $new_topic_title ) {
+                    #     Remove-ClientTorrent -client $client -torrent $existing_torrent -deleteFiles
+                    # }
                     Start-Sleep -Milliseconds 100 
-                    $torrent_to_tag = [PSCustomObject]@{
-                        hash     = $new_torrent_key
-                        topic_id = $new_tracker_data.topic_id
+                    if ( $refreshed_label ) {
+                        $torrent_to_tag = [PSCustomObject]@{
+                            hash     = $new_torrent_key
+                            topic_id = $new_tracker_data.topic_id
+                        }
+                        Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label
                     }
-                    if ( $refreshed_label ) { Set-Comment -client $client -torrent $torrent_to_tag -label $refreshed_label }
                     if ( !$refreshed[ $client.name ] ) { $refreshed[ $client.name ] = @{} }
                     $refreshed_ids += $new_tracker_data.topic_id
                     if ( !$refreshed[ $client.name ][ $new_tracker_data.section] ) { $refreshed[ $client.name ][ $new_tracker_data.section ] = [System.Collections.ArrayList]::new() }
@@ -521,23 +540,15 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                 }
             }
             elseif ( !$existing_torrent -and $get_news -eq 'Y' -and ( $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) -or $new_tracker_data.tor_status -eq 2 ) -and $null -ne $new_torrents_less_seeds[$new_torrent_key] ) {
-                # $mask_passed = $true
-                # сначала проверяем по базе неподходящих раздач в БД TLO
                 Remove-Variable mask_passed -ErrorAction SilentlyContinue
                 if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.topic_id] ) { $mask_passed = $false }
 
                 else {
-                    # if ( $masks_like -and $masks_like[$new_tracker_data.section.ToString()] ) {
                     if ( $masks_sect -and $masks_sect[$new_tracker_data.section.ToString()] ) {
                         if ( $new_tracker_data.topic_title -eq '' -or $null -eq $new_tracker_data.topic_title ) {
                             Write-Log "Получаем с API название раздачи $($new_tracker_data.topic_id) из раздела $($new_tracker_data.section), так как API его не вернуло (бывает)"
                             $new_tracker_data.topic_title = ( ( Get-RepHTTP -url "/krs/api/v1/releases/pvc?topic_ids=$($rss_record[1])&columns=topic_title") | ConvertFrom-Json -AsHashtable ).releases[0][1]
                         }
-                        # $masks_like[$new_tracker_data.section.ToString()] | ForEach-Object {
-                        #     if ( -not $mask_passed -and $new_tracker_data.topic_title -like $_ ) {
-                        #         $mask_passed = $true
-                        #     }
-                        # }
                         $mask_passed = $false
                         foreach ( $mask_line in $masks_sect[$new_tracker_data.section] ) {
                             foreach ( $mask_word in $mask_line.split(' ') ) {
@@ -552,7 +563,6 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                     }
                     else { $mask_passed = 'N/A' }
                 }
-                # if ( $masks_like -and -not $mask_passed ) {
                 if ( $masks_sect -and -not $mask_passed ) {
                     Write-Log ( 'Новая раздача ' + $new_tracker_data.topic_title + ' отброшена масками' )
                     continue
@@ -583,9 +593,9 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                     continue
                 }
                 else {
-                    $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
                     $text = "Добавляем раздачу " + $new_tracker_data.topic_id + " " + $new_tracker_data.topic_title + ' в клиент ' + $client.name + ' (' + ( to_kmg $new_tracker_data.tor_size_bytes 1 ) + ')'
                     Write-Log $text -Green
+                    $new_torrent_file = Get-ForumTorrentFile $new_tracker_data.topic_id
                     $save_path = $settings.sections[$new_tracker_data.section].data_folder
                     if ( $settings.sections[$new_tracker_data.section].data_subfolder -eq '1' ) {
                         $save_path = ( $save_path -replace ( '\\$', '') -replace ( '/$', '') ) + '/' + $new_tracker_data.topic_id # добавляем ID к имени папки для сохранения
@@ -596,16 +606,24 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                     $on_ssd = ( $ssd -and $save_path[0] -in $ssd[$settings.sections[$new_tracker_data.section].client] )
                     if ( ( $ssd -and $ssd[$settings.sections[$new_tracker_data.section].client] ) -and $client.name -ne 'RSS') {
                         if ( $on_ssd -eq $false ) {
-                            if ( $debug -eq 1 -and $client.name -eq 'NAS-NEW' -and $new_tracker_data.tor_size_bytes -le 85000000000 ) {
-                                Set-ClientSetting $client 'temp_path' 'C:\mnt\ramdisk\Incomplete'
+                            if ( $debug -eq 1 -and $client.name -eq 'NAS-NEW' -and $ssd ) {
+                                # чисто мой блок.
+                                if ( $new_tracker_data.tor_size_bytes -le 85000000000 ) {
+                                    Set-ClientSetting $client 'temp_path' 'C:\mnt\ramdisk\Incomplete'
+                                }
+                                else { 
+                                    Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
+                                }
+                                Set-ClientSetting $client 'temp_path_enabled' $true
+                                Set-ClientSetting $client 'preallocate_all' $false
                             }
                             else {
-                                Set-ClientSetting $client 'temp_path' ( Join-Path ( $ssd[$settings.sections[$new_tracker_data.section].client][0] + $( $separator -eq '\' ? ':' : '' ) ) 'Incomplete' )
+                                Set-ClientSetting $client 'temp_path_enabled' $true
+                                Set-ClientSetting $client 'preallocate_all' $false
                             }
-                            Set-ClientSetting $client 'temp_path_enabled' $true
-                            Set-ClientSetting $client 'preallocate_all' $false
                         }
                         else {
+                            # если раздача хранится на SSD
                             Set-ClientSetting $client 'temp_path_enabled' $false
                             Set-ClientSetting $client 'preallocate_all' $false
                         }
@@ -951,9 +969,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
                             if ( $first_rss ) {
                                 Write-Log 'Добавляем новые раздачи из RSS'
-                                Write-Log 'Отключаем отдельный путь для недокачанных раздач'
                                 Set-ClientSetting $settings.clients[$rss.client] 'temp_path_enabled' $false
-                                Write-Log 'Отключаем преаллокацию'
                                 Set-ClientSetting $settings.clients[$rss.client] 'preallocate_all' $false
                                 $first_rss = $false
                             }
@@ -1140,15 +1156,6 @@ if ( $send_reports -eq 'Y' ) {
 }
 
 if ( ( Test-Path -Path $report_flag_file ) -or $force_update -eq 'Y' -or $time_to_report ) {
-
-    Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности в моменте'
-    # $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
-    if ( $parallel_clients -eq 'Y') {
-        $clients_torrents = Get-ClientsTorrentsParallel -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break -settings $settings
-    }
-    else {
-        $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
-    }
 
     if ( $refreshed.Count -gt 0 -or $added.Count -gt 0 -and $send_reports -eq 'Y' ) {
         # что-то добавилось, стоит подождать.

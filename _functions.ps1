@@ -771,12 +771,29 @@ function Add-ClientTorrent ( $Client, $file, $path, $category, $mess_sender = ''
 
 function Set-ClientSetting ( $client, $param, $value, $mess_sender ) {
     $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/app/setPreferences'
-    $param = @{ json = ( @{ $param = $value } | ConvertTo-Json -Compress ) }
-    try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null }
+    $parametr = @{ json = ( @{ $param = $value } | ConvertTo-Json -Compress ) }
+    try { Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $parametr -Method POST | Out-Null }
     catch {
         Initialize-Client -client $client -mess_sender $mess_sender -verbos
-        Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method POST | Out-Null 
+        Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $parametr -Method POST | Out-Null 
     }
+    if ( $value -is [bool] ) {
+        Write-Log "$( $value -eq $true ? 'Включаем' : 'Выключаем') $( $param -eq 'temp_path_enabled' ? 'временную папку' : $( $param -eq 'preallocate_all' ? 'преаллокацию' : 'какую-то другую настройку' ) )"
+    }
+    else {
+        Write-Log "Устанавливаем параметр $param в $value"
+    }
+}
+
+function Get-ClientSetting ( $client, $param, $mess_sender ) {
+    $url = $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/app/preferences'
+    # $param = @{ json = ( @{ $param = $value } | ConvertTo-Json -Compress ) }
+    try { $res = ( Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method Get ) }
+    catch {
+        Initialize-Client -client $client -mess_sender $mess_sender -verbos
+        $res = ( Invoke-WebRequest -Uri $url -WebSession $client.sid -Body $param -Method Get )
+    }
+    return ( $res.Content | ConvertFrom-Json -AsHashtable )[$param]
 }
 
 function Set-MaxTorrentPriority ( $client, $hash ) {
@@ -1040,6 +1057,7 @@ function Update-Stats ( [switch]$wait, [switch]$check, [switch]$send_report, $ca
         Write-Log 'Подождём 5 минут, вдруг быстро скачаются добавленные/обновлённые.'
         Start-Sleep -Seconds 300
     }
+
     try {
         Write-Log 'Обновляем БД TLO'
         $tlo_version = [version]( ( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version | Select-String -Pattern '[\.\d]+' ).Matches[0].Value
@@ -1082,6 +1100,14 @@ function Send-Report ( $call_from ) {
         # Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности в моменте'
         # $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
 
+        Write-Log 'Освежаем список хранимого и качаемого для актуализации отчётности в моменте'
+        # $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
+        if ( $parallel_clients -eq 'Y') {
+            $clients_torrents = Get-ClientsTorrentsParallel -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break -settings $settings
+        }
+        else {
+            $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
+        }
         if ( $nul -ne ( $clients_torrents | Where-Object { $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] } ) ) {
             Write-Log 'Отправляем хранимое'
             $body = @{
@@ -1090,10 +1116,10 @@ function Send-Report ( $call_from ) {
                 'unreport_older_than'   = 'PT1S'
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = @( ( $clients_torrents | Where-Object { `
-                    $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) `
-                    -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] `
-                    -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) -notcontains 'своё' )
-                } ).hash.ToUpper() )
+                                $_.state -in @( 'forcedUP', 'queuedUP', 'stalledUP', 'stoppedUP', 'uploading' ) `
+                                -and $_.client_key -notlike 'RSS*' -and $tracker_torrents[$_.hash] `
+                                -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) -notcontains 'своё' )
+                        } ).hash.ToUpper() )
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
             if ( ( $res | ConvertFrom-Json ).invalid_hashes ) {
@@ -1111,10 +1137,10 @@ function Send-Report ( $call_from ) {
                 'status'                = $adder_watermark -bor 3
                 'return_invalid_hashes' = $true
                 'topic_hashes'          = @( ( $clients_torrents | Where-Object {
-                    $_.state -in @( 'stalledDL', 'downloading', 'queuedDL' ) `
-                    -and $tracker_torrents[$_.hash] `
-                    -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) -notcontains 'своё' )
-                 } ).hash.ToUpper()
+                            $_.state -in @( 'stalledDL', 'downloading', 'queuedDL' ) `
+                                -and $tracker_torrents[$_.hash] `
+                                -and ( $null -eq $_.tags -or @($_.tags.split(', ') ) -notcontains 'своё' )
+                        } ).hash.ToUpper()
                 )
             } | ConvertTo-Json -Compress
             $res = Send-RepHTTP -url '/krs/api/v1/releases/set_status_by_hash' -body $body -call_from $call_from -silent
@@ -1122,9 +1148,8 @@ function Send-Report ( $call_from ) {
         else {
             Write-Log 'Качаемое не отправляем за неимением такового'
         }
-        Write-Log 'Освежаем список хранимых подразделов'
+        Write-Log 'Даём команду API на освежение списка хранимых подразделов'
         $res = Send-RepHTTP -url "/krs/api/v1/subforum/set_status_auto?keeper_id=$($settings.connection.user_id)&ignore_non_reported=true&respect_recommended_minimum=true&dry_run=false&last_seeded_limit_days=30&last_update_limit_days=60"
-        
     }
     else {
         $tlo_version = ( [version]( Get-Content -Path ( Join-Path $tlo_path version.json ) | ConvertFrom-Json ).version | Select-String -Pattern '[\.\d]+' ).Matches[0].Value
@@ -2374,4 +2399,80 @@ function Expand-TarGz( $url, $tmp_dir, $destination, $headers = $null ) {
     finally {
         Remove-Item -LiteralPath $archivePath -Force -ErrorAction SilentlyContinue
     }
+}
+
+function ConvertFrom-Bencode {
+    param([byte[]]$Bytes)
+
+    $script:pos = 0
+    $script:data = $Bytes
+
+    function Read-Byte { $script:data[$script:pos]; $script:pos++ }
+    function Peek-Char { [char]$script:data[$script:pos] }
+
+    function Parse-Value {
+        switch (Peek-Char) {
+            'i' { return Parse-Integer }
+            'l' { return Parse-List }
+            'd' { return Parse-Dict }
+            default { return Parse-String }
+        }
+    }
+
+    function Parse-Integer {
+        $script:pos++ # skip 'i'
+        $start = $script:pos
+        while ((Peek-Char) -ne 'e') { $script:pos++ }
+        $numStr = [System.Text.Encoding]::ASCII.GetString($script:data, $start, $script:pos - $start)
+        $script:pos++ # skip 'e'
+        return [int64]$numStr
+    }
+
+    function Parse-String {
+        $start = $script:pos
+        while ((Peek-Char) -ne ':') { $script:pos++ }
+        $lenStr = [System.Text.Encoding]::ASCII.GetString($script:data, $start, $script:pos - $start)
+        $len = [int]$lenStr
+        $script:pos++ # skip ':'
+        $bytes = $script:data[$script:pos..($script:pos + $len - 1)]
+        $script:pos += $len
+        # Return raw bytes for 'pieces' field (binary), otherwise decode as string
+        return $bytes
+    }
+
+    function Parse-List {
+        $script:pos++ # skip 'l'
+        $list = @()
+        while ((Peek-Char) -ne 'e') { $list += ,(Parse-Value) }
+        $script:pos++ # skip 'e'
+        return $list
+    }
+
+    function Parse-Dict {
+        $script:pos++ # skip 'd'
+        $dict = [ordered]@{}
+        while ((Peek-Char) -ne 'e') {
+            $keyBytes = Parse-String
+            $key = [System.Text.Encoding]::UTF8.GetString($keyBytes)
+            $dict[$key] = Parse-Value
+        }
+        $script:pos++ # skip 'e'
+        return $dict
+    }
+
+    return Parse-Value
+}
+
+function ConvertTo-ReadableString {
+    param($Bytes)
+    # if ($Bytes -is [byte[]]) {
+        return [System.Text.Encoding]::UTF8.GetString($Bytes)
+    # }
+    return $Bytes
+}
+
+function Get-TorrentName ( $torrent_file ) {
+    $bytes = [System.IO.File]::ReadAllBytes( $torrent_file.FullName )
+    $torrent = ConvertFrom-Bencode -Bytes $bytes
+    return ConvertTo-ReadableString( $torrent.info.name )
 }
