@@ -1186,7 +1186,13 @@ function Remove-ClientTorrent ( $client, $hash, [switch]$deleteFiles, $torrent =
         Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/delete' ) -WebSession $client.sid -Body $request_delete -Method POST | Out-Null
     }
     catch {
-        Write-Log "[delete] Почему-то не получилось удалить раздачу $torrent_id." -Red
+        Start-Sleep -Seconds 1
+        try {
+            Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.ip + ':' + $client.Port + '/api/v2/torrents/delete' ) -WebSession $client.sid -Body $request_delete -Method POST | Out-Null
+        }
+        catch {
+            Write-Log "[delete] Почему-то не получилось удалить раздачу $(torrent.topic_id). Ошибка $($_.Exception.Message)" -Red
+        }
     }
 }
 
