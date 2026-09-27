@@ -952,18 +952,18 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                             }
                             else {
                                 Write-Log "API вернул хэш $fresh_hash и статус '$fresh_status'"
-                                if ( $fresh_status -notin @( 'не оформлено', 'премодерация', 'повтор', 'закрыто' ) -and $fresh_hash -and $fresh_hash -notin $clients_torrents.hash ) {
+                                if ( $fresh_status -notin @( 'не оформлено', 'премодерация', 'повтор', 'закрыто', 'проверяется' ) -and $fresh_hash -and $fresh_hash -notin $clients_torrents.hash ) {
                                     $new_torrent_file = Get-ForumTorrentFile -Id $( $rss_record[1] )
                                     if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
                                 }
-                                elseif ( $fresh_status -eq 'премодерация' -and $fresh_hash -and $fresh_hash -notin $clients_torrents.hash ) {
-                                    $new_torrent_file = Get-ForumTorrentFile -Id $( $rss_record[1] ) -hash $( $fresh_hash )
-                                    if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
-                                    if ( ( $new_torrent_file | Get-Content ) -like '*: forbidden*' ) {
-                                        Write-Log 'Статус уже успел измениться на нескачиваемый, пропускаем'
-                                        continue
-                                    }
-                                }
+                                # elseif ( $fresh_status -in ( 'премодерация', 'проверяется' ) -and $fresh_hash -and $fresh_hash -notin $clients_torrents.hash ) {
+                                #     $new_torrent_file = Get-ForumTorrentFile -Id $( $rss_record[1] ) -hash $( $fresh_hash )
+                                #     if ( $null -eq $new_torrent_file -or -not ( Test-Path $new_torrent_file ) ) { Write-Log 'Проблемы с доступностью форума' -Red ; exit }
+                                #     if ( ( $new_torrent_file | Get-Content ) -like '*: forbidden*' -and $debug -ne 1 ) {
+                                #         Write-Log 'Статус уже успел измениться на нескачиваемый, пропускаем'
+                                #         continue
+                                #     }
+                                # }
                                 
                             }
                             if ( 
@@ -990,13 +990,13 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
 
                             if ( $rss2 ) {
                                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                    -file $( $fresh_status -notin @( 'не оформлено', 'повтор', 'закрыто' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -in ('не оформлено', 'премодерация' ) ? $fresh_hash : $nul ) -keepfile
+                                    -file $( $fresh_status -notin @( 'не оформлено', 'повтор', 'закрыто', 'проверяется' ) ? $new_torrent_file : $null ) -hash $( $fresh_status -in ('не оформлено', 'премодерация', 'проверяется' ) ? $fresh_hash : $nul ) -keepfile
                                 Add-ClientTorrent -client $settings.clients[$rss2.client] -path $chosen_save_path2 -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                    -file $( $fresh_status -notin @( 'не оформлено', 'повтор', 'закрыто' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -in ('не оформлено', 'премодерация' ) ? $fresh_hash : $nul ) -Silent
+                                    -file $( $fresh_status -notin @( 'не оформлено', 'повтор', 'закрыто', 'проверяется' ) ? $new_torrent_file : $null ) -hash $( $fresh_status -in ('не оформлено', 'премодерация', 'проверяется' ) ? $fresh_hash : $nul ) -Silent
                             }
                             else {
                                 $success = Add-ClientTorrent -client $settings.clients[$rss.client] -path $chosen_save_path -category $rss.category -addToTop:$( $add_to_top -eq 'Y' ) `
-                                    -file $( $fresh_status -notin @( 'не оформлено', 'повтор', 'закрыто' ) ? $new_torrent_file : $nul ) -hash $( $fresh_status -in ('не оформлено', 'премодерация' ) ? $fresh_hash : $nul )
+                                    -file $( $fresh_status -notin @( 'не оформлено', 'повтор', 'закрыто', 'проверяется' ) ? $new_torrent_file : $null ) -hash $( $fresh_status -in ('не оформлено', 'премодерация', 'проверяется' ) ? $fresh_hash : $nul )
                             }
                             Write-Log 'Подождём секунду, чтобы раздача добавилась'
                             Start-Sleep -Seconds 1
