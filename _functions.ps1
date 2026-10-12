@@ -550,28 +550,27 @@ function Get-ClientsTorrentsParallel ( $mess_sender = '', [switch]$completed, [s
     if ( !$clients ) { $clients = $settings.clients }
     $trot_limit = [Math]::Min( [Environment]::ProcessorCount, 16 )
     Write-Log "Получаем список раздач из всех клиентов пачками по $trot_limit"
-    $clients_torrents = $clients.Keys | ForEach-Object -Parallel {
-        $settings = $using:settings
-        $completed = $Using:completed
-        $clients = $Using:clients
-        ${function:Get-ClientTorrentInfo} = [scriptblock]::Create($using:funcDef1Str)
-        ${function:Get-Spell} = [scriptblock]::Create($using:funcDef3Str)
-        ${function:Write-Log} = [scriptblock]::Create($using:funcDef2Str)
-        $mess_sender = $Using:mess_sender
-        $client = $clients[ $_ ]
-        Write-Log ( 'Получаем список раздач от клиента ' + $client.name ) -caller 'Adder'
-        if ( $completed ) { $Params.filter = 'completed' }
-        $json_content = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
-        $torrents_list = $json_content | ConvertFrom-Json | `
-            Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags, download_path, last_activity, ratio
-        Write-Log ( 'Получено от клиента ' + $client.Name + ': ' + ( Get-Spell -qty $torrents_list.Count ) )
-        return $torrents_list
-    } -ThrottleLimit $trot_limit
-    #     Get-TopicIDs -client $client -torrent_list $client_torrents # -conn $db_conn
-    # }
-    # $clients_torrents += $client_torrents
-    # if ( $db_conn ) { $db_conn.Close() }
-    if ( $noIDs.IsPresent -eq $false -and $clients_torrents.count -gt 0 ) {
+    $ErrorActionPreference = 'Stop'
+        $clients_torrents = $clients.Keys | ForEach-Object -Parallel {
+            $ErrorActionPreference = 'Stop'
+            $settings = $using:settings
+            $completed = $Using:completed
+            $clients = $Using:clients
+            ${function:Get-ClientTorrentInfo} = [scriptblock]::Create($using:funcDef1Str)
+            ${function:Get-Spell} = [scriptblock]::Create($using:funcDef3Str)
+            ${function:Write-Log} = [scriptblock]::Create($using:funcDef2Str)
+            $mess_sender = $Using:mess_sender
+            $client = $clients[ $_ ]
+            Write-Log ( 'Получаем список раздач от клиента ' + $client.name ) -caller 'Adder'
+            if ( $completed ) { $Params.filter = 'completed' }
+            $json_content = ( Invoke-WebRequest -Uri ( $( $client.ssl -eq '0' ? 'http://' : 'https://' ) + $client.IP + ':' + $client.port + '/api/v2/torrents/info' ) -WebSession $client.sid -Body $params -TimeoutSec 120 ).Content
+            $torrents_list = $json_content | ConvertFrom-Json | `
+                Select-Object name, hash, save_path, content_path, category, state, uploaded, @{ N = 'topic_id'; E = { $nul } }, @{ N = 'client_key'; E = { $client.name } }, infohash_v1, size, completion_on, progress, tracker, added_on, tags, download_path, last_activity, ratio
+            Write-Log ( 'Получено от клиента ' + $client.Name + ': ' + ( Get-Spell -qty $torrents_list.Count ) )
+            return $torrents_list
+        } -ThrottleLimit $trot_limit
+
+        if ( $noIDs.IsPresent -eq $false -and $clients_torrents.count -gt 0 ) {
         Write-Log 'Ищем в найденных раздачах ID (из БД TLO и комментариев в клиенте, как повезёт)'
         $clients_torrents | ForEach-Object {
             if ( $null -ne $tracker_torrents ) { $_.topic_id = [Int32]$tracker_torrents[$_.hash.toUpper()].topic_id }
@@ -2449,7 +2448,7 @@ function ConvertFrom-Bencode {
     function Parse-List {
         $script:pos++ # skip 'l'
         $list = @()
-        while ((Peek-Char) -ne 'e') { $list += ,(Parse-Value) }
+        while ((Peek-Char) -ne 'e') { $list += , (Parse-Value) }
         $script:pos++ # skip 'e'
         return $list
     }
@@ -2472,7 +2471,7 @@ function ConvertFrom-Bencode {
 function ConvertTo-ReadableString {
     param($Bytes)
     # if ($Bytes -is [byte[]]) {
-        return [System.Text.Encoding]::UTF8.GetString($Bytes)
+    return [System.Text.Encoding]::UTF8.GetString($Bytes)
     # }
     return $Bytes
 }

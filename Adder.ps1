@@ -258,7 +258,6 @@ if ( $debug -ne 1 -or $env:TERM_PROGRAM -ne 'vscode' -or $null -eq $clients_torr
         $db_hash_to_id = Get-DBHashToId -conn $conn
         $conn.Close()
     }
-    # $clients_torrents = Get-ClientsTorrents -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break
     if ( $parallel_clients -eq 'Y') {
         $clients_torrents = Get-ClientsTorrentsParallel -clients $settings.clients -mess_sender ( $PSCommandPath | Split-Path -Leaf ).replace('.ps1', '') -break -settings $settings
     }
@@ -541,9 +540,9 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
             }
             elseif ( !$existing_torrent -and $get_news -eq 'Y' `
                     -and (
-                        $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) `
+                    $new_tracker_data.reg_time -lt ( ( Get-Date ).ToUniversalTime( ).AddDays( 0 - $min_delay ) ) `
                         -or ( $new_tracker_data.tor_status -eq 2 -and ( !$wait_releasers -or $new_tracker_data.topic_poster.ToInt32($null) -notin $wait_releasers ))
-                        ) `
+                ) `
                     -and $null -ne $new_torrents_less_seeds[$new_torrent_key] ) {
                 Remove-Variable mask_passed -ErrorAction SilentlyContinue
                 if ( $masks_db -and $masks_db[$new_tracker_data.section.ToString()] -and $masks_db[$new_tracker_data.section.ToString()][$new_tracker_data.topic_id] ) { $mask_passed = $false }
@@ -613,7 +612,7 @@ if ( (Test-ForumWorkingHours) -eq $true ) {
                         if ( $on_ssd -eq $false ) {
                             if ( $debug -eq 1 -and $client.name -eq 'NAS-NEW' -and $ssd ) {
                                 # чисто мой блок.
-                                if ( $new_tracker_data.tor_size_bytes -le 85000000000 ) {
+                                if ( $new_tracker_data.tor_size_bytes -le 83000000000 ) {
                                     Set-ClientSetting $client 'temp_path' 'C:\mnt\ramdisk\Incomplete'
                                 }
                                 else { 
